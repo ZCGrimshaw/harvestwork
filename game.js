@@ -754,7 +754,8 @@
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
     else h += Object.entries(D.upgrades).map(([ax, U]) => { const l = b.lv[ax], max = l >= U.cost.length;
-      return `<div class="recipe"><div><b>${U.name}</b> <span class="muted">${U.label(l)}</span></div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { sub: costTxt(U.cost[l]) })}</div>`; }).join('');
+      const e = max ? null : checkTask({ a: 'upgrade', i, p: ax });
+      return `<div class="recipe"><div class="grow1"><b class="rname">${U.name} <span class="muted">· now ${U.label(l)}</span></b>${max ? '<small class="why">Fully upgraded</small>' : `<small class="cost">Next: ${U.label(l + 1)} · Cost: ${costTxt(U.cost[l])}</small>${e ? `<small class="why short">${esc(e)}</small>` : ''}`}</div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { err: e })}</div>`; }).join('');
     return h + fhControl(i, 'station');
   }
   function homePanel(i) {
@@ -770,7 +771,8 @@
     h += `<span class="eyebrow">Tools</span>`;
     if (!unlocked('tools')) h += `<p class="hint">Unlock “Toolsmithing” in Discovery to upgrade your tools.</p>`;
     h += Object.entries(D.tools).map(([k, T]) => { const l = toolLv(k), max = l >= T.cost.length;
-      return `<div class="recipe"><div class="grow1"><b class="rname">${T.tiers[l]} ${esc(T.name)}</b><small class="why">${esc(T.desc[l])}${max ? '' : ` Next: ${esc(T.desc[l + 1])}`}</small></div>${max ? '<span class="muted">Max</span>' : unlocked('tools') ? btn({ a: 'toolup', i, p: k }, 'Upgrade', { sub: costTxt(T.cost[l]) }) : ''}</div>`; }).join('');
+      const e = max || !unlocked('tools') ? null : checkTask({ a: 'toolup', i, p: k });
+      return `<div class="recipe"><div class="grow1"><b class="rname">${T.tiers[l]} ${esc(T.name)}</b><small class="why">${esc(T.desc[l])}${max ? '' : ` Next: ${esc(T.desc[l + 1])}`}</small>${max ? '' : `<small class="cost">Cost: ${costTxt(T.cost[l])}</small>`}${e ? `<small class="why short">${esc(e)}</small>` : ''}</div>${max ? '<span class="muted">Max</span>' : unlocked('tools') ? btn({ a: 'toolup', i, p: k }, 'Upgrade', { err: e }) : ''}</div>`; }).join('');
     h += `<span class="eyebrow">Farmhand</span>`;
     const F = S.helper;
     if (!unlocked('farmhand')) h += `<p class="hint">Unlock “Farmhand” in Discovery (after Repeat Recipes) to hire help.</p>`;
@@ -995,7 +997,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261012-055851';
+  const BUILD = '20261012-061142';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
