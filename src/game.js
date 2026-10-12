@@ -688,15 +688,18 @@
       <div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>
       <div class="status">${status}</div>`);
   }
+  // The goal / contract card has three sizes: full, title only, and minimized to a small tab.
   function renderGoals() {
-    const g = D.goals[S.goal];
-    let h;
-    if (g) h = `<button class="goalhead" data-toggle-goals><span class="eyebrow">Goal ${S.goal + 1} of ${D.goals.length}</span><span class="chev">${UI.goalsOpen ? '–' : '+'}</span></button>
-      <div class="goaltitle">${esc(g.title)}</div>${UI.goalsOpen ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>` : ''}`;
-    else { const m = D.milestones[S.ms];
-      h = `<button class="goalhead" data-toggle-goals><span class="eyebrow">Next contract</span><span class="chev">${UI.goalsOpen ? '–' : '+'}</span></button>
-      <div class="goaltitle">${m ? esc(m.name) : 'All contracts complete'}</div>${UI.goalsOpen ? `<p>${m ? esc(m.hint) + ' Find it on the Order Board.' : 'Chase a higher score with Excellent goods and tuned stations.'}</p>` : ''}`; }
-    setHTML('#goals', h);
+    const g = D.goals[S.goal], m = D.milestones[S.ms];
+    const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
+    const title = g ? g.title : m ? m.name : 'All contracts complete';
+    const el = $('#goals'); el.classList.toggle('mini', !!S.goalMin);
+    if (S.goalMin) { setHTML('#goals', `<button class="goaltab" data-goal-restore aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(title)}"><span class="eyebrow">${g ? 'Goal' : 'Contract'}</span><span class="tabtitle">${esc(title)}</span><span class="chev">▸</span></button>`); return; }
+    const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
+    let body = '';
+    if (UI.goalsOpen) body = g ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>`
+      : `<p>${m ? esc(m.hint) + ' Find it on the Order Board.' : 'Chase a higher score with Excellent goods and tuned stations.'}</p>`;
+    setHTML('#goals', `<div class="goalhead"><span class="eyebrow">${eyebrow}</span>${ctl}</div><div class="goaltitle">${esc(title)}</div>${body}`);
   }
   function renderQueue() {
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
@@ -990,6 +993,8 @@
     else if (ds.shirt !== undefined) S.shirt = +ds.shirt;
     else if (ds.hat !== undefined) S.hat = +ds.hat;
     else if ('toggleGoals' in ds) UI.goalsOpen = !UI.goalsOpen;
+    else if ('goalMin' in ds) { S.goalMin = true; save(); }
+    else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }

@@ -66,7 +66,15 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 
 /* goal card */
 #goals { position: absolute; left: 10px; top: 66px; width: 270px; padding: 10px 14px 12px; background: #f6e7c1; color: #3a2416; border: 2px solid #24160d; box-shadow: inset 0 0 0 2px #e2cc98, 0 4px 0 rgba(0,0,0,.35); border-radius: var(--r); }
-#goals .goalhead { all: unset; display: flex; width: 100%; justify-content: space-between; align-items: center; cursor: pointer; }
+#goals .goalhead { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 8px; }
+#goals .gctl { display: flex; gap: 4px; margin-right: -6px; }
+#goals .gbtn { cursor: pointer; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: #8a6236; font-family: var(--f-display); font-size: 17px; line-height: 1; }
+#goals .gbtn:hover { background: #e2cc98; color: #3a2416; }
+#goals.mini { width: auto; max-width: 270px; padding: 0; }
+#goals .goaltab { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 12px; }
+#goals .goaltab .eyebrow { flex: none; }
+#goals .goaltab .tabtitle { font-family: var(--f-display); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+#goals .goaltab:focus-visible, #goals .gbtn:focus-visible { outline: 2px solid #8a6236; outline-offset: 1px; }
 #goals .eyebrow { color: #8a6236; margin: 0; }
 #goals .chev { font-family: var(--f-display); font-size: 18px; color: #8a6236; }
 .goaltitle { font-family: var(--f-display); font-size: 20px; font-weight: 600; margin-top: 2px; text-wrap: balance; }
@@ -269,7 +277,8 @@ button, .chipf, input, select { touch-action: manipulation; -webkit-tap-highligh
   #hud { position: absolute; top: 50px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
   #hud > * { pointer-events: auto; }
   #goals { position: static; width: auto; padding: 7px 12px; }
-  #goals .goalhead { gap: 8px; }
+  #goals .gbtn { width: 34px; height: 30px; }
+  #goals.mini { align-self: flex-start; max-width: 75%; }
   #goals .goaltitle { font-size: 15px; }
   #goals p { font-size: 13px; margin: 4px 0 6px; }
   #queue { position: static; transform: none; max-width: none; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }

@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.5 — 2026-10-12
+- The goal/contract card can be minimized (×) to a small tab that shows just the contract name;
+  tap the tab to bring it back. The choice is saved.
+
 ## v0.4 — 2026-10-12
 - Phone layout: one-line top bar, goal card as a slim strip, panels slide up from the bottom,
   full-screen Storage/Discovery/Menu, larger touch targets, landscape support.
