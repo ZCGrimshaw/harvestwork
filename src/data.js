@@ -1,0 +1,389 @@
+/* Harvestworks — content definitions.
+   Everything the game knows about items, recipes, buildings, terrain, the starting map,
+   discoveries, orders and tutorial goals lives here. Gameplay code reads these tables;
+   adding content should rarely require touching game.js. */
+window.HW_DATA = {
+
+  config: {
+    startGold: 60,
+    capacity: [40, 60, 85, 120, 160, 220], // storage by Homestead level (last two need the Root Cellar)
+    startInventory: { carrot_seed: 4, potato_seed: 2 },
+    startKnown: ['carrot', 'potato'],      // goods the player "knows" for orders
+    dayLength: 240,                        // seconds per in-game day (6:00 to 22:00)
+    walkSpeed: 3.2,                        // tiles per second
+    maxQueue: 5,
+    orderSlots: 3,
+    orderRefill: 15,
+    marketOffers: 3,
+    qualityNames: ['Basic', 'Good', 'Excellent'],
+    qualityMult: [1, 1.5, 2.2],
+    expandStep: 8,                         // land gets pricier with every purchase
+    expandStoneAt: 4,                      // from the 5th purchase, land also needs stone
+    expandFenceAt: 8,                      // from the 9th, a fence kit
+    farmPlotCost: { gold: 20 },
+    workTime: {
+      till: 1.2, plant: 0.8, water: 0.8, harvest: 1, chop: 2, replant: 0.8, fish: 2.5, mine: 2.2,
+      load: 0.6, collect: 0.5, buy: 0.3, sell: 0.3, deliver: 0.6, build: 2.5, place: 2.5,
+      expand: 1.5, upgrade: 2, homeup: 2
+    },
+    // Score: every productive action pays a little; complex production pays more.
+    score: { till: 1, plant: 1, water: 1, harvest: 3, chop: 3, replant: 1, fish: 3, mine: 3,
+             craftPerDepth: 4, build: 10, expand: 15, upgrade: 12, sellPer: 5 },
+    // Discovery: first-time accomplishments only. Repetition never earns it.
+    firsts: { harvest: 1, craft: 1, craftDeep: 1, gather: 1, expand: 1, sell: 1, order: 1,
+              orderCrafted: 1, good: 1, excellent: 2, build: 1 }
+  },
+
+  terrain: {
+    grass:   { name: 'Grassland', cost: 30, walk: true, build: true,
+               desc: 'Open ground for farm plots and stations.', future: 'Pastures and specialty crops later.' },
+    forest:  { name: 'Forest', cost: 35, walk: true,
+               desc: 'A tree to chop for logs. Replant the stump with a sapling.', future: 'Orchards and woodworking later.' },
+    water:   { name: 'Pond', cost: 40, walk: false,
+               desc: 'Fish here. Stock refills over time.', future: 'Irrigation and water power later.' },
+    boulder: { name: 'Boulder Field', cost: 45, walk: true,
+               desc: 'Break boulders into stone. Rocks slowly resurface.', future: 'Ore and metalwork later.' }
+  },
+
+  gather: {
+    forest:  { action: 'chop', needs: 'woodcutting', out: { log: 2, sapling: 1 }, regrow: 45 },
+    water:   { action: 'fish', needs: 'fishing', out: { fish: 1 }, stock: 3, regen: 22 },
+    boulder: { action: 'mine', needs: 'stonecutting', out: { stone: 2 }, stock: 4, regen: 35 }
+  },
+
+  crops: {
+    carrot:  { name: 'Carrots', seed: 'carrot_seed', item: 'carrot', grow: 20, yield: 3 },
+    potato:  { name: 'Potatoes', seed: 'potato_seed', item: 'potato', grow: 28, yield: 2 },
+    wheat:   { name: 'Wheat', seed: 'wheat_seed', item: 'wheat', grow: 30, yield: 4 },
+    berries: { name: 'Berries', seed: 'berry_seed', item: 'berries', grow: 40, yield: 3 },
+    tomatoes: { name: 'Tomatoes', seed: 'tomato_seed', item: 'tomato', grow: 30, yield: 3 },
+    pumpkins: { name: 'Pumpkins', seed: 'pumpkin_seed', item: 'pumpkin', grow: 50, yield: 2 },
+    apples:   { name: 'Apple Trees', seed: 'apple_seedling', item: 'apple', grow: 60, yield: 4 },
+    flax:     { name: 'Flax', seed: 'flax_seed', item: 'flax', grow: 25, yield: 3 }
+  },
+
+  // cat: seed | supply | crop | gathered | good | component | kit
+  // value = base sell price; buy = market price; requires = discovery id
+  items: {
+    carrot_seed:  { name: 'Carrot Seeds', cat: 'seed', buy: 4, icon: ['seed', '#f08a24', '#d8b27a'] },
+    potato_seed:  { name: 'Potato Seeds', cat: 'seed', buy: 6, icon: ['seed', '#c99b5a', '#d8b27a'] },
+    wheat_seed:   { name: 'Wheat Seeds', cat: 'seed', buy: 5, requires: 'wheat', icon: ['seed', '#e8c04a', '#d8b27a'] },
+    berry_seed:   { name: 'Berry Seeds', cat: 'seed', buy: 9, requires: 'berries', icon: ['seed', '#d6334a', '#d8b27a'] },
+    tomato_seed:  { name: 'Tomato Seeds', cat: 'seed', buy: 7, requires: 'tomatoes', icon: ['seed', '#e0402a', '#d8b27a'] },
+    pumpkin_seed: { name: 'Pumpkin Seeds', cat: 'seed', buy: 10, requires: 'pumpkins', icon: ['seed', '#f08a24', '#d8b27a'] },
+    apple_seedling:{ name: 'Apple Seedling', cat: 'seed', buy: 14, requires: 'apples', icon: ['sapling', '#5aa83f', '#c22a2a'] },
+    flax_seed:    { name: 'Flax Seeds', cat: 'seed', buy: 6, requires: 'flax', icon: ['seed', '#6f8fd8', '#d8b27a'] },
+    sapling:      { name: 'Sapling', cat: 'supply', buy: 3, requires: 'woodcutting', icon: ['sapling', '#5aa83f', '#7a4b28'] },
+    fertilizer:   { name: 'Fertilizer', cat: 'supply', buy: 8, requires: 'compost', icon: ['sack', '#7a9a3a', '#4f6a24'] },
+
+    carrot:       { name: 'Carrot', cat: 'crop', value: 9, icon: ['root', '#f08a24', '#4caf3a'] },
+    potato:       { name: 'Potato', cat: 'crop', value: 11, icon: ['tuber', '#c99b5a', '#8a6236'] },
+    wheat:        { name: 'Wheat', cat: 'crop', value: 7, icon: ['grain', '#e8c04a', '#b58a2a'] },
+    berries:      { name: 'Berries', cat: 'crop', value: 8, icon: ['berry', '#d6334a', '#3f8a3a'] },
+    log:          { name: 'Log', cat: 'gathered', value: 5, icon: ['log', '#9a6a3c', '#e2bf86'] },
+    stone:        { name: 'Stone', cat: 'gathered', value: 4, buy: 12, icon: ['stone', '#a9a9b0', '#6e6e78'] },
+    fish:         { name: 'Fish', cat: 'gathered', value: 12, icon: ['fish', '#6fb3d9', '#3d7fa8'] },
+
+    flour:        { name: 'Flour', cat: 'good', value: 20, icon: ['sack', '#f2ead8', '#c9b48a'] },
+    glazed_carrots:{ name: 'Glazed Carrots', cat: 'good', value: 24, icon: ['plate', '#f08a24', '#fff2d8'] },
+    baked_potato: { name: 'Baked Potato', cat: 'good', value: 28, icon: ['plate', '#c99b5a', '#fff2d8'] },
+    cooked_fish:  { name: 'Grilled Fish', cat: 'good', value: 34, icon: ['plate', '#e0a060', '#fff2d8'] },
+    veggie_stew:  { name: 'Veggie Stew', cat: 'good', value: 52, icon: ['bowl', '#d06a2a', '#8a5a3a'] },
+    bread:        { name: 'Bread', cat: 'good', value: 55, icon: ['loaf', '#d99a4a', '#a8662a'] },
+    jam:          { name: 'Berry Jam', cat: 'good', value: 40, icon: ['jar', '#c22a44', '#e8e0d0'] },
+    pickled_carrots:{ name: 'Pickled Carrots', cat: 'good', value: 34, icon: ['jar', '#f08a24', '#e8e0d0'] },
+    plank:        { name: 'Plank', cat: 'component', value: 6, icon: ['plank', '#dcaa68', '#9a6a3c'] },
+    fence_kit:    { name: 'Fence Kit', cat: 'component', value: 30, icon: ['fence', '#dcaa68', '#7a7a82'] },
+    crate:        { name: 'Crate', cat: 'component', value: 30, icon: ['crate', '#c98a4a', '#7a4b28'] },
+
+    tomato:       { name: 'Tomato', cat: 'crop', value: 10, icon: ['berry', '#e0402a', '#3f8a3a'] },
+    pumpkin:      { name: 'Pumpkin', cat: 'crop', value: 18, icon: ['tuber', '#f08a24', '#3f8a3a'] },
+    apple:        { name: 'Apple', cat: 'crop', value: 9, icon: ['tuber', '#d23a3a', '#5aa83f'] },
+    flax:         { name: 'Flax', cat: 'crop', value: 6, icon: ['grain', '#8aa0d8', '#6f8a3a'] },
+    copper_ore:   { name: 'Copper Ore', cat: 'gathered', value: 10, icon: ['stone', '#c97a4a', '#6e6e78'] },
+    mushrooms:    { name: 'Mushrooms', cat: 'good', value: 6, icon: ['mushroom', '#c9a07a', '#f2ead8'] },
+    honey:        { name: 'Honey', cat: 'good', value: 22, icon: ['jar', '#e8a830', '#e8e0d0'] },
+    brick:        { name: 'Brick', cat: 'component', value: 9, icon: ['brick', '#b5523b', '#7e3426'] },
+    charcoal:     { name: 'Charcoal', cat: 'component', value: 7, icon: ['stone', '#4a4a52', '#2a2a30'] },
+    copper_ingot: { name: 'Copper Ingot', cat: 'component', value: 45, icon: ['ingot', '#d9824a', '#9a5a2e'] },
+    gear:         { name: 'Gear', cat: 'component', value: 40, icon: ['gear', '#d9824a', '#9a5a2e'] },
+    linen:        { name: 'Linen', cat: 'component', value: 30, icon: ['cloth', '#efe6cf', '#c9b48a'] },
+    canvas:       { name: 'Canvas', cat: 'component', value: 75, icon: ['cloth', '#d8c49a', '#9a7a4a'] },
+    tomato_sauce: { name: 'Tomato Sauce', cat: 'good', value: 38, icon: ['jar', '#c8301e', '#e8e0d0'] },
+    pumpkin_soup: { name: 'Pumpkin Soup', cat: 'good', value: 50, icon: ['bowl', '#f08a24', '#8a5a3a'] },
+    mushroom_soup:{ name: 'Mushroom Soup', cat: 'good', value: 48, icon: ['bowl', '#b08a6a', '#8a5a3a'] },
+    berry_pie:    { name: 'Berry Pie', cat: 'good', value: 70, icon: ['pie', '#c22a44', '#d99a4a'] },
+    pumpkin_pie:  { name: 'Pumpkin Pie', cat: 'good', value: 78, icon: ['pie', '#e8862a', '#d99a4a'] },
+    apple_pie:    { name: 'Apple Pie', cat: 'good', value: 75, icon: ['pie', '#e8d27a', '#d99a4a'] },
+    honey_cake:   { name: 'Honey Cake', cat: 'good', value: 80, icon: ['loaf', '#e8b040', '#b07a2a'] },
+    cider:        { name: 'Cider', cat: 'good', value: 55, icon: ['jar', '#d8a040', '#7a7a84'] },
+    berry_juice:  { name: 'Berry Juice', cat: 'good', value: 40, icon: ['jar', '#9a2a5a', '#7a7a84'] },
+    mead:         { name: 'Mead', cat: 'good', value: 90, icon: ['jar', '#e8c060', '#7a4b28'] },
+    smoked_fish:  { name: 'Smoked Fish', cat: 'good', value: 40, icon: ['fish', '#a8703a', '#6e4425'] },
+
+    sawmill_kit:  { name: 'Sawmill Kit', cat: 'kit', buy: 50, building: 'sawmill', requires: 'sawmill', icon: ['kit', '#c98a4a', '#9aa0aa'] },
+    mill_kit:     { name: 'Flour Mill Kit', cat: 'kit', buy: 70, building: 'mill', requires: 'mill', icon: ['kit', '#c98a4a', '#f2ead8'] },
+    preserver_kit:{ name: 'Preserver Kit', cat: 'kit', buy: 90, building: 'preserver', requires: 'preserver', icon: ['kit', '#c98a4a', '#c22a44'] },
+    workbench_kit:{ name: 'Workbench Kit', cat: 'kit', buy: 80, building: 'workbench', requires: 'workbench', icon: ['kit', '#c98a4a', '#e8c04a'] },
+    // built at the Workbench, never sold
+    sprinkler_kit:{ name: 'Sprinkler', cat: 'kit', building: 'sprinkler', requires: 'irrigation', icon: ['sprinkler', '#9aa0aa', '#4aa3d8'] },
+    big_sprinkler_kit:{ name: 'Deluxe Sprinkler', cat: 'kit', building: 'big_sprinkler', requires: 'tinkering', icon: ['sprinkler', '#d9824a', '#4aa3d8'] },
+    compost_kit:  { name: 'Compost Bin Kit', cat: 'kit', buy: 50, building: 'compost', requires: 'compostbin', icon: ['kit', '#7a9a3a', '#4f6a24'] },
+    kiln_kit:     { name: 'Brick Kiln Kit', cat: 'kit', buy: 90, building: 'kiln', requires: 'kiln', icon: ['kit', '#b5523b', '#6e6e78'] },
+    oven_kit:     { name: 'Oven Kit', cat: 'kit', buy: 120, building: 'oven', requires: 'oven', icon: ['kit', '#b5523b', '#e8b040'] },
+    press_kit:    { name: 'Cider Press Kit', cat: 'kit', buy: 110, building: 'press', requires: 'press', icon: ['kit', '#c98a4a', '#d23a3a'] },
+    loom_kit:     { name: 'Loom Kit', cat: 'kit', buy: 100, building: 'loom', requires: 'loom', icon: ['kit', '#c98a4a', '#efe6cf'] },
+    hive_kit:     { name: 'Beehive Kit', cat: 'kit', buy: 60, building: 'hive', requires: 'beekeeping', icon: ['kit', '#e8b040', '#4a3a1a'] },
+    shed_kit:     { name: 'Mushroom Shed Kit', cat: 'kit', buy: 70, building: 'shed', requires: 'mushrooms', icon: ['kit', '#7a4b28', '#c9a07a'] },
+    smokehouse_kit:{ name: 'Smokehouse Kit', cat: 'kit', buy: 110, building: 'smokehouse', requires: 'smokehouse', icon: ['kit', '#6e4425', '#9aa0aa'] },
+    barn_kit:     { name: 'Storage Barn Kit', cat: 'kit', buy: 60, building: 'barn', requires: 'sawmill', icon: ['kit', '#c8483a', '#f2ead8'] },
+    warehouse_kit:{ name: 'Warehouse Kit', cat: 'kit', buy: 220, building: 'warehouse', requires: 'warehouse', icon: ['kit', '#8a8a94', '#b5523b'] },
+    smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] }
+  },
+
+  // Categories used to sort lists in the market, storage and Discovery screens.
+  // An item goes in the first group that names it, otherwise the first group matching its cat.
+  itemGroups: [
+    { id: 'seeds', name: 'Seeds & saplings', cats: ['seed'], items: ['sapling'] },
+    { id: 'supplies', name: 'Supplies', cats: ['supply'] },
+    { id: 'crops', name: 'Crops', cats: ['crop'] },
+    { id: 'raw', name: 'Raw materials', cats: ['gathered'] },
+    { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey'] },
+    { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish'] },
+    { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead'] },
+    { id: 'materials', name: 'Building materials', cats: ['component'] },
+    { id: 'kits', name: 'Station kits', cats: ['kit'] },
+    { id: 'other', name: 'Other', cats: ['good'] }
+  ],
+  discoveryBranches: [
+    { id: 'gathering', name: 'Gathering', ids: ['woodcutting', 'fishing', 'stonecutting', 'prospecting'] },
+    { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin'] },
+    { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
+    { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
+    { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'crew'] },
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] }
+  ],
+
+  // kind: home | farm | station | market | board
+  buildings: {
+    homestead: { name: 'Homestead', kind: 'home', desc: 'Your home and shared storage. Every station draws from and returns to it.' },
+    farm:      { name: 'Farm Plot', kind: 'farm', desc: 'Till, plant, water, harvest.' },
+    stove:     { name: 'Stove', kind: 'station', slots: 2, desc: 'Turns raw food into cooked dishes worth more than the ingredients.' },
+    market:    { name: 'Open Market', kind: 'market', desc: 'Buy seeds and supplies, sell goods, and pick up station kits.' },
+    board:     { name: 'Order Board', kind: 'board', desc: 'Delivery requests for gold, score and Discovery.' },
+    sawmill:   { name: 'Sawmill', kind: 'station', slots: 2, place: {}, desc: 'Saws logs into planks.' },
+    mill:      { name: 'Flour Mill', kind: 'station', slots: 2, place: { plank: 2 }, desc: 'Grinds wheat into flour.' },
+    preserver: { name: 'Preserver', kind: 'station', slots: 2, place: { plank: 3, stone: 2 }, desc: 'Turns produce into long-lasting, valuable preserves.' },
+    workbench: { name: 'Workbench', kind: 'station', slots: 2, place: { plank: 2, stone: 2 }, desc: 'Builds construction components.' },
+    sprinkler: { name: 'Sprinkler', kind: 'sprinkler', radius: 1, place: {}, desc: 'Waters every planted plot in the 8 tiles around it whenever the soil dries out.' },
+    big_sprinkler: { name: 'Deluxe Sprinkler', kind: 'sprinkler', radius: 2, place: {}, desc: 'Waters every planted plot in a 5×5 square around it.' },
+    compost:   { name: 'Compost Bin', kind: 'station', slots: 2, place: { plank: 2 }, desc: 'Rots spare crops into fertilizer.' },
+    kiln:      { name: 'Brick Kiln', kind: 'station', slots: 2, place: { stone: 6 }, desc: 'Fires stone into bricks and burns logs into charcoal.' },
+    oven:      { name: 'Oven', kind: 'station', slots: 2, place: { brick: 4 }, desc: 'Bakes pies and cakes.' },
+    press:     { name: 'Cider Press', kind: 'station', slots: 2, place: { plank: 4, brick: 2 }, desc: 'Presses fruit into juice and cider.' },
+    loom:      { name: 'Loom', kind: 'station', slots: 2, place: { plank: 6 }, desc: 'Weaves flax into linen and canvas.' },
+    hive:      { name: 'Beehive', kind: 'station', slots: 2, place: { plank: 3 }, desc: 'Bees make honey on their own. Load a batch to collect it.' },
+    shed:      { name: 'Mushroom Shed', kind: 'station', slots: 2, place: { log: 4 }, desc: 'Grows mushrooms on old logs in the dark.' },
+    smokehouse:{ name: 'Smokehouse', kind: 'station', slots: 2, place: { brick: 4, plank: 2 }, desc: 'Smokes fish over charcoal.' },
+    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, place: { plank: 4 }, desc: 'Adds 40 storage. Build as many as you like.' },
+    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. Build as many as you like.' },
+    smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' }
+  },
+
+  // Station upgrade axes. Level costs are indexed by current level.
+  upgrades: {
+    speed:    { name: 'Speed', effect: [1, 0.75, 0.55], label: l => `×${[1, 1.33, 1.8][l]} speed`,
+                cost: [{ gold: 40, plank: 2 }, { gold: 90, plank: 4, stone: 2 }] },
+    capacity: { name: 'Capacity', effect: [0, 1, 2], label: l => `+${[0, 1, 2][l]} slots`,
+                cost: [{ gold: 50, crate: 1 }, { gold: 110, crate: 2 }] },
+    quality:  { name: 'Quality', effect: [0, 1, 2], label: l => ['No bonus', '+1 quality tier', '+2 quality tiers'][l],
+                cost: [{ gold: 150, plank: 4, stone: 4 }, { gold: 400, gear: 3 }], gate: [null, 'mastery'] }
+  },
+
+  homeUpgrades: [{ gold: 50 }, { gold: 120, plank: 6 }, { gold: 250, crate: 3 }, { gold: 400, brick: 8 }, { gold: 700, brick: 16, crate: 4 }],
+  homeGate: [null, null, null, 'cellar', 'cellar'],
+  // After the listed upgrades, the Homestead keeps growing: each further level adds homeGrowth.cap
+  // and costs more than the last (Root Cellar still required).
+  homeGrowth: { cap: 60, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
+
+  recipes: {
+    glazed_carrots: { station: 'stove', in: { carrot: 1 }, out: { glazed_carrots: 1 }, time: 8 },
+    baked_potato:   { station: 'stove', in: { potato: 1 }, out: { baked_potato: 1 }, time: 10 },
+    cooked_fish:    { station: 'stove', in: { fish: 1 }, out: { cooked_fish: 1 }, time: 10, requires: 'fishing' },
+    veggie_stew:    { station: 'stove', in: { carrot: 1, potato: 1 }, out: { veggie_stew: 1 }, time: 14, requires: 'stew' },
+    bread:          { station: 'stove', in: { flour: 1 }, out: { bread: 1 }, time: 14, requires: 'baking' },
+    flour:          { station: 'mill', in: { wheat: 2 }, out: { flour: 1 }, time: 12 },
+    plank:          { station: 'sawmill', in: { log: 1 }, out: { plank: 2 }, time: 8 },
+    jam:            { station: 'preserver', in: { berries: 2 }, out: { jam: 1 }, time: 20 },
+    pickled_carrots:{ station: 'preserver', in: { carrot: 2 }, out: { pickled_carrots: 1 }, time: 16 },
+    fence_kit:      { station: 'workbench', in: { plank: 2, stone: 1 }, out: { fence_kit: 1 }, time: 12 },
+    crate:          { station: 'workbench', in: { plank: 3 }, out: { crate: 1 }, time: 12 },
+    sprinkler_kit:  { station: 'workbench', in: { plank: 1, stone: 2 }, out: { sprinkler_kit: 1 }, time: 15, requires: 'irrigation' },
+    gear:           { station: 'workbench', in: { copper_ingot: 1, plank: 1 }, out: { gear: 2 }, time: 16, requires: 'tinkering' },
+    big_sprinkler_kit:{ station: 'workbench', in: { gear: 2, copper_ingot: 1, plank: 2 }, out: { big_sprinkler_kit: 1 }, time: 24, requires: 'tinkering' },
+    tomato_sauce:   { station: 'preserver', in: { tomato: 2 }, out: { tomato_sauce: 1 }, time: 16, requires: 'tomatoes' },
+    pumpkin_soup:   { station: 'stove', in: { pumpkin: 1, potato: 1 }, out: { pumpkin_soup: 1 }, time: 14, requires: 'pumpkins' },
+    mushroom_soup:  { station: 'stove', in: { mushrooms: 2, potato: 1 }, out: { mushroom_soup: 1 }, time: 14, requires: 'mushrooms' },
+    compost_wheat:  { station: 'compost', in: { wheat: 2 }, out: { fertilizer: 1 }, time: 20 },
+    compost_tomato: { station: 'compost', in: { tomato: 2 }, out: { fertilizer: 1 }, time: 20, requires: 'tomatoes' },
+    compost_pumpkin:{ station: 'compost', in: { pumpkin: 1 }, out: { fertilizer: 2 }, time: 24, requires: 'pumpkins' },
+    brick:          { station: 'kiln', in: { stone: 2 }, out: { brick: 1 }, time: 12 },
+    charcoal:       { station: 'kiln', in: { log: 2 }, out: { charcoal: 1 }, time: 14 },
+    berry_pie:      { station: 'oven', in: { flour: 1, berries: 2 }, out: { berry_pie: 1 }, time: 18 },
+    pumpkin_pie:    { station: 'oven', in: { flour: 1, pumpkin: 1 }, out: { pumpkin_pie: 1 }, time: 20, requires: 'pumpkins' },
+    apple_pie:      { station: 'oven', in: { flour: 1, apple: 2 }, out: { apple_pie: 1 }, time: 20, requires: 'apples' },
+    honey_cake:     { station: 'oven', in: { flour: 1, honey: 1 }, out: { honey_cake: 1 }, time: 22, requires: 'beekeeping' },
+    cider:          { station: 'press', in: { apple: 3 }, out: { cider: 1 }, time: 20 },
+    berry_juice:    { station: 'press', in: { berries: 3 }, out: { berry_juice: 1 }, time: 14 },
+    mead:           { station: 'press', in: { honey: 2 }, out: { mead: 1 }, time: 30, requires: 'beekeeping' },
+    linen:          { station: 'loom', in: { flax: 3 }, out: { linen: 1 }, time: 16 },
+    canvas:         { station: 'loom', in: { linen: 2 }, out: { canvas: 1 }, time: 20 },
+    honey:          { station: 'hive', in: {}, out: { honey: 1 }, time: 30 },
+    mushrooms:      { station: 'shed', in: { log: 1 }, out: { mushrooms: 3 }, time: 25 },
+    smoked_fish:    { station: 'smokehouse', in: { fish: 2, charcoal: 1 }, out: { smoked_fish: 2 }, time: 24 },
+    copper_ingot:   { station: 'smelter', in: { copper_ore: 2, charcoal: 1 }, out: { copper_ingot: 1 }, time: 20 }
+  },
+
+  // Spend Discovery here. Each states what it enables and where to find it.
+  discoveries: [
+    { id: 'woodcutting', pic: ['forest:1', 'tree', 'log'], name: 'Woodcutting', cost: 1, req: [], text: 'Chop forest trees for logs and saplings.', where: 'Buy a Forest tile at your land’s west edge, then select it.' },
+    { id: 'fishing', pic: ['water:0', 'reeds', 'fish'], name: 'Fishing', cost: 1, req: [], text: 'Catch fish from ponds; grill them at the Stove.', where: 'Buy a Pond tile east of the Homestead.' },
+    { id: 'stew', pic: ['grass:0', 'stove_on', 'veggie_stew'], name: 'Veggie Stew', cost: 1, req: [], text: 'Cook a carrot and a potato into a stew worth twice as much.', where: 'Stove → recipes.' },
+    { id: 'sawmill', pic: ['grass:1', 'sawmill:0', 'plank'], name: 'Sawmill', cost: 2, req: ['woodcutting'], text: 'Saw logs into planks for building.', where: 'Open Market → Stations. Place it on empty grass.' },
+    { id: 'stonecutting', pic: ['boulder:0', 'rocks:4', 'stone'], name: 'Stonecutting', cost: 2, req: [], text: 'Break boulders into stone for stations and land.', where: 'Buy a Boulder Field (grey rocky tiles) next to your land. Boulder Fields never cost stone.' },
+    { id: 'wheat', pic: ['farm_tilled', 'crop:wheat.2', null], name: 'Wheat', cost: 2, req: [], text: 'Wheat seeds join the market.', where: 'Open Market → Buy.' },
+    { id: 'mill', pic: ['grass:0', 'mill:0', 'flour'], name: 'Flour Mill', cost: 2, req: ['wheat', 'sawmill'], text: 'Grind wheat into flour.', where: 'Open Market → Stations. Needs 2 planks to place.' },
+    { id: 'baking', pic: ['grass:2', 'stove_on', 'bread'], name: 'Baking', cost: 1, req: ['mill'], text: 'Bake flour into bread at the Stove.', where: 'Stove → recipes.' },
+    { id: 'compost', pic: ['farm_wet', 'crop:carrot.1', 'fertilizer'], name: 'Fertilizer', cost: 2, req: [], text: 'Fertilized crops come out one quality tier higher.', where: 'Open Market → Buy, then tick “Use fertilizer” when planting.' },
+    { id: 'berries', pic: ['farm_tilled', 'crop:berries.2', null], name: 'Berry Bushes', cost: 2, req: [], text: 'Berry seeds join the market.', where: 'Open Market → Buy.' },
+    { id: 'preserver', pic: ['grass:0', 'preserver', 'jam'], name: 'Preserver', cost: 3, req: ['sawmill'], text: 'Turn berries and carrots into jam and pickles.', where: 'Open Market → Stations.' },
+    { id: 'workbench', pic: ['grass:1', 'workbench', 'fence_kit'], name: 'Workbench', cost: 3, req: ['sawmill', 'stonecutting'], text: 'Build fence kits for big expansions and crates for storage.', where: 'Open Market → Stations.' },
+    { id: 'tuning', pic: ['grass:0', 'stove', 'gear'], name: 'Station Tuning', cost: 3, req: ['sawmill'], text: 'Upgrade any station’s speed, capacity and output quality.', where: 'Select a station → Upgrades.' },
+    { id: 'tools', pic: ['farm_raw', null, ['tool', '#9aa0aa', '#c8ccd4']], name: 'Toolsmithing', cost: 2, req: ['sawmill'], text: 'Upgrade your watering can, hoe, axe, pickaxe and fishing rod.', where: 'Select the Homestead → Tools.' },
+    { id: 'repeat', pic: ['grass:0', 'sawmill:1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Repeat Recipes', cost: 2, req: ['tuning'], text: 'A station reloads a chosen recipe by itself whenever a slot frees and the ingredients are in storage.', where: 'Select a station → Repeat on a recipe.' },
+    { id: 'autocollect', pic: ['grass:0', 'preserver', 'crate'], name: 'Auto-Collect', cost: 3, req: ['repeat'], text: 'Stations send finished goods straight to storage.', where: 'Select a station → Auto-collect.' },
+    { id: 'irrigation', pic: ['farm_wet', 'sprinkler:1', null], name: 'Irrigation', cost: 2, req: ['workbench'], text: 'Build sprinklers that water the 8 tiles around them.', where: 'Workbench → Sprinkler, then place it on grass between your plots.' },
+    { id: 'farmhand', pic: ['grass:2', 'avatar:2.1.0.0', null], name: 'Farmhand', cost: 4, req: ['repeat'], text: 'Hire a helper who loops through up to 4 jobs you give them.', where: 'Select the Homestead → Farmhand.' },
+
+    // second wave: branches off the first tree
+    { id: 'tomatoes', pic: ['farm_tilled', 'crop:tomatoes.2', 'tomato'], name: 'Tomatoes', cost: 2, req: ['compost'], text: 'Tomato seeds join the market. Preserve them into sauce.', where: 'Open Market → Buy; Preserver → Tomato Sauce.' },
+    { id: 'pumpkins', pic: ['farm_tilled', 'crop:pumpkins.2', 'pumpkin'], name: 'Pumpkins', cost: 2, req: ['berries'], text: 'Slow, heavy pumpkins. Cook them into soup.', where: 'Open Market → Buy; Stove → Pumpkin Soup.' },
+    { id: 'apples', pic: ['farm_tilled', 'crop:apples.2', 'apple'], name: 'Apple Trees', cost: 3, req: ['woodcutting'], text: 'Plant apple seedlings in farm plots. Slow to grow, big harvests.', where: 'Open Market → Buy.' },
+    { id: 'flax', pic: ['farm_tilled', 'crop:flax.2', 'flax'], name: 'Flax', cost: 2, req: ['workbench'], text: 'A fibre crop for weaving.', where: 'Open Market → Buy.' },
+    { id: 'mushrooms', pic: ['forest:0', 'shed', 'mushrooms'], name: 'Mushroom Shed', cost: 2, req: ['woodcutting'], text: 'Grow mushrooms on logs, then cook mushroom soup.', where: 'Open Market → Stations; Stove → Mushroom Soup.' },
+    { id: 'compostbin', pic: ['grass:1', 'compost', 'fertilizer'], name: 'Compost Bin', cost: 2, req: ['compost'], text: 'Make your own fertilizer from spare wheat, tomatoes and pumpkins.', where: 'Open Market → Stations.' },
+    { id: 'kiln', pic: ['grass:0', 'kiln', 'brick'], name: 'Brick Kiln', cost: 3, req: ['stonecutting', 'woodcutting'], text: 'Fire stone into bricks and burn logs into charcoal.', where: 'Open Market → Stations. Needs 6 stone to place.' },
+    { id: 'beekeeping', pic: ['grass:2', 'hive', 'honey'], name: 'Beekeeping', cost: 3, req: ['berries'], text: 'Beehives make honey with no ingredients at all.', where: 'Open Market → Stations.' },
+    { id: 'prospecting', pic: ['boulder:1', 'rocks:3', 'copper_ore'], name: 'Prospecting', cost: 3, req: ['stonecutting'], text: 'Breaking boulders also turns up copper ore.', where: 'Any Boulder Field you own.' },
+    { id: 'oven', pic: ['grass:0', 'oven', 'berry_pie'], name: 'Oven', cost: 3, req: ['baking', 'kiln'], text: 'Bake berry, pumpkin and apple pies, and honey cake.', where: 'Open Market → Stations. Needs 4 bricks to place.' },
+    { id: 'press', pic: ['grass:1', 'press', 'cider'], name: 'Cider Press', cost: 3, req: ['apples'], text: 'Press apples into cider and berries into juice.', where: 'Open Market → Stations.' },
+    { id: 'loom', pic: ['grass:0', 'loom', 'linen'], name: 'Loom', cost: 3, req: ['flax'], text: 'Weave flax into linen, and linen into canvas.', where: 'Open Market → Stations.' },
+    { id: 'smokehouse', pic: ['grass:2', 'smokehouse', 'smoked_fish'], name: 'Smokehouse', cost: 3, req: ['fishing', 'kiln'], text: 'Smoke fish over charcoal for a much better price.', where: 'Open Market → Stations.' },
+    { id: 'cellar', pic: ['grass:0', 'homestead', 'brick'], name: 'Root Cellar', cost: 3, req: ['kiln'], text: 'Two more storage upgrades, to 160 and then 220 items, built with bricks.', where: 'Select the Homestead → Expand storage.' },
+    { id: 'smelter', pic: ['grass:0', 'smelter', 'copper_ingot'], name: 'Smelter', cost: 4, req: ['prospecting', 'kiln'], text: 'Melt copper ore with charcoal into copper ingots.', where: 'Open Market → Stations.' },
+    { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
+    { id: 'tinkering', pic: ['grass:0', 'big_sprinkler:1', 'gear'], name: 'Tinkering', cost: 4, req: ['smelter', 'workbench'], text: 'Make gears, and Deluxe Sprinklers that water a 5×5 square.', where: 'Workbench → Gear, Deluxe Sprinkler.' },
+    { id: 'warehouse', pic: ['grass:0', 'warehouse', 'crate'], name: 'Warehouses', cost: 3, req: ['cellar', 'tinkering'], text: 'Big brick warehouses that each add 120 storage.', where: 'Open Market → Stations. Needs 10 bricks and 2 gears to place.' },
+    { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: +2 quality tiers.', where: 'Select a station → Upgrades → Quality.' }
+  ],
+
+  // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
+  // speed multiplies work time; bonus adds to the main item gathered.
+  tools: {
+    can:  { name: 'Watering Can', act: 'water', tiers: ['Basic', 'Copper', 'Gold'], area: [0, 1, 2],
+            desc: ['Waters one plot.', 'Waters every dry plot in a 3×3 square.', 'Waters every dry plot in a 5×5 square.'],
+            cost: [{ gold: 60, stone: 3 }, { gold: 180, plank: 4, stone: 6 }] },
+    hoe:  { name: 'Hoe', act: 'till', tiers: ['Basic', 'Copper', 'Gold'], area: [0, 1, 2],
+            desc: ['Tills one plot.', 'Tills every untilled plot in a 3×3 square.', 'Tills every untilled plot in a 5×5 square.'],
+            cost: [{ gold: 50, stone: 3 }, { gold: 160, plank: 4, stone: 6 }] },
+    axe:  { name: 'Axe', act: 'chop', needs: 'woodcutting', tiers: ['Basic', 'Copper', 'Steel'], speed: [1, .65, .4], bonus: [0, 1, 2],
+            desc: ['2 logs per tree.', 'Faster; 3 logs per tree.', 'Much faster; 4 logs per tree.'],
+            cost: [{ gold: 60, stone: 4 }, { gold: 170, plank: 4, stone: 8 }] },
+    pick: { name: 'Pickaxe', act: 'mine', needs: 'stonecutting', tiers: ['Basic', 'Copper', 'Steel'], speed: [1, .65, .4], bonus: [0, 1, 2],
+            desc: ['2 stone per boulder.', 'Faster; 3 stone per boulder.', 'Much faster; 4 stone per boulder.'],
+            cost: [{ gold: 60, plank: 3 }, { gold: 170, plank: 6, stone: 6 }] },
+    rod:  { name: 'Fishing Rod', act: 'fish', needs: 'fishing', tiers: ['Basic', 'Bamboo', 'Master'], speed: [1, .6, .4], bonus: [0, 0, 1],
+            desc: ['1 fish per cast.', 'Casts much faster.', 'Fastest; 2 fish per cast.'],
+            cost: [{ gold: 50, plank: 2 }, { gold: 150, plank: 4, stone: 4 }] }
+  },
+
+  farmhand: { hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
+
+  // Milestone contracts, offered one at a time. They may ask for goods you can't make yet;
+  // the hint always names the path.
+  milestones: [
+    { name: 'Market Stall Debut', need: [['carrot', 3, 0]], gold: 30, dp: 2, hint: 'Grow carrots on your Farm Plot.' },
+    { name: 'Hot Lunch', need: [['glazed_carrots', 2, 0]], gold: 50, dp: 2, hint: 'Cook carrots at the Stove.' },
+    { name: 'Woodpile', need: [['log', 4, 0]], gold: 45, dp: 2, hint: 'Unlock Woodcutting, then buy a Forest tile.' },
+    { name: 'Lumber Order', need: [['plank', 6, 0]], gold: 70, dp: 2, hint: 'Unlock the Sawmill, buy its kit and place it.' },
+    { name: 'Fish Fry', need: [['cooked_fish', 2, 0]], gold: 80, dp: 2, hint: 'Unlock Fishing and buy a Pond tile.' },
+    { name: 'Fine Fare', need: [['veggie_stew', 2, 1]], gold: 120, dp: 3, hint: 'Water crops at both stages for Good quality, then cook Veggie Stew.' },
+    { name: 'Baker’s Basket', need: [['bread', 3, 0]], gold: 140, dp: 3, hint: 'Wheat → Flour Mill → Stove.' },
+    { name: 'Fence the Fields', need: [['fence_kit', 2, 0]], gold: 150, dp: 3, hint: 'Workbench: planks and stone.' },
+    { name: 'Pantry Stock', need: [['jam', 3, 0]], gold: 180, dp: 3, hint: 'Berries → Preserver.' },
+    { name: 'Harvest Festival', need: [['bread', 2, 2], ['jam', 2, 1]], gold: 400, dp: 5, hint: 'Fertilize, water twice, and tune your stations for quality.' },
+    { name: 'Brickworks', need: [['brick', 8, 0]], gold: 160, dp: 3, hint: 'Unlock the Brick Kiln and fire stone into bricks.' },
+    { name: 'Pie Social', need: [['berry_pie', 3, 0]], gold: 260, dp: 3, hint: 'Flour and berries in the Oven.' },
+    { name: 'Saucy', need: [['tomato_sauce', 3, 0], ['pumpkin_soup', 2, 0]], gold: 280, dp: 3, hint: 'Tomatoes into the Preserver, pumpkins onto the Stove.' },
+    { name: 'Cider Season', need: [['cider', 3, 0]], gold: 300, dp: 3, hint: 'Grow apples and press them.' },
+    { name: 'Smoke and Honey', need: [['smoked_fish', 4, 0], ['honey', 4, 0]], gold: 340, dp: 4, hint: 'Smokehouse plus Beehives.' },
+    { name: 'Linen Order', need: [['linen', 4, 0], ['canvas', 1, 0]], gold: 360, dp: 4, hint: 'Grow flax and weave it at the Loom.' },
+    { name: 'Copper Rush', need: [['copper_ingot', 4, 0]], gold: 420, dp: 4, hint: 'Prospect boulders, then smelt the ore with charcoal.' },
+    { name: 'Gearworks', need: [['gear', 6, 0]], gold: 500, dp: 5, hint: 'Tinkering at the Workbench.' },
+    { name: 'Grand Market Fair', need: [['apple_pie', 2, 1], ['mead', 2, 0], ['mushroom_soup', 2, 1]], gold: 900, dp: 6, hint: 'Good-quality ingredients, tuned stations, and everything you’ve built.' }
+  ],
+
+  startOrders: [
+    { need: [['carrot', 2, 0]], gold: 26 },
+    { need: [['glazed_carrots', 1, 0]], gold: 40 },
+    { need: [['potato', 2, 0]], gold: 32 }
+  ],
+  orderNames: { raw: ['Pantry restock', 'Kitchen delivery', 'Fresh crate', 'Weekly basket'],
+                crafted: ['Café delivery', 'Inn supper', 'Workshop supply', 'Picnic hamper'] },
+
+  // Tutorial goals for the first 10–15 minutes. `state` lets a goal tick off
+  // if the player already did it out of order.
+  goals: [
+    { ev: 'till', title: 'Prepare the soil', hint: 'Click the Farm Plot, then Till soil. Your farmer walks over and does the work.', reward: 5 },
+    { ev: 'plant', title: 'Plant carrot seeds', hint: 'With the Farm Plot selected, choose Plant Carrots.', reward: 5 },
+    { ev: 'water', title: 'Water the seedlings', hint: 'Wet soil grows twice as fast. Water again when half-grown for Good quality.', reward: 5 },
+    { ev: 'harvest', title: 'Harvest your carrots', hint: 'When the growth bar fills, Harvest. Tip: click a selected tile again to repeat its main action.', reward: 5 },
+    { ev: 'load', st: 'stove', title: 'Cook at the Stove', hint: 'Select the Stove and load Glazed Carrots.', reward: 5 },
+    { ev: 'collect', title: 'Collect the dish', hint: 'When the Stove shows Ready, Collect it into storage.', reward: 5 },
+    { ev: 'sell', title: 'Sell at the Open Market', hint: 'Open Market → Sell. Cooked goods pay far more than raw crops.', reward: 5 },
+    { ev: 'deliver', title: 'Fill an order', hint: 'Select the Order Board and deliver any request you can fill.', reward: 10 },
+    { ev: 'unlock', state: 'unl', title: 'Spend Discovery', hint: 'Open Discovery in the top bar and unlock Woodcutting.', reward: 5 },
+    { ev: 'expand', state: 'exp', title: 'Expand your land', hint: 'Click a glowing tile at your land’s edge and buy it. The forest is just west.', reward: 10 },
+    { ev: 'chop', title: 'Chop a tree', hint: 'Select your forest tile and Chop. Trees drop logs and a sapling.', reward: 10 },
+    { ev: 'build', state: 'built', title: 'Build a Sawmill', hint: 'Unlock Sawmill, buy its kit at the Open Market, then select empty grass and place it.', reward: 10 },
+    { ev: 'collect', item: 'plank', title: 'Saw some planks', hint: 'Load logs into the Sawmill and collect the planks.', reward: 15 }
+  ],
+
+  // Hand-authored starting region. g grass, f forest, w water, b boulder.
+  // Tile data is plain arrays so generated chunks can be appended later.
+  map: {
+    rows: [
+      'ffffgggggwww',
+      'fffggggggwww',
+      'ffgggbggggww',
+      'ffggggggggww',
+      'fffggggggwww',
+      'ffffgggwwgww',
+      'gfgggggwwggg',
+      'ggggbbgggggb',
+      'ggbggbbggbbg',
+      'gggggggggbbb',
+      'wwgggffgggbb',
+      'wwwgfffgggbb'
+    ],
+    owned: [4, 4, 6, 6],
+    spawn: [5, 6],
+    structures: [
+      ['homestead', 5, 5],
+      ['farm', 4, 5],
+      ['stove', 5, 4],
+      ['market', 6, 4],
+      ['board', 6, 6]
+    ]
+  }
+};
