@@ -12,6 +12,10 @@
   const UI = { cat: { sell: 'all', inv: 'all', disc: 'all' }, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
                floats: [], parts: [], sq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
   const cam = { u: 0, v: 80, z: 1.6 };
+  // Phones: a narrow screen (portrait) or a short one (landscape), driven by touch.
+  const mq = q => window.matchMedia && window.matchMedia(q).matches;
+  const isPhone = () => mq('(max-width: 760px)') || mq('(max-height: 500px) and (pointer: coarse)');
+  const isTouch = () => mq('(pointer: coarse)');
   const CAM_SPEED = 0.8; // camera pan / turn speed (1 = map follows the cursor exactly)
   const cv = $('#world'), cx = cv.getContext('2d');
   let W = 0, H = 0, DPR = 1;
@@ -428,7 +432,19 @@
     cx.beginPath(); cx.arc(k.ax + dx, k.ay + dy, 14 * DPR, 0, 7); cx.fillStyle = 'rgba(245,197,66,.9)'; cx.fill(); cx.strokeStyle = '#24160d'; cx.stroke();
     cx.restore();
   }
+  function tickCam(dt) {
+    const g = UI.camTo; if (!g) return; const f = Math.min(1, dt * 9);
+    cam.u += (g.u - cam.u) * f; cam.v += (g.v - cam.v) * f; clampCam();
+    if (Math.abs(g.u - cam.u) + Math.abs(g.v - cam.v) < .3) UI.camTo = null;
+  }
+  // On a phone the panel covers the lower half, so slide the chosen tile into the upper part of the screen.
+  function frameTile(i) {
+    if (!isPhone() || i < 0) return;
+    const [vx, vy] = view(tx(i), ty(i)), portrait = H > W;
+    UI.camTo = { u: isoU(vx, vy) + (portrait ? 0 : W * .22 / P()), v: isoV(vx, vy) + (portrait ? H * .2 / P() : 0) };
+  }
   function tickYaw(dt) {
+    tickCam(dt);
     tickStick(dt);
     if (UI.yawTo == null) return; const d = UI.yawTo - UI.yaw, T = Math.PI * 2;
     const diff = ((d % T) + T + Math.PI) % T - Math.PI;
@@ -448,17 +464,28 @@
     const r = cv.getBoundingClientRect(); W = cv.width = Math.round(r.width * DPR); H = cv.height = Math.round(r.height * DPR);
   }
   const ptrs = new Map(); let drag = null, pinch = null;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.offsetX * DPR, e.offsetY * DPR]);
+  cv.addEventListener('pointerdown', e => { UI.camTo = null; cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.offsetX * DPR, e.offsetY * DPR]);
     // right (2) or middle (1) button = pan only, never selects a tile
     if (ptrs.size === 1) { const m = e.pointerType === 'mouse'; drag = { x: e.offsetX * DPR, y: e.offsetY * DPR, moved: 0, rot: m && e.button === 2, pan: m && e.button !== 0, acc: 0 };
       if (drag.pan) { e.preventDefault(); cv.classList.add(drag.rot ? 'rotating' : 'panning'); }
       if (drag.rot) UI.stick = { ax: drag.x, ay: drag.y, x: drag.x, y: drag.y }; }
-    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; drag = null; } });
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), ang: Math.atan2(b[1] - a[1], b[0] - a[0]), my: (a[1] + b[1]) / 2, accA: 0, accT: 0, rot: false, tilt: false }; drag = null; } });
   cv.addEventListener('pointermove', e => {
     const p = [e.offsetX * DPR, e.offsetY * DPR];
     if (ptrs.has(e.pointerId)) {
       const old = ptrs.get(e.pointerId); ptrs.set(e.pointerId, p);
-      if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(d / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch.d = d; }
+      if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()];
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]), my = (a[1] + b[1]) / 2;
+        let dA = ang - pinch.ang; if (dA > Math.PI) dA -= 2 * Math.PI; if (dA < -Math.PI) dA += 2 * Math.PI;
+        const dY = (my - pinch.my) / DPR;
+        zoomAt(d / pinch.d, (a[0] + b[0]) / 2, my);
+        // engage turn or tilt only after a clear intent, so a plain pinch doesn't wobble the view
+        pinch.accA += dA; pinch.accT += dY;
+        if (!pinch.rot && Math.abs(pinch.accA) > .14) pinch.rot = true;
+        if (!pinch.tilt && !pinch.rot && Math.abs(pinch.accT) > 22 && Math.abs(d - pinch.d) < 6 * DPR) pinch.tilt = true;
+        if (pinch.rot) { UI.yawTo = null; setYaw(UI.yaw + dA); }
+        if (pinch.tilt) setView(UI.yaw, UI.tilt + dY * .006);
+        pinch.d = d; pinch.ang = ang; pinch.my = my; }
       else if (drag && drag.rot) { if (UI.stick) { UI.stick.x = p[0]; UI.stick.y = p[1]; } }
       else if (drag) { cam.u -= (p[0] - old[0]) / P() * CAM_SPEED; cam.v -= (p[1] - old[1]) / P() * CAM_SPEED; clampCam(); drag.moved += Math.abs(p[0] - old[0]) + Math.abs(p[1] - old[1]); }
     } else UI.hover = pick(p[0], p[1]);
@@ -499,6 +526,7 @@
   }
   function clickTile(i) {
     if (i < 0) { UI.sel = -1; dirty(); return; }
+    if (i !== UI.sel) frameTile(i);
     if (i === UI.sel) { const pa = primaryAction(i); if (pa) { const t = Object.assign({ i }, pa); const e = checkTask(t); if (e && !['load'].includes(t.a)) toast(esc(e), 'warn'); else queueTask(t); } }
     UI.sel = i; dirty();
   }
@@ -640,7 +668,7 @@
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
     if (a && a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number') && el.contains(a)) return; // don't yank a field mid-typing
-    UI.html[sel] = html; el.innerHTML = html;
+    UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
   }
   function btn(t, label, opts = {}) {
     const e = opts.err !== undefined ? opts.err : checkTask(t);
@@ -654,10 +682,10 @@
     const status = paused() ? 'Paused' : S.cur ? `${S.cur.ph === 'walk' ? 'Walking to' : 'Working:'} ${esc(TASKS[S.cur.a].label(S.cur))}` : 'Idle';
     setHTML('#stats', `
       <div class="stat" title="Gold"><span class="coin"></span><b>${S.gold}</b></div>
-      <div class="stat" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
-      <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl">Discovery</span><b>${S.dp}</b></button>
-      <div class="stat" title="Storage"><span class="lbl">Storage</span><b>${used()}/${cap()}</b></div>
-      <div class="stat time"><span class="lbl">Day ${S.day}</span><b>${clock()}</b></div>
+      <div class="stat score" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
+      <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
+      <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
+      <div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>
       <div class="status">${status}</div>`);
   }
   function renderGoals() {
@@ -870,6 +898,7 @@
   }
   function renderPanel() {
     const i = UI.sel; const el = $('#panel');
+    document.body.classList.toggle('sheet-open', i >= 0);
     if (i < 0) { el.hidden = true; UI.html['#panel'] = ''; return; }
     if (UI.lastSel !== i) { const a = document.activeElement; if (a && el.contains(a)) a.blur(); UI.lastSel = i; } // new tile: let the panel redraw
     el.hidden = false; const T = S.tiles[i];
@@ -910,8 +939,8 @@
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser${ago !== null ? `; last saved ${ago}s ago` : ''}.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
-        <span class="eyebrow">Controls</span><ul class="help"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
-        <span class="eyebrow">Your record</span><p class="sub">Score ${S.score} · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
+        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
+        <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
   }
@@ -997,7 +1026,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261012-061142';
+  const BUILD = '20261012-174155';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1011,13 +1040,14 @@
   function boot(snap) {
     S = (snap && snap.tiles) ? snap : (load() || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
     if (!S.market) newState();
+    if (isPhone()) UI.goalsOpen = false;
     resize(); centerOn(idx(Math.round(S.av.x), Math.round(S.av.y)));
     window.addEventListener('resize', resize);
     if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S);
     document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
-    if (S.time < 61 && S.goal === 0) toast(`<b>Welcome to Harvestworks.</b> Follow the goal card on the left to get your homestead going.`, 'goal');
+    if (S.time < 61 && S.goal === 0) toast(`<b>Welcome to Harvestworks.</b> Follow the goal card to get your homestead going.`, 'goal');
   }
   window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;

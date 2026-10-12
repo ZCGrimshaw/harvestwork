@@ -54,7 +54,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .stat .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-dim); }
 .coin { width: 12px; height: 12px; background: var(--sun); box-shadow: inset -2px -2px 0 #c9902a, 0 0 0 2px #7a4b18; border-radius: 1px; align-self: center; }
 .stat:first-child b { color: var(--sun); }
-.stat.disc { cursor: pointer; }
+.stat.disc, .stat.store { cursor: pointer; }
 .stat.disc b { color: var(--plum); }
 .stat.disc.ping { animation: ping 1.4s ease-in-out infinite; }
 @keyframes ping { 50% { box-shadow: inset 0 0 0 2px var(--plum), 0 3px 0 rgba(0,0,0,.35), 0 0 12px rgba(180,138,232,.7); } }
@@ -250,19 +250,89 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .updatebar { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;
   width: min(560px, calc(100% - 24px)); padding: 10px 14px; background: var(--wood); border: 2px solid var(--sun); border-radius: var(--r); box-shadow: 0 4px 0 rgba(0,0,0,.35); z-index: 5; font-size: 13px; }
 .updatebar span { flex: 1; min-width: 200px; }
+/* shared helpers */
+.lbl .sm, .ibtn .sm { display: none; }
+html, body { overscroll-behavior: none; }
+button, .chipf, input, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* ---------- phones, portrait ---------- */
 @media (max-width: 760px) {
-  #top { top: 6px; left: 6px; right: 6px; }
-  .stat { padding: 4px 8px; } .stat b { font-size: 16px; } .stat .lbl { font-size: 10px; }
-  .status { display: none; }
-  #top { flex-wrap: wrap; } #stats { order: 2; flex-basis: 100%; } #topbtns { order: 1; margin-left: auto; }
-  #top .ibtn { padding: 5px 10px; font-size: 13px; }
-  .chip.idle { display: none; }
-  #goals { top: auto; bottom: 64px; left: 6px; width: auto; right: 64px; padding: 8px 12px; }
-  #goals .goaltitle { font-size: 17px; }
-  #panel { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 52%; z-index: 3; }
-  #queue { bottom: auto; top: 118px; max-width: calc(100% - 12px); }
-  #zoom { left: auto; right: 6px; bottom: 64px; }
-  #toasts { top: auto; bottom: 150px; }
+  .lbl .lg, .ibtn .lg { display: none; } .lbl .sm, .ibtn .sm { display: inline; }
+  #top { top: 6px; left: 8px; right: 8px; gap: 6px; align-items: center; }
+  #stats { flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  #stats::-webkit-scrollbar { display: none; }
+  .stat { flex: none; padding: 5px 7px; gap: 4px; box-shadow: inset 0 0 0 2px var(--wood-hi), 0 2px 0 rgba(0,0,0,.35); }
+  .stat b { font-size: 15px; } .stat .lbl { font-size: 10px; letter-spacing: .03em; }
+  .stat.score, .status, #topbtns .inv { display: none; }
+  #top .ibtn { padding: 0; width: 38px; height: 36px; font-size: 18px; flex: none; }
+
+  #hud { position: absolute; top: 50px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+  #hud > * { pointer-events: auto; }
+  #goals { position: static; width: auto; padding: 7px 12px; }
+  #goals .goalhead { gap: 8px; }
+  #goals .goaltitle { font-size: 15px; }
+  #goals p { font-size: 13px; margin: 4px 0 6px; }
+  #queue { position: static; transform: none; max-width: none; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #queue::-webkit-scrollbar { display: none; }
+  .chip { flex: none; font-size: 12px; } .chip.idle { display: none; }
+  .chip.cur { min-width: 130px; }
+
+  #toasts { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 16px); flex-direction: column-reverse; }
+  body.sheet-open #toasts { top: 50px; bottom: auto; flex-direction: column; }
+  .toast { font-size: 12.5px; padding: 8px 12px; }
+  .toast:nth-child(n+3) { display: none; }
+
+  #zoom { left: auto; right: 8px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); flex-direction: row; gap: 6px; }
+  #zoom .zin { display: none; }
+  #zoom .ibtn { width: 44px; height: 44px; }
+  body.sheet-open #zoom { display: none; }
+
+  /* bottom sheet */
+  #panel { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 56%; z-index: 4;
+    border-radius: 14px 14px 0 0; border-bottom: 0; padding: 18px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    box-shadow: inset 0 0 0 2px var(--wood-hi), 0 -6px 18px rgba(0,0,0,.35); }
+  #panel::before { content: ""; position: absolute; top: 7px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: var(--wood-hi); }
+  #panel h2 { font-size: 19px; }
+  .phead .sub { font-size: 12.5px; }
+  .close { width: 36px; height: 36px; }
+  .btn { padding: 11px 12px; }
+  .btn.sm, .recipe .btn { padding: 9px 12px; }
+  .sellctl { padding-left: 0; }
+  .qtybox { margin-left: 0; flex: 1; } .qty { flex: 1; width: auto; min-width: 56px; font-size: 16px; }
+  .field input, .fhrow select { font-size: 16px; } /* stops iOS zooming into fields */
+  .grid2 { grid-template-columns: 1fr; }
+
+  /* full-screen drawers */
+  #drawer { padding: calc(8px + env(safe-area-inset-top, 0px)) 0 0; place-items: stretch; grid-template-columns: minmax(0, 1fr); }
+  .dbox { box-sizing: border-box; width: 100%; min-width: 0; overflow-x: hidden; border-radius: 14px 14px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -14px; padding-right: 14px; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chipf { flex: none; padding: 7px 12px; font-size: 13px; }
+  .cards { grid-template-columns: 1fr; gap: 8px; }
+  .card { padding: 10px; } .dimg { width: 56px; height: 66px; }
+  .invgrid { grid-template-columns: 1fr 1fr; }
+  .slot { padding: 6px; gap: 6px; } .ico.big { width: 32px; height: 32px; }
+  .updatebar { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- phones, landscape ---------- */
+@media (max-height: 500px) and (pointer: coarse) {
+  .lbl .lg, .ibtn .lg { display: none; } .lbl .sm, .ibtn .sm { display: inline; }
+  #top { top: 6px; left: 8px; right: 8px; }
+  .stat { padding: 4px 7px; } .stat b { font-size: 14px; } .stat .lbl { font-size: 10px; }
+  .stat.score, .status, #topbtns .inv { display: none; }
+  #top .ibtn { padding: 0; width: 36px; height: 34px; font-size: 17px; }
+  #hud { position: absolute; top: 48px; left: 8px; width: 260px; display: flex; flex-direction: column; gap: 6px; }
+  #goals { position: static; width: auto; padding: 6px 10px; } #goals .goaltitle { font-size: 14px; } #goals p { font-size: 12px; }
+  #queue { position: static; transform: none; max-width: none; justify-content: flex-start; } .chip.idle { display: none; }
+  #zoom { left: auto; right: 8px; bottom: 8px; flex-direction: row; } #zoom .zin { display: none; }
+  #zoom .ibtn { width: 40px; height: 40px; }
+  body.sheet-open #zoom { display: none; }
+  #panel { top: 6px; bottom: 6px; right: 6px; width: min(360px, 48%); max-height: none; }
+  #toasts { top: auto; bottom: 8px; left: 8px; transform: none; width: min(340px, 45%); flex-direction: column-reverse; }
+  .toast:nth-child(n+3) { display: none; }
+  #drawer { padding: 8px; grid-template-columns: minmax(0, 1fr); } .dbox { box-sizing: border-box; width: 100%; max-height: 100%; min-width: 0; overflow-x: hidden; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .chipf { flex: none; }
 }
 @media (prefers-reduced-motion: reduce) { .stat.disc.ping, .toast { animation: none; } }
 </style>
@@ -272,16 +342,15 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
   <div id="top">
     <div id="stats"></div>
     <div id="topbtns">
-      <button class="ibtn" data-drawer="inv">Storage</button>
-      <button class="ibtn" data-drawer="menu">Menu</button>
+      <button class="ibtn inv" data-drawer="inv">Storage</button>
+      <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
   </div>
-  <div id="goals"></div>
+  <div id="hud"><div id="goals"></div><div id="queue"></div></div>
   <aside id="panel" class="wood" hidden></aside>
-  <div id="queue"></div>
   <div id="zoom">
-    <button class="ibtn" data-zoom="in" aria-label="Zoom in">+</button>
-    <button class="ibtn" data-zoom="out" aria-label="Zoom out">−</button>
+    <button class="ibtn zin" data-zoom="in" aria-label="Zoom in">+</button>
+    <button class="ibtn zin" data-zoom="out" aria-label="Zoom out">−</button>
     <button class="ibtn" data-rot="-1" aria-label="Rotate map left" title="Rotate left (Q)">⟲</button>
     <button class="ibtn" data-rot="1" aria-label="Rotate map right" title="Rotate right (E)">⟳</button>
     <button class="ibtn" data-zoom="home" aria-label="Center on homestead">⌂</button>

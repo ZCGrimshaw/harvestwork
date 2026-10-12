@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.4 — 2026-10-12
+- Phone layout: one-line top bar, goal card as a slim strip, panels slide up from the bottom,
+  full-screen Storage/Discovery/Menu, larger touch targets, landscape support.
+- Touch controls: twist two fingers to turn the world, slide two fingers up/down to tilt.
+- Selecting a tile on a phone slides it into view above the panel.
+- Text says "Tap" instead of "Click" on touch screens.
+
 ## v0.3 — 2026-10-12 · commit 171422e (source added to the repo in 0122819)
 - Upgrade rows show their cost, what the next level gives, and what you're short of.
 
