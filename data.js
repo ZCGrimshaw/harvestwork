@@ -136,6 +136,8 @@ window.HW_DATA = {
     hive_kit:     { name: 'Beehive Kit', cat: 'kit', buy: 60, building: 'hive', requires: 'beekeeping', icon: ['kit', '#e8b040', '#4a3a1a'] },
     shed_kit:     { name: 'Mushroom Shed Kit', cat: 'kit', buy: 70, building: 'shed', requires: 'mushrooms', icon: ['kit', '#7a4b28', '#c9a07a'] },
     smokehouse_kit:{ name: 'Smokehouse Kit', cat: 'kit', buy: 110, building: 'smokehouse', requires: 'smokehouse', icon: ['kit', '#6e4425', '#9aa0aa'] },
+    barn_kit:     { name: 'Storage Barn Kit', cat: 'kit', buy: 60, building: 'barn', requires: 'sawmill', icon: ['kit', '#c8483a', '#f2ead8'] },
+    warehouse_kit:{ name: 'Warehouse Kit', cat: 'kit', buy: 220, building: 'warehouse', requires: 'warehouse', icon: ['kit', '#8a8a94', '#b5523b'] },
     smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] }
   },
 
@@ -159,7 +161,7 @@ window.HW_DATA = {
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'mastery'] }
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] }
   ],
 
   // kind: home | farm | station | market | board
@@ -183,6 +185,8 @@ window.HW_DATA = {
     hive:      { name: 'Beehive', kind: 'station', slots: 2, place: { plank: 3 }, desc: 'Bees make honey on their own. Load a batch to collect it.' },
     shed:      { name: 'Mushroom Shed', kind: 'station', slots: 2, place: { log: 4 }, desc: 'Grows mushrooms on old logs in the dark.' },
     smokehouse:{ name: 'Smokehouse', kind: 'station', slots: 2, place: { brick: 4, plank: 2 }, desc: 'Smokes fish over charcoal.' },
+    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, place: { plank: 4 }, desc: 'Adds 40 storage. Build as many as you like.' },
+    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. Build as many as you like.' },
     smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' }
   },
 
@@ -198,6 +202,9 @@ window.HW_DATA = {
 
   homeUpgrades: [{ gold: 50 }, { gold: 120, plank: 6 }, { gold: 250, crate: 3 }, { gold: 400, brick: 8 }, { gold: 700, brick: 16, crate: 4 }],
   homeGate: [null, null, null, 'cellar', 'cellar'],
+  // After the listed upgrades, the Homestead keeps growing: each further level adds homeGrowth.cap
+  // and costs more than the last (Root Cellar still required).
+  homeGrowth: { cap: 60, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
 
   recipes: {
     glazed_carrots: { station: 'stove', in: { carrot: 1 }, out: { glazed_carrots: 1 }, time: 8 },
@@ -276,6 +283,7 @@ window.HW_DATA = {
     { id: 'smelter', pic: ['grass:0', 'smelter', 'copper_ingot'], name: 'Smelter', cost: 4, req: ['prospecting', 'kiln'], text: 'Melt copper ore with charcoal into copper ingots.', where: 'Open Market → Stations.' },
     { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
     { id: 'tinkering', pic: ['grass:0', 'big_sprinkler:1', 'gear'], name: 'Tinkering', cost: 4, req: ['smelter', 'workbench'], text: 'Make gears, and Deluxe Sprinklers that water a 5×5 square.', where: 'Workbench → Gear, Deluxe Sprinkler.' },
+    { id: 'warehouse', pic: ['grass:0', 'warehouse', 'crate'], name: 'Warehouses', cost: 3, req: ['cellar', 'tinkering'], text: 'Big brick warehouses that each add 120 storage.', where: 'Open Market → Stations. Needs 10 bricks and 2 gears to place.' },
     { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: +2 quality tiers.', where: 'Select a station → Upgrades → Quality.' }
   ],
 

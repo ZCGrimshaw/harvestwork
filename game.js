@@ -57,7 +57,14 @@
   function nbrs(i) { const x = tx(i), y = ty(i), o = []; N4.forEach(([dx, dy]) => inB(x + dx, y + dy) && o.push(idx(x + dx, y + dy))); return o; }
   const walkable = i => S.tiles[i].o && D.terrain[S.tiles[i].t].walk;
   const unlocked = id => !id || S.unl.includes(id);
-  const cap = () => C.capacity[S.home];
+  // Storage = the Homestead's level plus every storage building you've placed.
+  const G_ = () => D.homeGrowth, nList = () => D.homeUpgrades.length;
+  const homeCap = l => l < C.capacity.length ? C.capacity[l] : C.capacity[C.capacity.length - 1] + G_().cap * (l - C.capacity.length + 1);
+  function homeCost(l) { if (l < nList()) return D.homeUpgrades[l]; const k = l - nList();
+    return { gold: Math.round(G_().gold * Math.pow(G_().goldMult, k + 1) / 10) * 10, brick: G_().brick + G_().brickStep * (k + 1), crate: G_().crate + G_().crateStep * (k + 1) }; }
+  const homeGate = l => D.homeGate[Math.min(l, D.homeGate.length - 1)];
+  const extraCap = () => S.tiles.reduce((n, t) => n + (t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage || 0), 0);
+  const cap = () => homeCap(S.home) + extraCap();
 
   /* ================= inventory ================= */
   const storable = id => D.items[id].cat !== 'kit';
@@ -236,7 +243,7 @@
       check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; return canPay(D.buildings[D.items[t.p].building].place); },
       run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++;
         gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`);
-        toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
+        toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
     expand: { label: t => `Buy ${D.terrain[T_(t.i).t].name}`,
       check: t => { if (T_(t.i).o) return 'Already yours'; if (!nbrs(t.i).some(n => T_(n).o)) return 'Expand closer first'; return canPay(expCost(t.i)); },
       run: t => { const T = T_(t.i); pay(expCost(t.i)); T.o = true; S.exp++; gainScore(C.score.expand, t.i);
@@ -247,8 +254,8 @@
         if (b.lv[t.p] >= U.cost.length) return 'Fully upgraded'; return canPay(U.cost[b.lv[t.p]]); },
       run: t => { const b = T_(t.i).b; pay(D.upgrades[t.p].cost[b.lv[t.p]]); b.lv[t.p]++; gainScore(C.score.upgrade, t.i);
         toast(`<b>${esc(D.buildings[b.type].name)} upgraded:</b> ${D.upgrades[t.p].label(b.lv[t.p])}.`, 'info'); } },
-    homeup: { label: () => 'Expand storage', check: () => S.home >= D.homeUpgrades.length ? 'Storage fully expanded' : (D.homeGate[S.home] && !unlocked(D.homeGate[S.home])) ? 'Unlock Root Cellar in Discovery' : canPay(D.homeUpgrades[S.home]),
-      run: t => { pay(D.homeUpgrades[S.home]); S.home++; gainScore(C.score.upgrade, t.i); toast(`<b>Storage expanded</b> to ${cap()} items.`, 'info'); } },
+    homeup: { label: () => 'Expand storage', check: () => (homeGate(S.home) && !unlocked(homeGate(S.home))) ? 'Unlock Root Cellar in Discovery' : canPay(homeCost(S.home)),
+      run: t => { pay(homeCost(S.home)); S.home++; gainScore(C.score.upgrade, t.i); toast(`<b>Storage expanded</b> to ${cap()} items.`, 'info'); } },
     clearplot: { label: () => 'Clear farm plot',
       check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm') return 'No farm plot here'; return b.st === 'raw' ? null : 'Only untilled plots can be cleared'; },
       run: t => { T_(t.i).b = null; if (S.helper) S.helper.steps = S.helper.steps.filter(st => st.i !== t.i);
@@ -753,7 +760,9 @@
   function homePanel(i) {
     let h = head(`${S.name}’s Homestead`, esc(D.buildings.homestead.desc));
     h += `<div class="row"><div class="grow1"><span class="eyebrow">Storage</span><div class="pb"><i style="width:${Math.round(used() / cap() * 100)}%"></i></div><small>${used()} of ${cap()} items</small></div></div>`;
-    h += S.home < D.homeUpgrades.length ? btn({ a: 'homeup', i }, `Expand storage to ${C.capacity[S.home + 1]}`, { sub: costTxt(D.homeUpgrades[S.home]) }) : '<p class="hint">Storage is fully expanded.</p>';
+    const ex = extraCap(), nb = S.tiles.filter(t => t.b && D.buildings[t.b.type] && D.buildings[t.b.type].kind === 'storage').length;
+    h += `<p class="hint">Homestead ${homeCap(S.home)}${ex ? ` + ${nb} storage building${nb === 1 ? '' : 's'} ${ex}` : ''}. Expand the Homestead below, or build Storage Barns from the Open Market for more room.</p>`;
+    h += btn({ a: 'homeup', i }, `Expand Homestead storage: ${homeCap(S.home)} → ${homeCap(S.home + 1)}`, { sub: costTxt(homeCost(S.home)) });
     h += `<button class="btn ghost" data-drawer="inv">Open inventory</button>`;
     h += `<span class="eyebrow">Your farmer</span><label class="field">Name <input id="pname" maxlength="14" value="${esc(S.name)}"></label>
       <div class="swatches"><span>Shirt</span>${ART.SHIRTS.map((c, k) => `<button class="sw ${S.shirt === k ? 'on' : ''}" style="background:${c}" data-shirt="${k}" aria-label="Shirt colour ${k + 1}"></button>`).join('')}</div>
@@ -794,13 +803,13 @@
       h += ids.length ? grouped(ids, 'sell', sellRow) : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
     } else {
       const built = new Set(S.tiles.filter(t => t.b).map(t => t.b.type));
-      const fresh = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires) && !built.has(it.building); });
+      const fresh = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires) && (!built.has(it.building) || D.buildings[it.building].kind === 'storage'); }); // storage is always stocked
       const list = [...new Set([...fresh, ...S.market.offers])];
-      h += `<p class="hint">Stations you haven’t built yet are always stocked; extra copies of others rotate each morning. Place a kit on empty grass you own.</p>`;
+      h += `<p class="hint">New stations and storage buildings are always stocked; extra copies of other stations rotate each morning. Place a kit on empty grass you own.</p>`;
       const kitRow = id => { const it = D.items[id], B = D.buildings[it.building];
         return `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)} Placing needs: ${costTxt(B.place)}.</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, `${it.buy}g`, { cls: 'sm' })}</div>`; };
       const extra = list.filter(id => !fresh.includes(id));
-      if (fresh.length) h += `<div class="grp"><span class="eyebrow">New stations</span>${fresh.map(kitRow).join('')}</div>`;
+      if (fresh.length) h += `<div class="grp"><span class="eyebrow">New stations & storage</span>${fresh.map(kitRow).join('')}</div>`;
       if (extra.length) h += `<div class="grp"><span class="eyebrow">Build another · today’s stock</span>${extra.map(kitRow).join('')}</div>`;
       if (!list.length) h += `<p class="hint">No station kits yet. Unlock Sawmill (after Woodcutting) in Discovery.</p>`;
     }
@@ -832,6 +841,10 @@
     if (unlocked(G.needs)) h += fhControl(i, T.t === 'forest' ? 'forest' : G.action);
     return h + `<p class="tip">${esc(Tr.future)}</p>`;
   }
+  function storagePanel(i) {
+    const B = D.buildings[T_(i).b.type];
+    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>`;
+  }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
     return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>`;
@@ -861,7 +874,7 @@
     let h;
     if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
-      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : boardPanel(i); }
+      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : boardPanel(i); }
     else if (T.r) h = gatherPanel(i, T);
     else h = emptyPanel(i);
     setHTML('#panel', h);
@@ -982,7 +995,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261012-054953';
+  const BUILD = '20261012-055851';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
