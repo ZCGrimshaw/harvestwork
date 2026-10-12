@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.6 — 2026-10-12
+- Change this land: clear forest, boulder fields or ponds into grassland (you keep logs/stone),
+  or turn grass into a woodland, a pond or a rock field. Found in the tile's panel.
+- Minimizing the goal/contract card now tucks it into a button in the top bar, next to the clock.
+
 ## v0.5 — 2026-10-12
 - The goal/contract card can be minimized (×) to a small tab that shows just the contract name;
   tap the tab to bring it back. The choice is saved.

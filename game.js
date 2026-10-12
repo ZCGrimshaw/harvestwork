@@ -260,6 +260,24 @@
         toast(`<b>${esc(D.buildings[b.type].name)} upgraded:</b> ${D.upgrades[t.p].label(b.lv[t.p])}.`, 'info'); } },
     homeup: { label: () => 'Expand storage', check: () => (homeGate(S.home) && !unlocked(homeGate(S.home))) ? 'Unlock Root Cellar in Discovery' : canPay(homeCost(S.home)),
       run: t => { pay(homeCost(S.home)); S.home++; gainScore(C.score.upgrade, t.i); toast(`<b>Storage expanded</b> to ${cap()} items.`, 'info'); } },
+    reshape: { label: t => D.landShape[t.p].verb,
+      check: t => { const T = T_(t.i), [from, to] = t.p.split('>'), L = D.landShape[t.p];
+        if (!L || !T.o) return 'Not your land'; if (T.t !== from) return 'The land has changed';
+        if (T.b) return 'Clear what’s built here first';
+        const other = (S.helper && Math.round(S.helper.x) === tx(t.i) && Math.round(S.helper.y) === ty(t.i));
+        if (to === 'water' && other) return 'Your farmhand is standing there';
+        let need = 0; for (const k in L.back) need += L.back[k]; return room() < need ? FULL : canPay(L.cost); },
+      run: t => { const T = T_(t.i), [from, to] = t.p.split('>'), L = D.landShape[t.p];
+        pay(L.cost); const back = Object.assign({}, L.back);
+        if (L.backPerStock && T.r && T.r.stock) back[L.backPerStock] = (back[L.backPerStock] || 0) + T.r.stock;
+        if (from === 'forest' && T.r && T.r.st !== 'tree') back.log = 0; // a stump or sapling has no timber in it
+        for (const k in back) if (back[k] > 0) addItem(k, back[k]);
+        T.t = to; T.r = initRes(to); if (to === 'forest') Object.assign(T.r, { st: 'sapling', g: 0 });
+        if (S.helper) S.helper.steps = S.helper.steps.filter(st => st.i !== t.i);
+        if (!D.terrain[to].walk) { // step off a tile that just became water
+          const i = t.i; if (Math.round(S.av.x) === tx(i) && Math.round(S.av.y) === ty(i)) { const n = nbrs(i).find(walkable); if (n !== undefined) { S.av.x = tx(n); S.av.y = ty(n); } } }
+        gainScore(C.score.build / 2, t.i); float(t.i, `Now ${D.terrain[to].name}`, '#b8f08a');
+        first('reshape', C.firsts.build, 'First land reshaped'); } },
     clearplot: { label: () => 'Clear farm plot',
       check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm') return 'No farm plot here'; return b.st === 'raw' ? null : 'Only untilled plots can be cleared'; },
       run: t => { T_(t.i).b = null; if (S.helper) S.helper.steps = S.helper.steps.filter(st => st.i !== t.i);
@@ -272,7 +290,7 @@
       run: t => { pay(D.farmhand.hire); S.helper = { x: Math.round(S.av.x), y: Math.round(S.av.y), path: [], dir: [1, -1], cur: null, steps: [], k: 0, idle: 0, on: true };
         toast('<b>Your farmhand is here.</b> Select a plot, station, tree, pond or boulder field and choose “Add to farmhand”.', 'goal'); } }
   };
-  const ONCE = ['clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
+  const ONCE = ['reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
   function checkTask(t) { return TASKS[t.a].check(t); }
   function queueTask(t) {
     t.a = t.a; const busy = S.queue.length + (S.cur ? 1 : 0);
@@ -686,15 +704,17 @@
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       <div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>
+      ${S.goalMin ? (() => { const g = D.goals[S.goal], m = D.milestones[S.ms], t = g ? g.title : m ? m.name : 'All done';
+        return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; })() : ''}
       <div class="status">${status}</div>`);
   }
-  // The goal / contract card has three sizes: full, title only, and minimized to a small tab.
+  // The goal / contract card: full, title only, or minimized into a button in the top bar.
   function renderGoals() {
     const g = D.goals[S.goal], m = D.milestones[S.ms];
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
     const title = g ? g.title : m ? m.name : 'All contracts complete';
-    const el = $('#goals'); el.classList.toggle('mini', !!S.goalMin);
-    if (S.goalMin) { setHTML('#goals', `<button class="goaltab" data-goal-restore aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(title)}"><span class="eyebrow">${g ? 'Goal' : 'Contract'}</span><span class="tabtitle">${esc(title)}</span><span class="chev">▸</span></button>`); return; }
+    const el = $('#goals'); el.hidden = !!S.goalMin;
+    if (S.goalMin) { UI.html['#goals'] = ''; return; }
     const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
     let body = '';
     if (UI.goalsOpen) body = g ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>`
@@ -872,7 +892,14 @@
       h += btn({ a: G.action, i }, T.t === 'water' ? 'Fish' : 'Break stone', { cls: 'pri', sub: T.t === 'water' ? `+${gatherOut('water', 'fish').fish} fish` : `+${gatherOut('boulder', 'mine').stone} stone` });
     }
     if (unlocked(G.needs)) h += fhControl(i, T.t === 'forest' ? 'forest' : G.action);
-    return h + `<p class="tip">${esc(Tr.future)}</p>`;
+    return h + reshapeSection(i) + `<p class="tip">${esc(Tr.future)}</p>`;
+  }
+  function reshapeSection(i) {
+    const T = T_(i), opts = Object.keys(D.landShape).filter(k => k.startsWith(T.t + '>'));
+    if (!opts.length) return '';
+    return `<span class="eyebrow">Change this land</span>` + opts.map(k => { const L = D.landShape[k], to = k.split('>')[1];
+      const back = Object.entries(L.back).filter(([id, n]) => n && !(T.t === 'forest' && id === 'log' && T.r && T.r.st !== 'tree'));
+      return btn({ a: 'reshape', i, p: k }, `${esc(L.verb)} → ${esc(D.terrain[to].name)}`, { cls: 'ghost', sub: `${costTxt(L.cost)}${back.length ? ' · get back ' + costTxt(Object.fromEntries(back)) : ''}. ${esc(L.note)}` }); }).join('');
   }
   function storagePanel(i) {
     const B = D.buildings[T_(i).b.type];
@@ -888,7 +915,7 @@
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
     h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building]; return btn({ a: 'place', i, p: id }, `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}` }); }).join('')
       : `<p class="hint">Station kits are sold at the Open Market once unlocked.</p>`;
-    return h;
+    return h + reshapeSection(i);
   }
   function lockedPanel(i, T) {
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
@@ -1031,7 +1058,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261012-175825';
+  const BUILD = '20261012-180226';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

@@ -24,7 +24,7 @@ window.HW_DATA = {
     workTime: {
       till: 1.2, plant: 0.8, water: 0.8, harvest: 1, chop: 2, replant: 0.8, fish: 2.5, mine: 2.2,
       load: 0.6, collect: 0.5, buy: 0.3, sell: 0.3, deliver: 0.6, build: 2.5, place: 2.5,
-      expand: 1.5, upgrade: 2, homeup: 2
+      expand: 1.5, upgrade: 2, homeup: 2, reshape: 3
     },
     // Score: every productive action pays a little; complex production pays more.
     score: { till: 1, plant: 1, water: 1, harvest: 3, chop: 3, replant: 1, fish: 3, mine: 3,
@@ -305,6 +305,17 @@ window.HW_DATA = {
     rod:  { name: 'Fishing Rod', act: 'fish', needs: 'fishing', tiers: ['Basic', 'Bamboo', 'Master'], speed: [1, .6, .4], bonus: [0, 0, 1],
             desc: ['1 fish per cast.', 'Casts much faster.', 'Fastest; 2 fish per cast.'],
             cost: [{ gold: 50, plank: 2 }, { gold: 150, plank: 4, stone: 4 }] }
+  },
+
+  // Reshape land you own. Clearing gives back what was there; making new terrain costs materials.
+  // "from → to": cost, what you get back, and a short description of the work.
+  landShape: {
+    'forest>grass':  { cost: { gold: 15 }, back: { log: 2 }, verb: 'Clear the forest', note: 'Fell and uproot the trees. You keep 2 logs.' },
+    'boulder>grass': { cost: { gold: 25 }, back: { stone: 2 }, backPerStock: 'stone', verb: 'Clear the boulders', note: 'Haul the rocks away. You keep 2 stone, plus 1 for each boulder still here.' },
+    'water>grass':   { cost: { gold: 30, stone: 4 }, back: {}, verb: 'Fill in the pond', note: 'Pack the pond with stone and earth.' },
+    'grass>forest':  { cost: { gold: 10, sapling: 2 }, back: {}, verb: 'Plant a woodland', note: 'Starts as saplings that grow into a tree to chop.' },
+    'grass>water':   { cost: { gold: 40 }, back: {}, verb: 'Dig a pond', note: 'A new pond for fishing. Your farmer can’t walk across it.' },
+    'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, verb: 'Pile a rock field', note: 'Rocks that resurface over time for steady stone.' }
   },
 
   farmhand: { hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
