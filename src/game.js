@@ -214,6 +214,10 @@
       run: t => { const cr = D.crops[t.p]; take(cr.seed, 1); if (t.f) take('fertilizer', 1);
         T_(t.i).b = { type: 'farm', st: 'growing', crop: t.p, last: t.p, g: 0, wet: false, w: [0, 0], half: false, fert: !!t.f };
         gainScore(C.score.plant, t.i); emit('plant'); } },
+    fertilize: { label: () => 'Fertilize crop',
+      check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm' || b.st !== 'growing') return 'Only growing crops can be fertilized';
+        if (b.fert) return 'Already fertilized'; return count('fertilizer') < 1 ? 'No fertilizer in storage' : null; },
+      run: t => { take('fertilizer', 1); T_(t.i).b.fert = true; float(t.i, 'Fertilized · +1 quality', '#b8f08a'); gainScore(C.score.water, t.i); } },
     water: { label: () => 'Water crop', check: t => { const b = T_(t.i).b; return b && b.st === 'growing' && !b.wet ? null : 'Soil is already wet'; },
       run: t => { const hit = around(t.i, toolStat('water', 'area', 0)).filter(j => { const b = farmAt(j); return b && b.st === 'growing' && !b.wet; });
         hit.forEach(j => { waterPlot(T_(j).b); gainScore(C.score.water, j); }); emit('water'); } },
@@ -302,7 +306,7 @@
       run: t => { pay(D.farmhand.hire); S.helper = { x: Math.round(S.av.x), y: Math.round(S.av.y), path: [], dir: [1, -1], cur: null, steps: [], k: 0, idle: 0, on: true };
         toast('<b>Your farmhand is here.</b> Select a plot, station, tree, pond or boulder field and choose “Add to farmhand”.', 'goal'); } }
   };
-  const ONCE = ['reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
+  const ONCE = ['fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
   function checkTask(t) { return TASKS[t.a].check(t); }
   function queueTask(t) {
     t.a = t.a; const busy = S.queue.length + (S.cur ? 1 : 0);
@@ -835,6 +839,7 @@
       const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
       h += `<p class="hint">Quality: watered early ${b.w[0] ? '✓' : '—'} · watered late ${b.w[1] ? '✓' : '—'}${b.fert ? ' · fertilized ✓' : ''} → <b>${b.st === 'ready' ? QN[q] : 'aiming ' + QN[Math.min(2, (b.w[0] && (b.w[1] || !b.half) ? 1 : 0) + (b.fert ? 1 : 0))]}</b></p>`;
       if (b.st === 'growing') h += btn({ a: 'water', i }, 'Water', { cls: 'pri', sub: b.half ? 'Second watering: Good quality' : 'Wet soil grows 2× faster' });
+      if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `+1 quality at harvest · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
     }
     return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.</p>`;

@@ -24,7 +24,7 @@ window.HW_DATA = {
     workTime: {
       till: 1.2, plant: 0.8, water: 0.8, harvest: 1, chop: 2, replant: 0.8, fish: 2.5, mine: 2.2,
       load: 0.6, collect: 0.5, buy: 0.3, sell: 0.3, deliver: 0.6, build: 2.5, place: 2.5,
-      expand: 1.5, upgrade: 2, homeup: 2, reshape: 3
+      expand: 1.5, upgrade: 2, homeup: 2, reshape: 3, fertilize: 0.8
     },
     // Score: every productive action pays a little; complex production pays more.
     score: { till: 1, plant: 1, water: 1, harvest: 3, chop: 3, replant: 1, fish: 3, mine: 3,
