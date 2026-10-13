@@ -1,4 +1,4 @@
-# Harvestworks
+# Infinifarm (formerly Harvestworks)
 
 A cozy isometric production-chain farming game that runs in the browser.
 

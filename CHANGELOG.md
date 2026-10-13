@@ -3,6 +3,16 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.20 — 2026-10-13
+- Renamed to Infinifarm (visible name, save file names `infinifarm-*.json`, format `infinifarm-save`; old `harvestworks-save` files still load).
+  localStorage keys unchanged so every farm carries over. Repo and web link unchanged.
+- Title flow (#title overlay, game paused): first-visit splash → main menu (Continue / New farm / Load a save file / Show your support).
+  New farm confirms before replacing a save, offers a download first, then asks for the farmer's name and tutorial yes/no.
+  Skipped after the update banner's Reload and on hot reloads.
+- Hands-on tutorial coach (#coach, S.tut): pan, zoom/turn, select the Farm Plot, till, plant, goal card, menu. Steps advance
+  when the player does them; skippable; replayable from the Menu.
+- Show your support: PayPal link + QR (support-qr.png, desktop only) on the title screen and in the Menu.
+
 ## v0.19.1 — 2026-10-13
 - Category filter chips on the Open Market Buy tab (UI.cat.buy).
 

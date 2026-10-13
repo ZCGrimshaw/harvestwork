@@ -1,4 +1,4 @@
-/* Harvestworks — gameplay, rendering and UI.
+/* Infinifarm (formerly Harvestworks) — gameplay, rendering and UI.
    Reads content from HW_DATA (data.js) and sprites from HW_ART (art.js). */
 (function () {
   'use strict';
@@ -1084,7 +1084,7 @@
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'menu') {
-      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      h = `<div class="phead"><div><h2>Infinifarm</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
@@ -1098,6 +1098,10 @@
         ${UI.showCode && UI.importOpen ? `<label class="eyebrow" for="impcode">Paste a save code</label><textarea id="impcode" class="code" rows="4" placeholder="HWZ1:…">${esc(UI.importText || '')}</textarea>
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
+        <span class="eyebrow">Show your support</span>
+        <p class="sub">Infinifarm is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
+        <div class="supportrow">${!isTouch() ? `<img class="qr sm" src="${D.support.qr}" alt="PayPal QR code for showing your support">` : ''}<div class="menu"><a class="btn pri" href="${esc(D.support.url)}" target="_blank" rel="noopener">Show your support ↗<small>Opens PayPal${!isTouch() ? ', or scan the code with your phone' : ''}</small></a></div></div>
+        <div class="menu"><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>
         <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
@@ -1161,7 +1165,7 @@
   }
   function renderUI() {
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer();
+    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach();
   }
   function progress(key) {
     const [k, a, b] = key.split(':');
@@ -1182,6 +1186,10 @@
       if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; queueTask(t); }
     else if ('close' in ds) UI.sel = -1;
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
+    else if ('titleOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; openTitle('main'); }
+    else if ('tutReplay' in ds) { UI.drawer = null; startTut(); }
+    else if ('tutNext' in ds) { tutAdvance(); }
+    else if ('tutSkip' in ds) { endTut(true); }
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false; }
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
@@ -1243,6 +1251,11 @@
   const fileIn = $('#loadfile');
   fileIn.addEventListener('change', () => {
     const file = fileIn.files && fileIn.files[0]; if (!file) return;
+    if (UI.title) { UI.tFile = { busy: file.name };  renderTitle();
+      const rd = file.text ? file.text() : new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Couldn’t read that file.')); r.readAsText(file); });
+      rd.then(parseSaveText).then(o => { UI.tFile = { o, name: file.name }; }).catch(err => { UI.tFile = { err: (err && err.message) || 'Couldn’t read that file.' }; })
+        .then(() => { fileIn.value = ''; renderTitle(); });
+      return; }
     UI.fileErr = UI.fileInfo = null; UI.importData = null; UI.confirmImport = false;
     toast(`Reading <b>${esc(file.name)}</b>…`);
     const read = file.text ? file.text() : new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Couldn’t read that file.')); r.readAsText(file); });
@@ -1271,11 +1284,11 @@
 
   /* ================= loop ================= */
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
-  const paused = () => UI.drawer === 'menu' && S.menuPause !== false;
+  const paused = () => !!UI.title || UI.drawer === 'menu' && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    if (!paused()) update(dt); tickYaw(dt); tickTicker(dt);
+    if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     draw();
@@ -1296,7 +1309,7 @@
     } catch (e) { /* not hosted, offline, or blocked: nothing to do */ }
   }
   document.addEventListener('click', e => {
-    if (e.target.closest('[data-reload]')) { save(); location.reload(); }
+    if (e.target.closest('[data-reload]')) { save(); try { sessionStorage.setItem('infinifarm.skipTitle', '1'); } catch (er) { } location.reload(); }
     else if (e.target.closest('[data-later]')) $('#update').hidden = true;
   });
   /* ================= export / import a farm =================
@@ -1319,7 +1332,7 @@
       const out = await new Response(new Blob([unb64(code.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
       json = new TextDecoder().decode(out);
     } else if (code.startsWith('HW1:')) json = new TextDecoder().decode(unb64(code.slice(4)));
-    else throw new Error('That isn’t a Harvestworks save code. It should start with HWZ1: or HW1:.');
+    else throw new Error('That isn’t an Infinifarm save code. It should start with HWZ1: or HW1:.');
     return validState(JSON.parse(json), 'The save code is damaged or incomplete. Copy it again in full.');
   }
   function validState(o, msg) {
@@ -1329,14 +1342,14 @@
   // A save file is plain JSON: { format, saved, state }. Older save codes pasted into a .txt file also load.
   async function parseSaveText(text) {
     text = (text || '').trim();
-    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Harvestworks save.'); }
-      return validState(o.format === 'harvestworks-save' ? o.state : o, 'That file isn’t a Harvestworks save, or it’s damaged.'); }
+    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Infinifarm save.'); }
+      return validState(/^(harvestworks|infinifarm)-save$/.test(o.format) ? o.state : o, 'That file isn’t an Infinifarm save, or it’s damaged.'); }
     return parseCode(text);
   }
-  const saveFileName = () => `harvestworks-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
+  const saveFileName = () => `infinifarm-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
   async function downloadSave() {
     save();
-    const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
+    const body = JSON.stringify({ format: 'infinifarm-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
     const name = saveFileName();
     // Inside Claude the viewer's own download prompt is used; on a normal website a plain browser download.
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
@@ -1358,7 +1371,8 @@
     UI.sel = -1; UI.drawer = null; UI.html = {}; UI.tickShell = null; centerOn(idx(Math.round(S.av.x), Math.round(S.av.y))); save(); dirty();
   }
   function boot(snap) {
-    S = (snap && snap.tiles) ? snap : (load() || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
+    const saved = (snap && snap.tiles) ? null : load(); UI.hadSave = !!(snap && snap.tiles) || !!saved;
+    S = (snap && snap.tiles) ? snap : (saved || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
     if (!S.market) newState();
     if (isPhone()) UI.goalsOpen = false;
     if (S.seenUpdate === undefined && S.time < 61) S.seenUpdate = D.updates[0].v; // brand-new farm: nothing to announce
@@ -1370,8 +1384,105 @@
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
     pullMarket(); setInterval(() => { if (!document.hidden) pullMarket(); }, 30000);
-    if (S.time < 61 && S.goal === 0) toast(`<b>Welcome to Harvestworks.</b> Follow the goal card to get your homestead going.`, 'goal');
+    let skip = false; try { skip = sessionStorage.getItem('infinifarm.skipTitle') === '1'; sessionStorage.removeItem('infinifarm.skipTitle'); } catch (e) { }
+    if (!(snap && snap.tiles) && !skip) { let seen = false; try { seen = localStorage.getItem('infinifarm.seen') === '1'; } catch (e) { } openTitle(seen || UI.hadSave ? 'main' : 'splash'); }
+    if (S.tut) startTut(S.tut.n);
   }
+  /* ================= title screen & main menu =================
+     First visit: a welcome splash, then the main menu. Later visits open on the main menu with Continue on top.
+     The world keeps drawing behind it but is paused (see paused()). */
+  const titleEl = $('#title');
+  function openTitle(screen) { UI.title = screen; UI.tFile = null; UI.sel = -1; renderTitle(); dirty(); }
+  function closeTitle() { UI.title = null; titleEl.hidden = true; titleEl.innerHTML = ''; try { localStorage.setItem('infinifarm.seen', '1'); } catch (e) { } dirty(); }
+  const cropRow = () => ['carrot', 'potato', 'apple', 'wheat', 'bread', 'cheese', 'cider'].filter(id => D.items[id]).map(id => `<img src="${ART.icon(id, D.items)}" alt="">`).join('');
+  function renderTitle() {
+    const t = UI.title; if (!t) return; let h = '';
+    const back = `<button class="btn ghost" data-t="main">Back</button>`;
+    if (t === 'splash') h = `<div class="tcard splash"><span class="twel">Welcome to</span><h1 class="tlogo">Infinifarm</h1><div class="tcrops">${cropRow()}</div>
+        <p class="sub">Grow, craft and trade your way from one patch of dirt to a farm that never stops growing.</p>
+        <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
+    else if (t === 'main') { const f = UI.tFile;
+      h = `<div class="tcard"><h1 class="tlogo">Infinifarm</h1><div class="tcrops">${cropRow()}</div><div class="tmenu">
+        ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
+        <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="new">New farm</button>
+        <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
+        <button class="btn ghost big" data-t="support">Show your support</button></div>
+        ${f ? `<div class="tfile">${f.busy ? `<p class="hint">Reading ${esc(f.busy)}…</p>` : f.err ? `<p class="hint err">${esc(f.err)}</p>`
+          : `<p class="hint"><b>${esc(f.name)}</b>: ${esc(f.o.name || 'Farmer')}’s farm, day ${f.o.day}, ${f.o.gold}g.${UI.hadSave ? ` This replaces ${esc(S.name)}’s farm in this browser.` : ''}</p>
+             <div class="menu"><button class="btn pri" data-t="loadgo">Load this farm</button><button class="btn ghost" data-t="filecancel">Cancel</button></div>`}</div>` : ''}
+        <p class="tver">v${esc(D.updates[0].v)}</p></div>`; }
+    else if (t === 'confirm') h = `<div class="tcard"><h2>Start a new farm?</h2>
+        <p class="sub">This replaces <b>${esc(S.name)}’s farm</b> (day ${S.day}, ${S.gold}g) in this browser. Download a save file first if you might want it back.</p>
+        <div class="tmenu"><button class="btn big" data-t="dl">Download save file</button><button class="btn danger big" data-t="name">Replace it and start fresh</button>${back}</div></div>`;
+    else if (t === 'name') h = `<div class="tcard"><h2>Name your farmer</h2>
+        <label class="field tname">Name <input id="tname" maxlength="14" placeholder="Farmer" autocomplete="off"></label>
+        <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
+        <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
+    else if (t === 'support') h = `<div class="tcard"><h2>Show your support</h2>
+        <p class="sub">Infinifarm is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
+        <div class="tmenu"><a class="btn pri big" href="${esc(D.support.url)}" target="_blank" rel="noopener">Show your support on PayPal ↗</a></div>
+        ${!isTouch() ? `<div class="tqr"><img class="qr" src="${D.support.qr}" alt="PayPal QR code for showing your support"><span>Or scan with your phone’s camera.</span></div>` : ''}
+        <div class="tmenu">${back}</div></div>`;
+    titleEl.className = 'title-' + t; titleEl.innerHTML = h; titleEl.hidden = false;
+    const inp = $('#tname'); if (inp) inp.focus();
+  }
+  function startNewFarm(name, tut) {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+    newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = D.updates[0].v;
+    UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
+    UI.hadSave = true; closeTitle(); save();
+    if (tut) startTut(); else toast(`<b>Welcome to Infinifarm, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
+  }
+  titleEl.addEventListener('click', e => {
+    const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
+    if (a === 'main') openTitle('main');
+    else if (a === 'continue') closeTitle();
+    else if (a === 'new') openTitle(UI.hadSave ? 'confirm' : 'name');
+    else if (a === 'name') openTitle('name');
+    else if (a === 'dl') downloadSave();
+    else if (a === 'support') openTitle('support');
+    else if (a === 'load') { fileIn.value = ''; fileIn.click(); }
+    else if (a === 'filecancel') { UI.tFile = null; renderTitle(); }
+    else if (a === 'loadgo' && UI.tFile && UI.tFile.o) { const o = UI.tFile.o; adoptState(o); UI.hadSave = true; closeTitle();
+      toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
+    else if (a === 'go' || a === 'go-tut') { const n = ($('#tname') || {}).value; startNewFarm((n || '').trim(), a === 'go-tut'); }
+  });
+  titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'tname') { e.preventDefault(); startNewFarm(e.target.value.trim(), true); } });
+
+  /* ================= tutorial =================
+     A short hands-on coach: each step waits for the player to actually do the thing, then moves on.
+     Gameplay beyond planting is handed to the goal card, which already walks through it. */
+  const farmIdx = () => { const f = D.map.structures.find(st => st[0] === 'farm'); return idx(f[1], f[2]); };
+  const hasJob = a => (S.cur && S.cur.a === a && S.cur.i === farmIdx()) || S.queue.some(q => q.a === a && q.i === farmIdx());
+  const TUT = [
+    { t: 'Look around', d: () => isTouch() ? 'Drag with one finger to move around your land.' : 'Drag with the left mouse button to move around your land. The arrow keys work too.',
+      done: b => Math.hypot(cam.u - b.u, cam.v - b.v) > 40 },
+    { t: 'Zoom and turn', d: () => isTouch() ? 'Pinch to zoom. Twist two fingers to turn the world, or use ⟲ ⟳ on the right. ⌂ brings you back home.'
+        : 'Scroll to zoom. Hold the right mouse button and push left or right to turn the world, up or down to tilt it. ⟲ ⟳ and ⌂ on the right do the same.',
+      done: b => Math.abs(cam.z - b.z) > .08 || Math.abs(UI.yaw - b.yaw) > .15 || Math.abs(UI.tilt - b.tilt) > .05 },
+    { t: 'Pick a tile', d: () => `${isTouch() ? 'Tap' : 'Click'} the <b>Farm Plot</b>: the bare patch of soil beside your house. Everything you can do there shows up in the panel.`,
+      done: () => UI.sel === farmIdx(), skip: () => S.tiles[farmIdx()].b.st !== 'raw' },
+    { t: 'Give your farmer a job', d: () => 'Press <b>Till soil</b> in the panel. Your farmer walks over and does the work. Jobs line up along the bottom of the screen; × cancels one.',
+      done: () => hasJob('till') || S.tiles[farmIdx()].b.st !== 'raw' },
+    { t: 'Plant something', d: () => 'When the soil is tilled, press <b>Plant Carrots</b> in the panel. Seeds come from storage; the Open Market sells more.',
+      done: () => hasJob('plant') || !!S.tiles[farmIdx()].b.crop },
+    { t: 'Follow the goal card', d: () => `The card at the top left always shows your next step: watering, harvesting, cooking, then contracts at the Order Board for gold and Discovery.${isPhone() ? ' Tap it to open or close it.' : ''}`, next: 'Next' },
+    { t: 'You’re all set', d: () => 'Storage and the Menu are at the top right. The Menu saves, loads, lists every control, and can replay this tutorial. Have fun!', next: 'Start farming' }
+  ];
+  let tutBase = null;
+  function startTut(n = 0) { S.tut = { n }; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt }; UI.html['#coach'] = null; dirty(); }
+  function tutAdvance() { if (!S.tut) return; S.tut.n++; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
+    if (S.tut.n >= TUT.length) endTut(false); else dirty(); }
+  function endTut(skipped) { S.tut = null; $('#coach').hidden = true; UI.html['#coach'] = null; save(); if (skipped) toast('Tutorial skipped. You can replay it from the Menu.', 'info'); else toast('<b>Tutorial done.</b> Keep following the goal card.', 'goal'); }
+  function tutTick() { if (!S || !S.tut || UI.title) return; const st = TUT[S.tut.n]; if (!st) return endTut(false);
+    if (!tutBase) tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
+    if ((st.done && st.done(tutBase)) || (st.skip && st.skip())) { tutAdvance(); } }
+  function renderCoach() { const el = $('#coach');
+    if (!S.tut || UI.title) { el.hidden = true; return; } const n = S.tut.n, st = TUT[n]; if (!st) return;
+    el.hidden = false;
+    setHTML('#coach', `<div class="cstep">Tutorial · ${n + 1} of ${TUT.length}</div><b class="ct">${st.t}</b><p>${st.d()}</p>
+      <div class="cbtns">${st.next ? `<button class="btn pri sm" data-tut-next>${st.next}</button>` : '<span class="cwait">Waiting for you…</span>'}<button class="linkish small" data-tut-skip>Skip tutorial</button></div>`); }
+
   window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
