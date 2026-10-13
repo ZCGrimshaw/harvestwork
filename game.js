@@ -231,6 +231,35 @@
     return { id: S.uid++, kind: useC ? 'crafted' : 'raw', name: names[(Math.random() * names.length) | 0], need: [[id, qty, minQ]], gold, score: Math.round(gold * (useC ? .9 : .5)) };
   }
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
+  /* ================= rock bottom =================
+     If the farm can't earn its way out (no gold for seeds, nothing to sell, nothing growing or cooking, no
+     resource to work), the valley bank lends 100g once. Stuck again before paying it back: game over. */
+  const LOAN = { amount: 100, auto: 200, wait: 8 };
+  function cheapestStart() { let m = Infinity; Object.keys(D.items).forEach(id => { const it = D.items[id]; if (it.cat === 'seed' && it.buy && unlocked(it.requires)) m = Math.min(m, buyPrice(id)); }); return m; }
+  function stuck() {
+    if (S.gold >= cheapestStart()) return false;
+    if (Object.keys(S.inv).some(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0)) return false;
+    if (S.cur || S.queue.length) return false;
+    for (const T of S.tiles) {
+      if (T.b && T.b.type === 'farm' && (T.b.st === 'growing' || T.b.st === 'ready')) return false;
+      if (T.b && T.b.q && T.b.q.length) return false;
+      if (T.b && T.b.q && Object.keys(D.recipes).some(r => D.recipes[r].station === T.b.type && unlocked(D.recipes[r].requires) && !Object.keys(D.recipes[r].in).length)) return false; // e.g. a Beehive
+      if (T.o && T.r && D.gather[T.t] && unlocked(D.gather[T.t].needs) && !(T.t === 'forest' && T.r.st === 'stump')) return false;
+    }
+    if (S.helper && S.helper.cur) return false;
+    return true;
+  }
+  function checkBroke(dt) {
+    if (S.loan && S.gold >= LOAN.auto) repayLoan(true);
+    if (S.over || UI.title) return;
+    UI.brokeT = (UI.brokeT || 0) + dt; if (UI.brokeT < 1) return; const waited = UI.brokeT; UI.brokeT = 0;
+    if (!stuck()) { UI.stuckFor = 0; return; }
+    UI.stuckFor = (UI.stuckFor || 0) + waited; if (UI.stuckFor < LOAN.wait) return; UI.stuckFor = 0;
+    if (!S.loan) { S.loan = { owed: LOAN.amount, day: S.day }; S.loans = (S.loans || 0) + 1; S.gold += LOAN.amount; logAct(`Borrowed ${LOAN.amount}g from the valley bank`, 'you'); save(); openTitle('loan'); }
+    else { S.over = true; logAct('Out of gold, goods and work, with the loan unpaid', 'you'); save(); openTitle('over'); }
+  }
+  function repayLoan(auto) { if (!S.loan || S.gold < S.loan.owed) return; S.gold -= S.loan.owed; logAct(`Repaid the valley bank loan · −${S.loan.owed}g`, 'you');
+    toast(`<b>Loan repaid.</b> ${auto ? `${S.loan.owed}g went back to the valley bank now that you have the gold. ` : ''}You’re debt-free.`, 'goal'); S.loan = null; save(); dirty(); }
   function newDay() {
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
@@ -540,7 +569,7 @@
       else { const G = D.gather[T.t]; if (R.stock < G.stock) { R.rt += dt; if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
     });
     if (S.orders.length < C.orderSlots) { S.refill -= dt; if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
-    updateAvatar(dt); updateHelper(dt);
+    updateAvatar(dt); updateHelper(dt); checkBroke(dt);
     const g = D.goals[S.goal]; if (g && goalStateDone(g)) completeGoal();
     UI.saveIn -= dt; if (UI.saveIn <= 0) save();
   }
@@ -885,6 +914,7 @@
     const status = paused() ? 'Paused' : S.cur ? `${S.cur.ph === 'walk' ? 'Walking to' : 'Working:'} ${esc(TASKS[S.cur.a].label(S.cur))}` : 'Idle';
     setHTML('#stats', `
       <div class="stat" title="Gold"><span class="coin"></span><b>${S.gold}</b></div>
+      ${S.loan ? `<button class="stat loan" data-repay title="Loan from the valley bank. Paid back automatically at ${LOAN.auto}g, or tap to repay now"><span class="lbl">Loan</span><b>${S.loan.owed}g</b></button>` : ''}
       <div class="stat score" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
@@ -1398,6 +1428,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
+    else if ('repay' in ds) { if (S.loan && S.gold >= S.loan.owed) repayLoan(false); else toast(`You need ${S.loan ? S.loan.owed : 0}g to repay the loan.`, 'warn'); }
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
@@ -1484,7 +1515,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-195829';
+  const BUILD = '20261013-200604';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1611,6 +1642,13 @@
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
+    else if (t === 'loan') h = `<div class="tcard"><h2>Wow, you really did yourself in…</h2>
+        <p class="sub">No gold for seeds, nothing to sell, and no work left that brings in goods. The valley bank is lending you <b>${LOAN.amount}g</b> to get going again.</p>
+        <p class="sub">It must be paid back. It comes out of your gold automatically once you have ${LOAN.auto}g, or tap <b>Loan</b> in the top bar to repay early. Get stuck again before it’s paid back and that’s the end of this farm.</p>
+        <div class="tmenu"><button class="btn pri big" data-t="continue">Take the ${LOAN.amount}g and carry on</button></div></div>`;
+    else if (t === 'over') h = `<div class="tcard"><h2>You need to revisit your choices in this game.</h2>
+        <p class="sub">Out of gold, goods and work again, with the valley bank still waiting on its ${S.loan ? S.loan.owed : LOAN.amount}g. This farm has run its course. Thanks for playing!</p>
+        <div class="tmenu"><button class="btn pri big" data-t="name">Start a new farm</button><button class="btn big" data-t="look">Look at my farm</button></div></div>`;
     titleEl.className = 'title-' + t; titleEl.innerHTML = h; titleEl.hidden = false;
     const inp = $('#tname'); if (inp) inp.focus();
   }
@@ -1625,6 +1663,7 @@
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
     if (a === 'main') openTitle('main');
     else if (a === 'continue') closeTitle();
+    else if (a === 'look') { closeTitle(); toast('Your farm is out of options. Start a new one any time from Menu → Start a new farm.', 'info'); }
     else if (a === 'new') openTitle(UI.hadSave ? 'confirm' : 'name');
     else if (a === 'name') openTitle('name');
     else if (a === 'dl') downloadSave();

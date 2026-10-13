@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.28 — 2026-10-13
+- Rock-bottom rescue: `stuck()` = gold below the cheapest unlocked seed, no sellable goods, nothing growing/ready,
+  no station batches, no ingredient-free recipe (Beehive), no workable resource tile, idle farmer and farmhand.
+  After 8 s stuck: first time a 100g loan (S.loan, "Loan" chip in the top bar repays; auto-repaid at 200g);
+  stuck again with the loan unpaid sets S.over and shows the game-over screen (Start a new farm / Look at my farm).
+
 ## v0.27.3 — 2026-10-13
 - Desktop ticker row spans the full width (flex-basis 100%); collapsed button unchanged.
 

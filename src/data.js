@@ -484,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.28', at: '2026-10-13 14:45', notes: ['Hit rock bottom (no gold for seeds, nothing to sell, nothing growing and no work that brings in goods) and the valley bank lends you 100g, once. Pay it back: it comes out automatically at 200g, or tap Loan in the top bar.', 'Get stuck again before repaying it, and that farm is over: start a new one or take one last look around.'] },
   { v: '0.27.3', at: '2026-10-13 14:30', notes: ['On computers, the valley market ticker now stretches across the full width of the screen.'] },
   { v: '0.27.2', at: '2026-10-13 14:20', notes: ['Discovery, Storage and the Market remember the category tab you last picked, even after you reload the game.'] },
   { v: '0.27.1', at: '2026-10-13 14:10', notes: ['On computers, the valley market ticker now runs along its own row under your gold and storage, so it’s easier to read.'] },
