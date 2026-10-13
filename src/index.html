@@ -240,6 +240,7 @@ small.use { display: block; color: var(--sun); font-size: 11.5px; margin-top: 2p
 .toggle.sm { margin: 6px 0 0; padding: 3px 8px 3px 4px; font-size: 12px; }
 /* farmhand */
 .fhrow { display: flex; gap: 6px; align-items: center; }
+.opts .fhrow { width: 100%; max-width: 460px; }
 .fhrow select { flex: 1; min-width: 0; padding: 6px 8px; font: inherit; background: var(--wood-lo); color: var(--paper); border: 1px solid var(--wood-hi); border-radius: var(--r); }
 .routine { margin: 8px 0; padding: 0; list-style: none; counter-reset: job; }
 .routine li { counter-increment: job; display: flex; gap: 8px; align-items: center; padding: 6px 8px; margin: 4px 0; background: rgba(0,0,0,.18); border-radius: var(--r); }
@@ -490,6 +491,8 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .lbt td { padding: 6px; border-bottom: 1px dashed rgba(90,58,34,.6); } .lbt td:nth-child(n+3), .lbt th:nth-child(n+3) { text-align: right; }
 .lbt tr.me td { background: rgba(245,197,66,.14); color: var(--sun); } .lbt .you { font-size: 11px; background: var(--sun); color: #3a2416; border-radius: 3px; padding: 0 4px; }
 .lbme { margin-top: 4px; }
+.lbt .lock { color: var(--leaf); font-weight: 800; }
+#lbname { flex: 1; min-width: 0; padding: 7px 9px; background: var(--wood-lo); color: var(--paper); border: 1px solid var(--wood-hi); border-radius: var(--r); font: inherit; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }

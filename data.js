@@ -484,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.30.1', at: '2026-10-13 15:30', notes: ['Settings → Leaderboard name: lock in a name that’s yours alone across the valley. If it’s taken you’ll be offered the next free number, like Zac1. Locked names show a ✓ on the leaderboard.'] },
   { v: '0.30', at: '2026-10-13 15:15', notes: ['Valley leaderboard: see how your farm compares with everyone else’s, by top score and by best pace (score per day played, for farms at least 7 days old). Open it from the Menu or from your weekly report.', 'Your farmer’s name is shown by default; turn that off in Settings to appear as “A farmer”. The leaderboard works on the web version.'] },
   { v: '0.29', at: '2026-10-13 15:00', notes: ['Every 7 days a weekly report shows how your farm did: gold, score, Discovery, sales, harvests, orders and what you made. Turn it off from the report or in Settings.', 'Settings now has its own page in the Menu, with Pausing, Notifications and Sound.'] },
   { v: '0.28', at: '2026-10-13 14:45', notes: ['Hit rock bottom (no gold for seeds, nothing to sell, nothing growing and no work that brings in goods) and the valley bank lends you 100g, once. Pay it back: it comes out automatically at 200g, or tap Loan in the top bar.', 'Get stuck again before repaying it, and that farm is over: start a new one or take one last look around.'] },

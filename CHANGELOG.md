@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.30.1 — 2026-10-13
+- Locked leaderboard names (database): player_names (player pk, name, unique lower-case key); claim_name(player, name)
+  claims or switches this player's name, or returns the lowest free numbered suggestion (Zac → Zac1, Zac2…);
+  my_name(player); hw_clean_name() shared sanitiser. get_leaderboard shows a locked name (flag `locked`) over the farm
+  name, and shows "A farmer" for an unlocked farm name that copies someone else's locked name.
+- Game: Settings → Leaderboard name (input + Lock in, taken → "How about Zac1?" + Use button, Change it); name cached
+  per device in localStorage 'harvestworks.lbname'; ✓ next to locked names on the board.
+
 ## v0.30 — 2026-10-13
 - Leaderboard (database): table farm_scores (farm uuid pk, player, name, show, score, days, updated_at; RLS, no
   policies) + SECURITY DEFINER submit_score (name sanitised to 14 chars of letters/digits/space/'._-; rejects

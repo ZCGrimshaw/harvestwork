@@ -188,13 +188,27 @@
   const LB_MIN_DAYS = 7;
   function sendScore() { if (!NET.ok || !S.fid) return;
     rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
+  // A locked-in name belongs to this device's player and is unique across the valley.
+  NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
+  const setMyName = n => { NET.myName = n; try { n ? localStorage.setItem('harvestworks.lbname', n) : localStorage.removeItem('harvestworks.lbname'); } catch (e) { } };
+  async function fetchMyName() { try { const r = await rpc('my_name', { p_player: PLAYER }); setMyName(r && r.name || null); dirty(); } catch (e) { } }
+  async function claimName(name) {
+    UI.claim = { busy: true }; dirty();
+    if (!NET.ok) await pullMarket();
+    if (!NET.ok) { UI.claim = { err: 'Locking a name needs the shared valley connection (web version).' }; dirty(); return; }
+    try { const r = await rpc('claim_name', { p_player: PLAYER, p_name: name });
+      if (r.ok) { setMyName(r.name); UI.claim = { done: r.name }; UI.lbDraft = null; UI.lbEdit = false; sendScore(); toast(`<b>Name locked in:</b> ${esc(r.name)} ✓`, 'goal'); }
+      else if (r.taken) UI.claim = { taken: name, suggestion: r.suggestion };
+      else UI.claim = { err: r.error || 'Couldn’t lock that name.' };
+    } catch (e) { UI.claim = { err: 'Couldn’t reach the valley. Try again in a moment.' }; }
+    dirty(); }
   async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
     if (!NET.ok) { await pullMarket(); }
     if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }
     try { sendScore(); await new Promise(r => setTimeout(r, 400)); UI.lb = await rpc('get_leaderboard', { p_farm: S.fid }); } catch (e) { UI.lb = { off: true }; } dirty(); }
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
-      if (!UI.sentScore) { UI.sentScore = true; sendScore(); }
+      if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
@@ -1296,9 +1310,9 @@
         h += `<p class="hint">${me ? `You’re <b>#${me.rank}</b> of ${L.farms} by score${me.pace_rank ? ` and <b>#${me.pace_rank}</b> of ${L.paced} by pace` : `; you join the pace board on day ${LB_MIN_DAYS}`}.` : 'Your farm will appear after its next day starts.'}</p>`;
         h += `<div class="tabs">${[['top', 'Top score'], ['pace', 'Best pace']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-lbtab="${k}">${n}</button>`).join('')}</div>`;
         const rows = (L[tab] || []);
-        h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
+        h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
           : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
-        h += `<p class="hint small">${S.lbShow !== false ? `Shown as <b>${esc(S.name)}</b>. Change your name at the Homestead, or hide it in Settings.` : 'You’re hidden: others see “A farmer”. Change this in Settings.'}</p>`; }
+        h += `<p class="hint small">${S.lbShow !== false ? (NET.myName ? `Shown as <b>${esc(NET.myName)}</b> ✓ (locked in).` : `Shown as <b>${esc(S.name)}</b>. Lock in a name that’s yours alone in Settings.`) : 'You’re hidden: others see “A farmer”. Change this in Settings.'}</p>`; }
       h += `<div class="menu"><button class="btn ghost" data-lb-refresh>Refresh</button><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'settings') {
       h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
@@ -1310,7 +1324,14 @@
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
         <button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
-        <p class="hint small">${S.lbShow !== false ? 'Other players see your farmer’s name and score.' : 'Your score still counts, but others see “A farmer”.'}</p></div>
+        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p></div>
+        <span class="eyebrow">Leaderboard name</span><div class="opts">${(() => { const c = UI.claim || {};
+          if (NET.myName && !UI.lbEdit) return `<p class="state">Locked in as <b>${esc(NET.myName)}</b> ✓ No one else in the valley can use it.</p><button class="btn ghost sm" data-lb-edit>Change it</button>`;
+          let h = `<p class="hint small">Lock in a name so it’s yours alone across the valley. If it’s taken, you’ll get the next free number (Name1, Name2…).</p>
+            <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || S.name || ''))}" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
+          if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
+          if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
+          return h; })()}</div>
         <span class="eyebrow">Sound</span><div class="opts">
         <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
         ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
@@ -1477,6 +1498,10 @@
     else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
     else if ('lbRefresh' in ds) { openBoard(); return; }
     else if (ds.lbtab) { UI.lbTab = ds.lbtab; }
+    else if ('lbClaim' in ds) { const v = (($('#lbname') || {}).value || '').trim(); claimName(v); return; }
+    else if (ds.lbTake) { claimName(ds.lbTake); return; }
+    else if ('lbEdit' in ds) { UI.lbEdit = true; UI.claim = null; }
+    else if ('lbEditCancel' in ds) { UI.lbEdit = false; UI.claim = null; UI.lbDraft = null; }
     else if ('repay' in ds) { if (S.loan && S.gold >= S.loan.owed) repayLoan(false); else toast(`You need ${S.loan ? S.loan.owed : 0}g to repay the loan.`, 'warn'); }
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
@@ -1523,8 +1548,9 @@
   document.addEventListener('change', e => {
     const id = e.target.id;
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
-  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
+    if (e.target.id === 'lbname') { UI.lbDraft = e.target.value; if (UI.claim && UI.claim.taken) UI.claim = null; return; }
     if (e.target.dataset && e.target.dataset.vol) { SND.unlock(); SND.set(e.target.dataset.vol, (+e.target.value) / 100); return; }
     if (e.target.id === 'impcode') { UI.importText = e.target.value; UI.confirmImport = false; UI.importData = null; UI.importErr = UI.importInfo = null;
       const v = e.target.value.trim();
