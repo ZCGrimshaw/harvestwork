@@ -649,7 +649,7 @@
   /* See-through: tall things (buildings, trees, rocks) fade when they stand in front of what you're
      looking at — your farmers, the selected tile, the hovered tile and the current job — or all of them
      while See-through mode is on (the eye button or X). Fades ease in and out so nothing pops. */
-  const FADE_TO = .38;
+  const FADE_TO = .45;
   function focusPoints(p) {
     const pts = [], add = (x, y, up) => { const v = view(x, y), [sx, sy] = toScreen(x, y); pts.push({ d: v[0] + v[1], sx, sy, up: up * p }); };
     add(S.av.x, S.av.y, 24); if (S.helper) add(S.helper.x, S.helper.y, 24);
@@ -735,7 +735,7 @@
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
-            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - 26 * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
+            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
         }
       } else if (T.r) {
         if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a * fadeOf(i, d, sx, sy, p, img.height - 4, pts));
@@ -1335,7 +1335,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-170855';
+  const BUILD = '20261013-171442';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

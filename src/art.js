@@ -358,6 +358,38 @@ window.HW_ART = (function () {
     });
     return (picCache[key] = c.toDataURL());
   }
+  /* ---------- buildings drawn 25% shorter ----------
+     Rather than scaling (which smears pixel art), whole pixel rows are removed from the part of each
+     building above its footing: the rows most like the row above them go first, so long walls and roofs
+     get shorter while 1-pixel details (trim, windows, sails) survive. Animated frames share one row set. */
+  const SHRINK = .25, FOOT = 8;
+  const SHORT = new Set(['homestead', 'stove', 'stove_on', 'market', 'board', 'mill', 'sawmill', 'preserver', 'workbench', 'compost', 'kiln', 'oven', 'press', 'loom', 'hive', 'shed', 'smokehouse', 'smelter', 'barn', 'warehouse']);
+  const FRAMES = { mill: [0, 1], sawmill: [0, 1] };
+  const rowSets = {};
+  function shortRows(k) {
+    if (rowSets[k]) return rowSets[k];
+    const imgs = (FRAMES[k] || [undefined]).map(f => OBJ[k](f)), w = imgs[0].width, h = imgs[0].height;
+    const px = imgs.map(c => c.getContext('2d').getImageData(0, 0, w, h).data);
+    let top = 0; find: for (; top < h - FOOT; top++) for (const d of px) for (let x = 0; x < w; x++) if (d[(top * w + x) * 4 + 3]) break find;
+    const diff = (a, b) => { let t = 0; for (const d of px) for (let x = 0; x < w; x++) for (let c = 0; c < 4; c++) t += Math.abs(d[(a * w + x) * 4 + c] - d[(b * w + x) * 4 + c]); return t; };
+    // runs of identical rows (a chimney, a plain wall) may each lose at most ~40%, so no feature vanishes
+    const run = {}, runLen = {}; let rid = 0;
+    for (let y = top; y < h - FOOT; y++) { if (y > top && diff(y, y - 1) > 0) rid++; run[y] = rid; runLen[rid] = (runLen[rid] || 0) + 1; }
+    const taken = {}, cap = r => Math.floor(runLen[r] * .4);
+    const keep = []; for (let y = top; y < h - FOOT; y++) keep.push(y);
+    const drop = new Set(); let n = Math.round((h - FOOT - top) * SHRINK);
+    while (n-- > 0 && keep.length > 2) { let best = 1, bc = Infinity;
+      for (let j = 1; j < keep.length; j++) { const r = run[keep[j]], c = diff(keep[j], keep[j - 1]) + ((taken[r] || 0) >= cap(r) ? 1e6 * (1 + (taken[r] || 0)) : 0);
+        if (c < bc) { bc = c; best = j; } }
+      const r = run[keep[best]]; taken[r] = (taken[r] || 0) + 1; drop.add(keep[best]); keep.splice(best, 1); }
+    return (rowSets[k] = drop);
+  }
+  function dropRows(c, drop) {
+    if (!drop.size) return c; const o = document.createElement('canvas'); o.width = c.width; o.height = c.height - drop.size;
+    const g = o.getContext('2d'); let y2 = 0;
+    for (let y = 0; y < c.height; y++) if (!drop.has(y)) g.drawImage(c, 0, y, c.width, 1, 0, y2++, c.width, 1);
+    return o;
+  }
   return {
     SHIRTS, HATS,
     get(key) {
@@ -369,6 +401,7 @@ window.HW_ART = (function () {
       else if (k === 'avatar') { const [s, h, f, w] = a.split('.').map(Number); c = avatar(s, h, f, w); }
       else if (OBJ[k]) c = OBJ[k](a === undefined ? undefined : +a);
       else c = mk(2, 2, () => {});
+      if (SHORT.has(k)) c = dropRows(c, shortRows(k === 'stove_on' ? 'stove' : k));
       return (cache[key] = c);
     },
     icon(id, items) {

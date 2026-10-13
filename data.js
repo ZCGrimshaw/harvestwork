@@ -410,6 +410,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.22', at: '2026-10-13 11:00', notes: ['Buildings are about 25% shorter, so a busy farm is easier to see across. Each one keeps its look: chimneys, sails, awnings and all.', 'The see-through fade is a little gentler now that less gets hidden.'] },
   { v: '0.21', at: '2026-10-13 10:45', notes: ['Buildings, trees and rocks now fade when they stand in front of your farmer, your farmhand, the tile you’ve selected or the tile under your mouse, so nothing gets lost behind them.', 'New See-through button (the eye, or press X) fades every building and tree at once.'] },
   { v: '0.20.2', backend: true, at: '2026-10-13 10:30', notes: ['Show your support now points to Ko-fi (ko-fi.com/zerocrunchgames) instead of PayPal, with a new QR code.'] },
   { v: '0.20.1', backend: true, at: '2026-10-13 10:20', notes: ['Name back to Harvestworks. Show your support opens its own screen with a big QR code and an Open PayPal link (title menu and Menu).'] },

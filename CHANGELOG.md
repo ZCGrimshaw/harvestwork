@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.22 — 2026-10-13
+- Buildings ~25% shorter (art.js `dropRows`/`shortRows`): whole pixel rows above an 8px footing are removed, most-redundant
+  first, with each run of identical rows capped at 40% removal so chimneys/awnings survive; animated frames share one row set.
+  Trees, rocks, crops and sprinklers unchanged. Station smoke starts from the (shorter) chimney top.
+- Fade softened from 38% to 45% opacity.
+
 ## v0.21 — 2026-10-13
 - Visibility: tall sprites (buildings, trees, rocks) ease to 38% opacity when they are nearer the viewer than a focus point
   (farmer, farmhand, selected tile, hovered tile on mouse devices, current job target) and their sprite box overlaps it.

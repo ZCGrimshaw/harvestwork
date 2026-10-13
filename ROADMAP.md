@@ -9,7 +9,7 @@ Not built yet; picked up when we choose to.
   Technical: resize the grid, remap tile indices (selection, queue, farmhand jobs) when growing north/west,
   draw non-rectangular outlines, and convert old saves.
 - More discoveries as the tree is worked through (ore beyond copper, orchards, more automation).
-- ~~Visibility as the farm grows~~ (done in v0.21: auto-fade in front of focus points + See-through toggle). Flat view / smaller sprites not needed for now.
+- ~~Visibility as the farm grows~~ (done: v0.21 auto-fade + See-through toggle; v0.22 buildings 25% shorter).
 - **Supporter pack (pinned 2026-10-13):** cosmetic-only perks for Ko-fi supporters (nothing that affects gold or the shared market).
   First pack: supporter outfits/hats (S.shirt / S.hat already exist), one seasonal theme (autumn), ambient life
   (butterflies, birds, fireflies, lit windows, station smoke/steam). Later: more themes, placeable decorations,
