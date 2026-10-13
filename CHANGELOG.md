@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.9 — 2026-10-12
+- "Clear" button on the farmhand chip (and "Clear all jobs" at the Homestead) wipes the farmhand's job list.
+  Tap once to arm, again within 3 seconds to confirm.
+
 ## v0.8.1 — 2026-10-12
 - Fix: upgrade costs wrap onto a new line instead of running under the Upgrade button.
 

@@ -727,7 +727,7 @@
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
     const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${!F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
       <button class="fhb" data-fh-toggle aria-label="${F.on ? 'Pause farmhand' : 'Start farmhand'}" title="${F.on ? 'Pause' : 'Start'}">${F.on ? '❚❚' : '▶'}</button>
-      <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button></div>` : '';
+      <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button>${F.steps.length ? `<button class="fhb clr ${UI.fhClear ? 'arm' : ''}" data-fh-clear aria-label="${UI.fhClear ? 'Tap again to clear all farmhand jobs' : 'Clear all farmhand jobs'}" title="Clear all jobs">${UI.fhClear ? 'Clear all?' : 'Clear'}</button>` : ''}</div>` : '';
     setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh);
   }
 
@@ -838,6 +838,7 @@
       h += `<button class="toggle ${F.on ? 'on' : ''}" data-fh-toggle aria-pressed="${F.on}"><i></i>${F.on ? 'Working' : 'Paused'}</button>`;
       h += F.steps.length ? `<ol class="routine">${F.steps.map((st, k) => `<li class="${F.cur && F.cur.si === k ? 'now' : ''}"><button class="linkish" data-goto="${st.i}">${esc(stepLabel(st))}</button><button class="x" data-fh-del="${k}" aria-label="Remove job">×</button></li>`).join('')}</ol>`
         : `<p class="hint">No jobs yet. Select a farm plot, station, tree, pond or boulder field and choose “Add to farmhand”.</p>`;
+      if (F.steps.length) h += `<button class="btn ${UI.fhClear ? 'danger' : 'ghost'}" data-fh-clear>${UI.fhClear ? 'Tap again to clear all ' + F.steps.length + ' jobs' : 'Clear all jobs'}</button>`;
       h += `<small class="why">They walk a little slower than you, skip jobs that have nothing to do, and never take a job you’ve queued yourself.</small>`;
     }
     return h;
@@ -1021,6 +1022,9 @@
       if (st.s === 'tend') st.p = ($('#hcrop') || {}).value; if (st.s === 'station') st.p = ($('#hrec') || {}).value;
       if (S.helper && S.helper.steps.length < fhMax() && (st.p || !['tend', 'station'].includes(st.s))) { S.helper.steps.push(st); toast(`Farmhand job added: ${esc(stepLabel(st))}.`, 'info'); } }
     else if (ds.fhDel !== undefined) { S.helper.steps.splice(+ds.fhDel, 1); S.helper.cur = null; S.helper.k = 0; }
+    else if ('fhClear' in ds) {
+      if (!UI.fhClear) { UI.fhClear = true; clearTimeout(UI.fhClearT); UI.fhClearT = setTimeout(() => { UI.fhClear = false; dirty(); }, 3000); }
+      else { UI.fhClear = false; clearTimeout(UI.fhClearT); S.helper.steps = []; S.helper.cur = null; S.helper.k = 0; S.helper.path = []; toast('Farmhand jobs cleared. Add new ones from any plot, station or resource tile.', 'info'); save(); } }
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }
     else if (ds.goto !== undefined) { UI.sel = +ds.goto; centerOn(+ds.goto); }
@@ -1065,7 +1069,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-054027';
+  const BUILD = '20261013-054219';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
