@@ -409,6 +409,7 @@ window.HW_DATA = {
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.updates = [
+  { v: '0.18.1', at: '2026-10-13 00:05', notes: ['Fixed: choosing a save file in Menu → Load a save file did nothing. You now get a “Reading…” note, then a “Load this farm” button (or a clear error if the file isn’t a save).'] },
   { v: '0.18', at: '2026-10-12 23:42', notes: ['Menu → Download save file saves your whole farm as a .json file; Load a save file brings it back on any device or on the web version.', 'Save codes are still there under “Or copy and paste a save code instead”.'] },
   { v: '0.17', at: '2026-10-12 23:40', notes: ['Move your farm: Menu → Export save code gives you a code to copy; Menu → Import a save code on another device or on the web version brings the whole farm across.'] },
   { v: '0.16', at: '2026-10-12 23:28', notes: ['The valley market now moves at the pace of the crowd: with only a couple of traders, prices take about a day to settle back; with dozens or hundreds, they settle in minutes and each sale has a smaller effect.', 'The market shows how many traders are active this hour and how long prices take to settle.'] },

@@ -1080,14 +1080,12 @@
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'menu') {
-      const ago = UI.savedAt ? Math.round((Date.now() - UI.savedAt) / 1000) : null;
-      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser${ago !== null ? `; last saved ${ago}s ago` : ''}.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
         <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
-        <div class="menu"><button class="btn pri" data-download-save>Download save file</button><button class="btn ghost" data-load-file>Load a save file</button>
-          <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden></div>
+        <div class="menu"><button class="btn pri" data-download-save>Download save file</button><button class="btn ghost" data-load-file>Load a save file</button></div>
         <button class="linkish small" data-toggle-code>${UI.showCode ? 'Hide save codes' : 'Or copy and paste a save code instead'}</button>
         ${UI.showCode ? `<div class="menu"><button class="btn ghost" data-export>${UI.exportCode ? 'Refresh save code' : 'Export save code'}</button><button class="btn ghost" data-import-open>Paste a save code</button></div>` : ''}
         ${UI.showCode && UI.exportCode ? `<label class="eyebrow" for="expcode">Your save code · ${Math.ceil(UI.exportCode.length / 1024)} KB of text</label><textarea id="expcode" class="code" readonly rows="4">${esc(UI.exportCode)}</textarea>
@@ -1100,6 +1098,8 @@
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
+    const sa = UI.drawer === 'menu' && $('#savedago');
+    if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
   const latest = () => D.updates[0];
   const unseen = () => S.seenUpdate !== latest().v;
@@ -1216,7 +1216,7 @@
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
-    else if ('loadFile' in ds) { const f = $('#loadfile'); if (f) { f.value = ''; f.click(); } }
+    else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
     else if ('toggleCode' in ds) { UI.showCode = !UI.showCode; }
     else if ('fileCancel' in ds) { UI.fileInfo = UI.fileErr = null; UI.importData = null; UI.confirmImport = false; }
     else if ('export' in ds) { exportCode().then(c => { UI.exportCode = c; UI.copied = false; dirty(); }).catch(e => toast('Couldn’t make a save code: ' + esc(e.message), 'warn')); }
@@ -1236,13 +1236,20 @@
     dirty();
   });
   $('#drawer').addEventListener('click', e => { if (e.target.id === 'drawer') { UI.drawer = null; UI.confirmReset = false; dirty(); } });
+  const fileIn = $('#loadfile');
+  fileIn.addEventListener('change', () => {
+    const file = fileIn.files && fileIn.files[0]; if (!file) return;
+    UI.fileErr = UI.fileInfo = null; UI.importData = null; UI.confirmImport = false;
+    toast(`Reading <b>${esc(file.name)}</b>…`);
+    const read = file.text ? file.text() : new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Couldn’t read that file.')); r.readAsText(file); });
+    read.then(parseSaveText).then(o => { UI.importData = o;
+        UI.fileInfo = `<b>${esc(file.name)}</b>: ${esc(o.name || 'Farmer')}’s farm, day ${o.day}, ${o.gold}g, ${o.tiles.filter(t => t.o).length} tiles, score ${o.score}.`;
+        toast(`<b>Save file ready.</b> ${esc(o.name || 'Farmer')}’s farm, day ${o.day}. Press <b>Load this farm</b> in the menu to switch.`, 'goal'); })
+      .catch(err => { UI.fileErr = (err && err.message) || 'Couldn’t read that file.'; toast(esc(UI.fileErr), 'warn'); })
+      .then(() => { fileIn.value = ''; if (UI.drawer !== 'menu') UI.drawer = 'menu'; dirty();
+        setTimeout(() => { const st = $('#filestatus'); if (st) st.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 80); });
+  });
   document.addEventListener('change', e => {
-    if (e.target.id === 'loadfile' && e.target.files && e.target.files[0]) { const file = e.target.files[0];
-      UI.fileErr = UI.fileInfo = null; UI.importData = null; UI.confirmImport = false;
-      file.text().then(parseSaveText).then(o => { UI.importData = o;
-          UI.fileInfo = `<b>${esc(file.name)}</b>: ${esc(o.name || 'Farmer')}’s farm, day ${o.day}, ${o.gold}g, ${o.tiles.filter(t => t.o).length} tiles, score ${o.score}.`; dirty(); })
-        .catch(err => { UI.fileErr = err.message; dirty(); });
-      return; }
     const id = e.target.id;
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });

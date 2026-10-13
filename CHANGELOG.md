@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.18.1 — 2026-10-13
+- Fix: Load a save file did nothing. The menu rewrote itself every second (the “last saved Xs ago” text), replacing the
+  hidden file input while the picker was open, so the chosen file was lost. The input now lives outside the menu,
+  the menu no longer re-renders each second, and loading shows toasts for progress and errors.
+
 ## v0.18 — 2026-10-12
 - Download / load a save file (harvestworks-<name>-day<N>.json). In Claude the viewer's download prompt is used
   (the page declares the `downloads` capability); on the web it's a normal browser download.
