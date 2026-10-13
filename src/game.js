@@ -1084,15 +1084,19 @@
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser${ago !== null ? `; last saved ${ago}s ago` : ''}.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
-        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
         <span class="eyebrow">Move your farm</span>
-        <p class="sub">Copy a save code here, then paste it into Menu → Import on another device or on the web version. Importing replaces the farm on that page.</p>
-        <div class="menu"><button class="btn ghost" data-export>${UI.exportCode ? 'Refresh save code' : 'Export save code'}</button><button class="btn ghost" data-import-open>Import a save code</button></div>
-        ${UI.exportCode ? `<label class="eyebrow" for="expcode">Your save code · ${Math.ceil(UI.exportCode.length / 1024)} KB of text</label><textarea id="expcode" class="code" readonly rows="4">${esc(UI.exportCode)}</textarea>
+        <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
+        <div class="menu"><button class="btn pri" data-download-save>Download save file</button><button class="btn ghost" data-load-file>Load a save file</button>
+          <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden></div>
+        <button class="linkish small" data-toggle-code>${UI.showCode ? 'Hide save codes' : 'Or copy and paste a save code instead'}</button>
+        ${UI.showCode ? `<div class="menu"><button class="btn ghost" data-export>${UI.exportCode ? 'Refresh save code' : 'Export save code'}</button><button class="btn ghost" data-import-open>Paste a save code</button></div>` : ''}
+        ${UI.showCode && UI.exportCode ? `<label class="eyebrow" for="expcode">Your save code · ${Math.ceil(UI.exportCode.length / 1024)} KB of text</label><textarea id="expcode" class="code" readonly rows="4">${esc(UI.exportCode)}</textarea>
           <div class="menu"><button class="btn pri" data-copy-code>${UI.copied ? 'Copied ✓' : 'Copy save code'}</button></div>` : ''}
-        ${UI.importOpen ? `<label class="eyebrow" for="impcode">Paste a save code</label><textarea id="impcode" class="code" rows="4" placeholder="HWZ1:…">${esc(UI.importText || '')}</textarea>
+        ${UI.fileInfo || UI.fileErr ? `<div id="filestatus">${UI.fileErr ? `<p class="hint err">${esc(UI.fileErr)}</p>` : `<p class="hint">${UI.fileInfo}</p><div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import>${UI.confirmImport ? 'Tap again to replace this farm' : 'Load this farm'}</button><button class="btn ghost" data-file-cancel>Cancel</button></div>`}</div>` : ''}
+        ${UI.showCode && UI.importOpen ? `<label class="eyebrow" for="impcode">Paste a save code</label><textarea id="impcode" class="code" rows="4" placeholder="HWZ1:…">${esc(UI.importText || '')}</textarea>
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
+        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
@@ -1211,6 +1215,10 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
+    else if ('downloadSave' in ds) { downloadSave(); }
+    else if ('loadFile' in ds) { const f = $('#loadfile'); if (f) { f.value = ''; f.click(); } }
+    else if ('toggleCode' in ds) { UI.showCode = !UI.showCode; }
+    else if ('fileCancel' in ds) { UI.fileInfo = UI.fileErr = null; UI.importData = null; UI.confirmImport = false; }
     else if ('export' in ds) { exportCode().then(c => { UI.exportCode = c; UI.copied = false; dirty(); }).catch(e => toast('Couldn’t make a save code: ' + esc(e.message), 'warn')); }
     else if ('copyCode' in ds) { const ta = $('#expcode');
       const ok = () => { UI.copied = true; dirty(); }, fallback = () => { ta.focus(); ta.select(); toast('Press and hold (or Ctrl/Cmd+C) to copy the selected code.', 'info'); };
@@ -1219,7 +1227,7 @@
     else if ('import' in ds) {
       if (!UI.importData) return;
       if (!UI.confirmImport) { UI.confirmImport = true; dirty(); return; }
-      adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = null; UI.confirmImport = false; UI.exportCode = null;
+      adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = UI.fileInfo = UI.fileErr = null; UI.confirmImport = false; UI.exportCode = null;
       toast(`<b>Farm imported.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Imported this farm from a save code', 'you'); }
     else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
     else if (ds.rot) rotateView(+ds.rot);
@@ -1228,7 +1236,14 @@
     dirty();
   });
   $('#drawer').addEventListener('click', e => { if (e.target.id === 'drawer') { UI.drawer = null; UI.confirmReset = false; dirty(); } });
-  document.addEventListener('change', e => { const id = e.target.id;
+  document.addEventListener('change', e => {
+    if (e.target.id === 'loadfile' && e.target.files && e.target.files[0]) { const file = e.target.files[0];
+      UI.fileErr = UI.fileInfo = null; UI.importData = null; UI.confirmImport = false;
+      file.text().then(parseSaveText).then(o => { UI.importData = o;
+          UI.fileInfo = `<b>${esc(file.name)}</b>: ${esc(o.name || 'Farmer')}’s farm, day ${o.day}, ${o.gold}g, ${o.tiles.filter(t => t.o).length} tiles, score ${o.score}.`; dirty(); })
+        .catch(err => { UI.fileErr = err.message; dirty(); });
+      return; }
+    const id = e.target.id;
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
@@ -1294,9 +1309,33 @@
       json = new TextDecoder().decode(out);
     } else if (code.startsWith('HW1:')) json = new TextDecoder().decode(unb64(code.slice(4)));
     else throw new Error('That isn’t a Harvestworks save code. It should start with HWZ1: or HW1:.');
-    const o = JSON.parse(json);
-    if (!o || o.v !== 1 || !Array.isArray(o.tiles) || o.tiles.length !== o.w * o.h || !o.inv) throw new Error('The save code is damaged or incomplete. Copy it again in full.');
+    return validState(JSON.parse(json), 'The save code is damaged or incomplete. Copy it again in full.');
+  }
+  function validState(o, msg) {
+    if (!o || o.v !== 1 || !Array.isArray(o.tiles) || o.tiles.length !== o.w * o.h || !o.inv) throw new Error(msg);
     return o;
+  }
+  // A save file is plain JSON: { format, saved, state }. Older save codes pasted into a .txt file also load.
+  async function parseSaveText(text) {
+    text = (text || '').trim();
+    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Harvestworks save.'); }
+      return validState(o.format === 'harvestworks-save' ? o.state : o, 'That file isn’t a Harvestworks save, or it’s damaged.'); }
+    return parseCode(text);
+  }
+  const saveFileName = () => `harvestworks-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
+  async function downloadSave() {
+    save();
+    const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
+    const name = saveFileName();
+    // Inside Claude the viewer's own download prompt is used; on a normal website a plain browser download.
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) { try { await dl.save({ filename: name, data: body }); toast(`<b>Save file ready:</b> ${esc(name)}`, 'goal'); }
+      catch (e) { if (e && e.code === 'declined') return; toast('Couldn’t save the file here. Use “Copy a save code instead” below.', 'warn'); UI.showCode = true; dirty(); }
+      return; }
+    if (window.claude && window.claude.use) { toast('Downloads aren’t available in this view. Use “Copy a save code instead” below.', 'warn'); UI.showCode = true; dirty(); return; }
+    const url = URL.createObjectURL(new Blob([body], { type: 'application/json' })), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast(`<b>Downloaded</b> ${esc(name)}`, 'goal');
   }
   function showImportStatus() { // update just the status line and button, so the text box keeps focus
     const st = $('#impstatus'), b = document.querySelector('[data-import]'); if (!st) return;

@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.18 — 2026-10-12
+- Download / load a save file (harvestworks-<name>-day<N>.json). In Claude the viewer's download prompt is used
+  (the page declares the `downloads` capability); on the web it's a normal browser download.
+- Save codes kept as a fallback; the Menu's farm section moved above Controls; phones no longer show the desktop controls list.
+
 ## v0.17 — 2026-10-12
 - Export / import a farm as a save code (Menu → Move your farm). Codes are gzip-compressed (~1–3 KB of text),
   validated before import, and importing needs a second tap to confirm.

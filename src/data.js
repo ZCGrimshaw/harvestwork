@@ -409,6 +409,7 @@ window.HW_DATA = {
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.updates = [
+  { v: '0.18', at: '2026-10-12 23:42', notes: ['Menu → Download save file saves your whole farm as a .json file; Load a save file brings it back on any device or on the web version.', 'Save codes are still there under “Or copy and paste a save code instead”.'] },
   { v: '0.17', at: '2026-10-12 23:40', notes: ['Move your farm: Menu → Export save code gives you a code to copy; Menu → Import a save code on another device or on the web version brings the whole farm across.'] },
   { v: '0.16', at: '2026-10-12 23:28', notes: ['The valley market now moves at the pace of the crowd: with only a couple of traders, prices take about a day to settle back; with dozens or hundreds, they settle in minutes and each sale has a smaller effect.', 'The market shows how many traders are active this hour and how long prices take to settle.'] },
   { v: '0.15', at: '2026-10-12 23:20', notes: ['Shared valley market: on the web version, every player’s sales and purchases move prices for everyone. Prices drift back to normal over a few hours, between half and 1.6× of normal.', 'The market shows each price’s movement (▲/▼) and whether shared prices are connected.', 'Valley market ticker in the top bar shows recent trades. Collapse it with –, and switch between Slow and Fast.'] },
