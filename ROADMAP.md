@@ -13,4 +13,9 @@ Not built yet; picked up when we choose to.
   Options, best first: (1) fade anything standing in front of the selected tile, the hovered tile and
   the farmers to see-through; (2) a "flat view" toggle (key/button) that draws buildings and trees as
   low footprints with their icon; (3) shrink tall sprites slightly; (4) fade tall objects when zoomed out.
-- **Valley stock (proposed 2026-10-12):** goods players sell go into a shared pool anyone can buy from at the shared price.
+- **Supporter pack (pinned 2026-10-13):** cosmetic-only perks for Ko-fi supporters (nothing that affects gold or the shared market).
+  First pack: supporter outfits/hats (S.shirt / S.hat already exist), one seasonal theme (autumn), ambient life
+  (butterflies, birds, fireflies, lit windows, station smoke/steam). Later: more themes, placeable decorations,
+  supporter building trim. Unlock via Menu → Supporter pack: start with one shared code shown in the Ko-fi thank-you
+  message; move to per-supporter codes (Ko-fi webhook → Supabase) only if sharing becomes a problem. Unlock saved in S.
+- ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
