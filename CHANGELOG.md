@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.27 — 2026-10-13
+- Sound (new src/sound.js, all Web Audio synthesis, no files): bells/plucks on C-major pentatonic with a generated
+  convolution reverb. Effects per task (played from runLogged; farmhand at 55%), crop ready, station done, goals,
+  contracts, discoveries, new day, warnings (soft two-note), and a very quiet UI tap. Ambience: looping filtered-noise
+  breeze with slow swell, birds before 18:30, crickets after. Music: 9 s triangle-pad chords + random pentatonic
+  music-box notes. Audio starts on the first tap/key (browser rule), suspends with the tab, and stays quiet during
+  away-time catch-up. Prefs (mute, sfx, amb, mus) live in localStorage 'harvestworks.audio' per device; M toggles mute.
+
 ## v0.26 — 2026-10-13
 - Menu → Options: "Pause the game when you switch to another tab or app" (S.bgPause, default on). Browsers stop
   requestAnimationFrame in background tabs, so "on" is the old behaviour. Off: on return the game simulates the time

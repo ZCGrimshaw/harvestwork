@@ -2,7 +2,7 @@
    Reads content from HW_DATA (data.js) and sprites from HW_ART (art.js). */
 (function () {
   'use strict';
-  const D = window.HW_DATA, C = D.config, ART = window.HW_ART;
+  const D = window.HW_DATA, C = D.config, ART = window.HW_ART, SND = window.HW_SOUND;
   const QN = C.qualityNames, QM = C.qualityMult;
   const SAVE_KEY = 'harvestworks.save.v1';
   const $ = s => document.querySelector(s);
@@ -157,7 +157,7 @@
   }
   function goalStateDone(g) { return g.state === 'unl' ? S.unl.length > 0 : g.state === 'exp' ? S.exp > 0 : g.state === 'built' ? S.built > 0 : false; }
   function completeGoal() {
-    const g = D.goals[S.goal]; S.goal++; S.gold += g.reward || 0;
+    const g = D.goals[S.goal]; S.goal++; S.gold += g.reward || 0; SND.play('goal');
     toast(`<b>Goal complete:</b> ${esc(g.title)}${g.reward ? ` · +${g.reward}g` : ''}`, 'goal');
     if (S.goal === D.goals.length) { S.dp += 1; toast('<b>Tutorial finished · +1 Discovery.</b> Your homestead is on its feet. Check the Order Board for the next contract.', 'disc'); }
     dirty();
@@ -232,7 +232,7 @@
   }
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
   function newDay() {
-    rollMarket();
+    rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
     toast(`<b>Day ${S.day}.</b> ${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
     dirty();
@@ -450,6 +450,7 @@
   function logAct(text, who) { S.log.unshift({ d: S.day, c: clock(), text, who }); if (S.log.length > 150) S.log.length = 150; UI.logDirty = true; }
   function runLogged(t, who) {
     const g0 = S.gold, f0 = UI.floats.length; TASKS[t.a].run(t);
+    SND.play(t.a === 'deliver' && t.p === 'ms' ? 'contract' : t.a, who === 'hand' ? 0.55 : 1);
     const res = UI.floats.slice(f0).map(f => f.text).filter(x => !/^\+\d+$/.test(x) && !/g$/.test(x)), dg = S.gold - g0;
     const money = ['sell', 'buy', 'deliver', 'expand', 'build', 'place', 'upgrade', 'toolup', 'homeup', 'hire', 'reshape', 'survey', 'move'].includes(t.a); // goal rewards aren't the action's doing
     logAct(TASKS[t.a].label(t) + (res.length ? ' · ' + res.join(', ') : '') + (money && dg ? ` · ${dg > 0 ? '+' : '−'}${Math.abs(dg)}g` : ''), who);
@@ -524,10 +525,10 @@
       if (b && b.type === 'farm' && b.st === 'growing') {
         const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1);
         if (!b.half && b.g >= cr.grow / 2) { b.half = true; b.wet = false; dirty(); }
-        if (b.g >= cr.grow) { b.st = 'ready'; float(i, 'Ready!', '#b8f08a'); dirty(); }
+        if (b.g >= cr.grow) { b.st = 'ready'; float(i, 'Ready!', '#b8f08a'); SND.play('ready'); dirty(); }
       } else if (b && b.q) {
         const j = b.q.find(x => !x.done);
-        if (j) { j.t += dt; if (j.t >= j.dur) { j.done = true; if (!b.auto) float(i, 'Done!', '#b8f08a'); dirty(); } }
+        if (j) { j.t += dt; if (j.t >= j.dur) { j.done = true; if (!b.auto) float(i, 'Done!', '#b8f08a'); SND.play('done', b.auto ? 0.5 : 1); dirty(); } }
         if (b.auto && unlocked('autocollect') && !collectErr(i)) { doCollect(i); dirty(); }
         if (b.rep && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty(); }
       } else if (b && D.buildings[b.type].kind === 'sprinkler') {
@@ -671,13 +672,14 @@
   cv.addEventListener('pointerleave', () => { UI.hover = -1; });
   cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * .0015), e.offsetX * DPR, e.offsetY * DPR); }, { passive: false });
   window.addEventListener('keydown', e => {
-    if (e.target.closest('input,textarea,select')) return;
+    if (e.target.closest('textarea,select,input:not([type=range]):not([type=checkbox])')) return;
     const k = e.key, s = 40 / cam.z * CAM_SPEED;
     if (k === 'ArrowLeft' || k === 'a') cam.u -= s; else if (k === 'ArrowRight' || k === 'd') cam.u += s;
     else if (k === 'ArrowUp' || k === 'w') cam.v -= s / 2; else if (k === 'ArrowDown' || k === 's') cam.v += s / 2;
     else if (k === '+' || k === '=') zoomAt(1.2, W / 2, H / 2); else if (k === '-') zoomAt(1 / 1.2, W / 2, H / 2);
     else if (k === 'q' || k === 'Q') rotateView(-1); else if (k === 'e' || k === 'E') rotateView(1);
     else if (k === 'x' || k === 'X') toggleLabels();
+    else if (k === 'm' || k === 'M') { SND.set('mute', !SND.prefs.mute); toast(SND.prefs.mute ? 'Sound off. Press M to turn it back on.' : 'Sound on.', 'info'); dirty(); }
     else if (k === 'Escape') { if (UI.moving != null) UI.moving = null; else if (UI.drawer) UI.drawer = null; else UI.sel = -1; dirty(); }
     else return; clampCam();
   });
@@ -859,6 +861,7 @@
   /* ================= UI ================= */
   function dirty() { UI.dirty = true; }
   function toast(html, kind = 'info') {
+    if (kind === 'warn') SND.play('warn');
     const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = html;
     const box = $('#toasts'); box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 3200 : 5200);
@@ -867,7 +870,7 @@
   const qtag = q => q ? `<span class="q q${q}">${QN[q]}</span>` : '';
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
-    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number')) && el.contains(a)) return; // don't yank a field mid-typing
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
   }
   function btn(t, label, opts = {}) {
@@ -1235,6 +1238,11 @@
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p></div>
+        <span class="eyebrow">Sound</span><div class="opts">
+        <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
+        ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
+          `<label class="slider"><span><b>${n}</b><small>${d}</small></span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.prefs[k] * 100)}" data-vol="${k}" aria-label="${n} volume" ${SND.prefs.mute ? 'disabled' : ''}></label>`).join('')}
+        </div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
         <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
@@ -1363,7 +1371,7 @@
       if (d && !unlocked(d.id) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
         if (kit && !S.market.offers.includes(kit)) { S.market.offers.unshift(kit); S.market.offers = S.market.offers.slice(0, C.marketOffers); }
-        UI.bounds = null;
+        UI.bounds = null; SND.play('discover');
         toast(`<b>Unlocked ${esc(d.name)}.</b> ${esc(d.text)} <span class="where">${esc(d.where)}</span>`, 'disc'); emit('unlock'); save(); } }
     else if (ds.sellqty) { const [id, q] = ds.sellqty.split(':'), inp = document.querySelector(`[data-sq="${ds.sellqty}"]`);
       const max = +inp.dataset.max, n = Math.max(1, Math.min(max, parseInt(inp.value, 10) || 1)); UI.sq[ds.sellqty] = n; inp.blur();
@@ -1387,6 +1395,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
+    else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
     else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
@@ -1433,6 +1442,7 @@
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
+    if (e.target.dataset && e.target.dataset.vol) { SND.unlock(); SND.set(e.target.dataset.vol, (+e.target.value) / 100); return; }
     if (e.target.id === 'impcode') { UI.importText = e.target.value; UI.confirmImport = false; UI.importData = null; UI.importErr = UI.importInfo = null;
       const v = e.target.value.trim();
       if (v) parseCode(v).then(o => { if (UI.importText !== e.target.value) return; UI.importData = o;
@@ -1451,14 +1461,14 @@
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
   function startCatchUp(sec) { UI.catchup = { left: sec, total: sec, gold: S.gold }; }
-  function tickCatchUp() { const c = UI.catchup; if (!c) return;
+  function tickCatchUp() { const c = UI.catchup; SND.quiet = !!c; if (!c) return;
     for (let k = 0; k < CATCHUP_PER_FRAME && c.left > 0; k++) { const d = Math.min(CATCHUP_STEP, c.left); update(d); c.left -= d; }
     UI.floats = []; dirty();
     if (c.left <= 0) { UI.catchup = null; const m = Math.round(c.total / 60), dg = S.gold - c.gold;
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    tickCatchUp(); if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
+    tickCatchUp(); SND.setHour(hour()); if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     draw();
@@ -1471,7 +1481,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-193608';
+  const BUILD = '20261013-194800';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1658,6 +1668,9 @@
     setHTML('#coach', `<div class="cstep">Tutorial · ${n + 1} of ${TUT.length}</div><b class="ct">${st.t}</b><p>${st.d()}</p>
       <div class="cbtns">${st.next ? `<button class="btn pri sm" data-tut-next>${st.next}</button>` : '<span class="cwait">Waiting for you…</span>'}<button class="linkish small" data-tut-skip>Skip tutorial</button></div>`); }
 
+  // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
+  ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
+  document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
   window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
