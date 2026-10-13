@@ -481,6 +481,12 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   .updatebar.movebar, #coach { top: 104px; }
 }
 .stat.loan { cursor: pointer; border-color: var(--berry); } .stat.loan b { color: #ffb3a0; }
+.tcard.week { width: min(520px, 100%); }
+.wgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 6px; }
+.wstat { background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: var(--r); padding: 8px 6px; display: flex; flex-direction: column; align-items: center; }
+.wstat b { font-family: var(--f-display); font-size: 20px; color: var(--sun); } .wstat span { font-size: 12px; color: var(--paper-dim); }
+.wmades { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; } .wmade { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.wmade .ico { width: 20px; height: 20px; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
@@ -524,9 +530,9 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261013-200604"></script>
-<script src="art.js?v=20261013-200604"></script>
-<script src="sound.js?v=20261013-200604"></script>
-<script src="game.js?v=20261013-200604"></script>
+<script src="data.js?v=20261013-201658"></script>
+<script src="art.js?v=20261013-201658"></script>
+<script src="sound.js?v=20261013-201658"></script>
+<script src="game.js?v=20261013-201658"></script>
 
 </body></html>

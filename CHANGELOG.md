@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.29 — 2026-10-13
+- Weekly report: S.wk tallies the week (gold/score/DP/tiles/contracts snapshot + crafted goods, harvest count, sales,
+  purchases, orders). On days 8, 15, 22… newDay queues a report (if S.weekly !== false) shown as a title-overlay card
+  once nothing else is on screen and no catch-up is running; "Turn off weekly reports" link on the card.
+- Settings moved to its own drawer (Menu → Settings): Pausing, Notifications (weekly report), Sound. The settings
+  drawer pauses the game like the Menu does.
+
 ## v0.28 — 2026-10-13
 - Rock-bottom rescue: `stuck()` = gold below the cheapest unlocked seed, no sellable goods, nothing growing/ready,
   no station batches, no ingredient-free recipe (Beehive), no workable resource tile, idle farmer and farmhand.

@@ -102,6 +102,7 @@
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
     if (!S.tick) S.tick = { open: true, spd: 'slow' };
+    if (!S.wk) weekStart();
     expandWorld(); UI.live = null;
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
@@ -260,7 +261,16 @@
   }
   function repayLoan(auto) { if (!S.loan || S.gold < S.loan.owed) return; S.gold -= S.loan.owed; logAct(`Repaid the valley bank loan · −${S.loan.owed}g`, 'you');
     toast(`<b>Loan repaid.</b> ${auto ? `${S.loan.owed}g went back to the valley bank now that you have the gold. ` : ''}You’re debt-free.`, 'goal'); S.loan = null; save(); dirty(); }
+  /* ================= weekly report =================
+     A running tally for the current week; every 7 days it becomes a report (unless turned off in Settings). */
+  function weekStart() { S.wk = { from: S.day, gold: S.gold, score: S.score, dp: S.dp, tiles: S.tiles.filter(t => t.o).length, ms: S.ms || 0, built: S.built || 0,
+    made: {}, harvest: 0, sold: 0, spent: 0, orders: 0 }; }
+  const wk = () => { if (!S.wk) weekStart(); return S.wk; };
+  function weekReport() { const w = wk(), tiles = S.tiles.filter(t => t.o).length, made = Object.entries(w.made).sort((a, b) => b[1] - a[1]);
+    return { n: Math.ceil((S.day - 1) / 7), from: w.from, to: S.day - 1, gold: S.gold - w.gold, score: S.score - w.score, dp: S.dp - w.dp, tiles: tiles - w.tiles, ms: (S.ms || 0) - w.ms,
+      built: (S.built || 0) - w.built, made, harvest: w.harvest, sold: w.sold, spent: w.spent, orders: w.orders }; }
   function newDay() {
+    if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false) UI.pendingWeek = weekReport(); weekStart(); }
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
     toast(`<b>Day ${S.day}.</b> ${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
@@ -319,7 +329,7 @@
     if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k]; }); return room() >= n ? null : FULL; }
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
     done.forEach(x => { const out = D.recipes[x.r].out; for (const k in out) {
-      addItem(k, out[k], x.qual); const d = depth(k);
+      addItem(k, out[k], x.qual); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i);
       first('craft:' + k, C.firsts.craft, `First ${D.items[k].name} made`);
@@ -347,7 +357,7 @@
     harvest: { label: () => 'Harvest', check: t => { const b = T_(t.i).b; if (!b || b.st !== 'ready') return 'Not ready yet'; return room() >= D.crops[b.crop].yield ? null : FULL; },
       run: t => { const b = T_(t.i).b, cr = D.crops[b.crop];
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
-        addItem(cr.item, cr.yield, q); float(t.i, `+${cr.yield} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff');
+        addItem(cr.item, cr.yield, q); wk().harvest += cr.yield; float(t.i, `+${cr.yield} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff');
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
         gainScore(C.score.harvest * (1 + q * .5), t.i); first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
         emit('harvest', { item: cr.item }); } },
@@ -388,9 +398,9 @@
     buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const c = buyPrice(t.p) * t.n, bt = D.items[t.p].building;
         if (bt && builtCount(bt) + count(t.p) + t.n > capFor(bt)) return builtCount(bt) >= capFor(bt) ? capMsg(bt) : 'You already have a kit waiting to be placed';
         if (S.gold < c) return `Needs ${c}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
-      run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
+      run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; wk().spent += c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
-      run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
+      run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
     deliver: { label: t => t.p === 'ms' ? `Deliver: ${D.milestones[S.ms] ? D.milestones[S.ms].name : 'contract'}` : 'Deliver order',
       check: t => { const o = t.p === 'ms' ? D.milestones[S.ms] : S.orders.find(o => o.id === t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
@@ -399,7 +409,7 @@
           S.gold += m.gold; S.dp += m.dp; S.ms++; gainScore(m.gold, t.i);
           toast(`<b>Contract complete: ${esc(m.name)}</b> · +${m.gold}g · +${m.dp} Discovery`, 'disc');
         } else { const o = S.orders.find(o => o.id === t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
-          S.gold += o.gold; gainScore(o.score, t.i); S.orders = S.orders.filter(x => x !== o); S.refill = C.orderRefill;
+          S.gold += o.gold; gainScore(o.score, t.i); S.orders = S.orders.filter(x => x !== o); wk().orders++; S.refill = C.orderRefill;
           float(t.i, `+${o.gold}g`, '#f6e27a');
           if (o.kind === 'crafted') first('orderC', C.firsts.orderCrafted, 'First crafted order filled'); }
         first('order', C.firsts.order, 'First order delivered'); emit('deliver'); } },
@@ -1265,17 +1275,24 @@
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'support') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
-    } else if (UI.drawer === 'menu') {
-      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        <span class="eyebrow">Options</span><div class="opts">
-        <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
+    } else if (UI.drawer === 'settings') {
+      h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <span class="eyebrow">Pausing</span><div class="opts">
+        <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while the Menu or Settings is open</button>
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p></div>
+        <span class="eyebrow">Notifications</span><div class="opts">
+        <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
+        <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p></div>
         <span class="eyebrow">Sound</span><div class="opts">
         <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
         ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
           `<label class="slider"><span><b>${n}</b><small>${d}</small></span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.prefs[k] * 100)}" data-vol="${k}" aria-label="${n} volume" ${SND.prefs.mute ? 'disabled' : ''}></label>`).join('')}
         </div>
+        <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
+    } else if (UI.drawer === 'menu') {
+      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
         <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
@@ -1428,6 +1445,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
+    else if ('weekly' in ds) { S.weekly = S.weekly === false; save(); }
     else if ('repay' in ds) { if (S.loan && S.gold >= S.loan.owed) repayLoan(false); else toast(`You need ${S.loan ? S.loan.owed : 0}g to repay the loan.`, 'warn'); }
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
@@ -1490,7 +1508,7 @@
 
   /* ================= loop ================= */
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
-  const paused = () => !!UI.title || UI.drawer === 'menu' && S.menuPause !== false;
+  const paused = () => !!UI.title || (UI.drawer === 'menu' || UI.drawer === 'settings') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -1502,7 +1520,8 @@
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    tickCatchUp(); SND.setHour(hour()); if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
+    tickCatchUp(); SND.setHour(hour());
+    if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     draw();
@@ -1515,7 +1534,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-200604';
+  const BUILD = '20261013-201658';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1642,6 +1661,16 @@
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
+    else if (t === 'week') { const r = UI.week, sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
+      const stat = (label, val) => `<div class="wstat"><b>${val}</b><span>${label}</span></div>`;
+      const top = r.made.slice(0, 4).map(([k, n]) => `<span class="wmade">${ico(k)} ${n} ${esc(D.items[k].name)}</span>`).join('');
+      const m = D.milestones[S.ms];
+      h = `<div class="tcard week"><span class="twel">Week ${r.n} · days ${r.from}–${r.to}</span><h2>${esc(S.name)}’s week on the farm</h2>
+        <div class="wgrid">${stat('gold', sg(r.gold) + 'g')}${stat('score', sg(r.score))}${stat('Discovery earned', sg(Math.max(0, r.dp)))}${stat('sales', r.sold + 'g')}${stat('harvested', r.harvest)}${stat('orders filled', r.orders + r.ms)}</div>
+        ${top ? `<span class="eyebrow">Made this week</span><div class="wmades">${top}</div>` : ''}
+        <p class="sub">${[r.tiles > 0 ? `You claimed ${r.tiles} new tile${r.tiles === 1 ? '' : 's'}.` : '', r.built > 0 ? `You built ${r.built} new building${r.built === 1 ? '' : 's'}.` : '', r.ms > 0 ? `${r.ms} contract${r.ms === 1 ? '' : 's'} done.` : ''].filter(Boolean).join(' ') || 'A quiet week.'}${m ? ` Next contract: <b>${esc(m.name)}</b>.` : ''}</p>
+        <div class="tmenu"><button class="btn pri big" data-t="continue">Back to the farm</button></div>
+        <button class="linkish small" data-t="weekoff">Turn off weekly reports</button></div>`; }
     else if (t === 'loan') h = `<div class="tcard"><h2>Wow, you really did yourself in…</h2>
         <p class="sub">No gold for seeds, nothing to sell, and no work left that brings in goods. The valley bank is lending you <b>${LOAN.amount}g</b> to get going again.</p>
         <p class="sub">It must be paid back. It comes out of your gold automatically once you have ${LOAN.auto}g, or tap <b>Loan</b> in the top bar to repay early. Get stuck again before it’s paid back and that’s the end of this farm.</p>
@@ -1663,6 +1692,7 @@
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
     if (a === 'main') openTitle('main');
     else if (a === 'continue') closeTitle();
+    else if (a === 'weekoff') { S.weekly = false; save(); closeTitle(); toast('Weekly reports are off. Turn them back on in Menu → Settings.', 'info'); }
     else if (a === 'look') { closeTitle(); toast('Your farm is out of options. Start a new one any time from Menu → Start a new farm.', 'info'); }
     else if (a === 'new') openTitle(UI.hadSave ? 'confirm' : 'name');
     else if (a === 'name') openTitle('name');
