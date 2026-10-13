@@ -464,6 +464,8 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .updatebar.movebar { top: 64px; bottom: auto; border-color: var(--leaf); z-index: 7; }
 @media (max-width: 760px) { .updatebar.movebar { top: calc(52px + env(safe-area-inset-top, 0px)); } }
+.opts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.opts .hint { margin: 0 0 2px; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
@@ -507,8 +509,8 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261013-192145"></script>
-<script src="art.js?v=20261013-192145"></script>
-<script src="game.js?v=20261013-192145"></script>
+<script src="data.js?v=20261013-193608"></script>
+<script src="art.js?v=20261013-193608"></script>
+<script src="game.js?v=20261013-193608"></script>
 
 </body></html>

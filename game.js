@@ -1231,7 +1231,10 @@
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'menu') {
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <span class="eyebrow">Options</span><div class="opts">
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
+        <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
+        <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
         <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
@@ -1383,6 +1386,7 @@
     else if ('goalMin' in ds) { S.goalMin = true; save(); }
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
+    else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
     else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
@@ -1444,9 +1448,17 @@
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
   const paused = () => !!UI.title || UI.drawer === 'menu' && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
+  /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
+  const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
+  function startCatchUp(sec) { UI.catchup = { left: sec, total: sec, gold: S.gold }; }
+  function tickCatchUp() { const c = UI.catchup; if (!c) return;
+    for (let k = 0; k < CATCHUP_PER_FRAME && c.left > 0; k++) { const d = Math.min(CATCHUP_STEP, c.left); update(d); c.left -= d; }
+    UI.floats = []; dirty();
+    if (c.left <= 0) { UI.catchup = null; const m = Math.round(c.total / 60), dg = S.gold - c.gold;
+      toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
+    tickCatchUp(); if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     draw();
@@ -1459,7 +1471,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-192145';
+  const BUILD = '20261013-193608';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1543,7 +1555,11 @@
     resize(); centerOn(idx(Math.round(S.av.x), Math.round(S.av.y)));
     window.addEventListener('resize', resize);
     if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { save(); UI.awayAt = Date.now(); return; }
+      // Browsers stop the game in a background tab. With "keep running" on, make up the missed time on return.
+      if (UI.awayAt && S.bgPause === false && !UI.title) { const sec = Math.min(CATCHUP_MAX, (Date.now() - UI.awayAt) / 1000); if (sec > 2) startCatchUp(sec); }
+      UI.awayAt = null; });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
     pullMarket(); setInterval(() => { if (!document.hidden) pullMarket(); }, 30000);

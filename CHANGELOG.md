@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.26 — 2026-10-13
+- Menu → Options: "Pause the game when you switch to another tab or app" (S.bgPause, default on). Browsers stop
+  requestAnimationFrame in background tabs, so "on" is the old behaviour. Off: on return the game simulates the time
+  away (capped at 2 h) in 0.5 s steps, 300 steps per frame, then toasts a summary. No progress while the page is closed.
+
 ## v0.25 — 2026-10-13
 - World grows to 36×36 (6×6 grid of 6×6 areas); the original 12×12 sits in the middle and counts as one area.
   `expandWorld()` (run from migrate) lifts old saves in and remaps every stored tile index (queue, current task,
