@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.10 — 2026-10-12
+- The contract card lists each item the contract needs with have/need counts.
+- "See everything it takes" opens a production tree for the contract: every ingredient back to raw
+  materials, batches per station, what's still locked or unbuilt, quality notes, and a raw-materials shopping list.
+  Also available from the Order Board.
+
 ## v0.9 — 2026-10-12
 - "Clear" button on the farmhand chip (and "Clear all jobs" at the Homestead) wipes the farmhand's job list.
   Tap once to arm, again within 3 seconds to confirm.

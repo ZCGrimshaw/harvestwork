@@ -720,7 +720,10 @@
     const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
     let body = '';
     if (UI.goalsOpen) body = g ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>`
-      : `<p>${m ? esc(m.hint) + ' Find it on the Order Board.' : 'Chase a higher score with Excellent goods and tuned stations.'}</p>`;
+      : m ? `<div class="gneeds">${m.need.map(([id, n, q]) => { const have = count(id, q), ok = have >= n;
+            return `<div class="gneed ${ok ? 'ok' : ''}">${ico(id)}<span>${esc(D.items[id].name)}${q ? ` <em>${QN[q]}+</em>` : ''}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>
+          <p>${esc(m.hint)} Deliver at the Order Board.</p>${isComplex(m.need) ? `<button class="gtree" data-tree="ms">See everything it takes ▸</button>` : ''}`
+        : `<p>Chase a higher score with Excellent goods and tuned stations.</p>`;
     setHTML('#goals', `<div class="goalhead"><span class="eyebrow">${eyebrow}</span>${ctl}</div><div class="goaltitle">${esc(title)}</div>${body}`);
   }
   function renderQueue() {
@@ -735,6 +738,45 @@
     return need.map(([id, n, q]) => { const have = count(id, q), ok = have >= n, known = S.disc.includes(id);
       return `<div class="need ${ok ? 'ok' : ''}">${ico(id)}<span>${n}× ${esc(D.items[id].name)}${q ? ` <em>${QN[q]}+</em>` : ''}</span><b>${Math.min(have, n)}/${n}</b>${!known ? '<span class="new">new</span>' : ''}</div>`; }).join('');
   }
+  /* production tree: what it takes to make something, all the way back to raw materials */
+  const recipeFor = id => { const all = Object.entries(D.recipes).filter(([, R]) => R.out[id]); return (all.find(([, R]) => unlocked(R.requires)) || all[0] || [null])[0]; };
+  const hasStation = type => S.tiles.some(t => t.b && t.b.type === type);
+  function sourceOf(id) { // where a raw material comes from
+    const crop = Object.values(D.crops).find(c => c.item === id);
+    if (crop) { const sd = D.items[crop.seed], need = sd.requires && !unlocked(sd.requires) ? D.discoveries.find(d => d.id === sd.requires).name : null;
+      return need ? `Grow ${crop.name.toLowerCase()} · unlock “${need}” first` : `Grow ${crop.name.toLowerCase()} on a farm plot (${sd.name.toLowerCase()} at the market)`; }
+    for (const [ter, G] of Object.entries(D.gather)) if (G.out[id] || (id === 'copper_ore' && ter === 'boulder')) {
+      const req = id === 'copper_ore' ? 'prospecting' : G.needs, name = D.terrain[ter].name;
+      return unlocked(req) ? `Gather from a ${name}` : `Gather from a ${name} · unlock “${D.discoveries.find(d => d.id === req).name}” first`; }
+    if (D.items[id].buy) return `Buy at the Open Market (${D.items[id].buy}g each)`;
+    return 'Raw material';
+  }
+  function tree(id, n, minQ = 0, seen = []) {
+    const have = count(id, minQ), short = Math.max(0, n - have), node = { id, n, have, short, minQ, kids: [] };
+    const rid = recipeFor(id); if (!rid || seen.includes(id)) { node.src = sourceOf(id); return node; }
+    const R = D.recipes[rid]; node.rid = rid; node.station = R.station;
+    node.batches = Math.ceil(short / R.out[id]);
+    if (R.requires && !unlocked(R.requires)) node.lock = `Unlock “${D.discoveries.find(d => d.id === R.requires).name}”`;
+    else if (!hasStation(R.station)) node.lock = `Build a ${D.buildings[R.station].name}`;
+    // Quality: crops and made goods can carry it up; gathered goods are always Basic, so the station must add it.
+    const canQ = k => D.items[k].cat !== 'gathered';
+    const ins = Object.keys(R.in);
+    if (minQ && (!ins.length || ins.some(k => !canQ(k)))) node.qnote = `For ${QN[minQ]} quality, give the ${D.buildings[R.station].name} a Quality upgrade${ins.some(canQ) ? `, or use ${QN[minQ]} ingredients where you can` : ''}.`;
+    for (const [k, per] of Object.entries(R.in)) node.kids.push(tree(k, per * node.batches, canQ(k) ? minQ : 0, seen.concat(id)));
+    return node;
+  }
+  function leaves(node, acc = {}) { if (!node.kids.length && node.rid === undefined) { if (node.short) acc[node.id] = (acc[node.id] || 0) + node.short; } else node.kids.forEach(k => leaves(k, acc)); return acc; }
+  function treeHTML(node) {
+    const ok = node.short === 0, name = esc(D.items[node.id].name);
+    let line = `<div class="tnode ${ok ? 'ok' : ''}">${ico(node.id)}<div class="grow1"><b>${node.n}× ${name}</b>${node.minQ ? ` <em class="qmin">${QN[node.minQ]}+</em>` : ''}<small>have ${node.have}${ok ? ' ✓' : ` · need ${node.short} more`}</small>`;
+    if (!ok && node.rid) line += `<small class="how">${node.batches} batch${node.batches === 1 ? '' : 'es'} at the ${esc(D.buildings[node.station].name)}${node.lock ? ` · <span class="lock">${esc(node.lock)}</span>` : ''}</small>${node.qnote ? `<small class="qn">${esc(node.qnote)}</small>` : ''}`;
+    if (!ok && node.src) line += `<small class="how">${esc(node.src)}</small>`;
+    line += `</div></div>`;
+    const kids = !ok && node.kids.length ? `<ul>${node.kids.map(k => `<li>${treeHTML(k)}</li>`).join('')}</ul>` : '';
+    return line + kids;
+  }
+  const isComplex = need => need.some(([id]) => recipeFor(id));
+
   /* categories */
   const groupOf = id => { const it = D.items[id]; return (D.itemGroups.find(g => g.items && g.items.includes(id)) || D.itemGroups.find(g => g.cats && g.cats.includes(it.cat)) || D.itemGroups[D.itemGroups.length - 1]).id; };
   const groupName = gid => D.itemGroups.find(g => g.id === gid).name;
@@ -879,7 +921,7 @@
     let h = head('Order Board', 'Requests use goods you know, plus one contract pointing to what’s next.');
     const m = D.milestones[S.ms];
     if (m) h += `<div class="order ms"><div class="otop"><span class="eyebrow">Contract</span><b>${esc(m.name)}</b></div>${needRow(m.need)}
-      <p class="hint">${esc(m.hint)}</p><div class="oreward">+${m.gold}g · +${m.dp} Discovery</div>${btn({ a: 'deliver', i, p: 'ms' }, 'Deliver', { cls: 'pri' })}</div>`;
+      <p class="hint">${esc(m.hint)}</p>${isComplex(m.need) ? `<button class="btn ghost sm treebtn" data-tree="ms">See everything it takes</button>` : ''}<div class="oreward">+${m.gold}g · +${m.dp} Discovery</div>${btn({ a: 'deliver', i, p: 'ms' }, 'Deliver', { cls: 'pri' })}</div>`;
     h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
       <div class="oreward">+${o.gold}g · +${o.score} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
     if (S.orders.length < C.orderSlots) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
@@ -971,6 +1013,15 @@
       if (ids.length) h += chips('inv', groupCounts(ids, count));
       const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small></div></div>`;
       h += ids.length ? grouped(ids, 'inv', slot, 'invgrid') : '<p class="hint">Storage is empty.</p>';
+    } else if (UI.drawer === 'tree') {
+      const m = D.milestones[S.ms];
+      if (!m) h = `<div class="phead"><div><h2>All contracts complete</h2></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      else { const roots = m.need.map(([id, n, q]) => tree(id, n, q)), tot = {}; roots.forEach(r => leaves(r, tot));
+        const done = roots.every(r => r.short === 0);
+        h = `<div class="phead"><div><h2>${esc(m.name)}</h2><p class="sub">${done ? 'You have everything. Deliver it at the Order Board.' : 'Everything this contract needs, traced back to raw materials. Amounts already account for what’s in storage.'}</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+        if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
+        h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
+        h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'menu') {
       const ago = UI.savedAt ? Math.round((Date.now() - UI.savedAt) / 1000) : null;
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}First playable build. Progress saves in this browser${ago !== null ? `; last saved ${ago}s ago` : ''}.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
@@ -1004,6 +1055,7 @@
     else if ('close' in ds) UI.sel = -1;
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false; }
+    else if (ds.tree) UI.drawer = 'tree';
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
