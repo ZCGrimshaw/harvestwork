@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.7 — 2026-10-12
+- Farmhand status chip has a play/pause button and a speed button (1× → 2× → 3×).
+
 ## v0.6 — 2026-10-12
 - Change this land: clear forest, boulder fields or ponds into grassland (you keep logs/stone),
   or turn grass into a woodland, a pond or a rock field. Found in the tile's panel.

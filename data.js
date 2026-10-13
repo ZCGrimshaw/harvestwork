@@ -318,7 +318,7 @@ window.HW_DATA = {
     'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, verb: 'Pile a rock field', note: 'Rocks that resurface over time for steady stone.' }
   },
 
-  farmhand: { hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
+  farmhand: { speeds: [1, 2, 3], hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
 
   // Milestone contracts, offered one at a time. They may ask for goods you can't make yet;
   // the hint always names the path.

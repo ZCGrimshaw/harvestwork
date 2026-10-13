@@ -357,7 +357,7 @@
   function updateHelper(dt) {
     const F = S.helper; if (!F || !F.on || !F.steps.length) { if (F) F.cur = null; return; }
     if (!F.cur) {
-      if (F.idle > 0) { F.idle -= dt; return; }
+      if (F.idle > 0) { F.idle -= dt * (F.spd || 1); return; }
       const n = F.steps.length;
       for (let k = 0; k < n; k++) { const si = (F.k + k) % n, t = resolveStep(F.steps[si]); if (!t) continue;
         const path = findPath(idx(Math.round(F.x), Math.round(F.y)), standGoals(t.i)); if (!path) continue;
@@ -366,10 +366,10 @@
     }
     const t = F.cur, next = () => { F.cur = null; F.k = (t.si + 1) % Math.max(1, F.steps.length); dirty(); };
     if (t.ph === 'walk') {
-      if (moveActor(F, dt, unlocked('crew') ? C.walkSpeed : D.farmhand.walkSpeed)) { if (checkTask(t)) return next();
+      if (moveActor(F, dt * (F.spd || 1), unlocked('crew') ? C.walkSpeed : D.farmhand.walkSpeed)) { if (checkTask(t)) return next();
         t.ph = 'work'; t.t = 0; t.dur = workDur(t) * (unlocked('crew') ? 1 : D.farmhand.workMult);
         const ddx = tx(t.i) - F.x, ddy = ty(t.i) - F.y; if (Math.abs(ddx) + Math.abs(ddy) > .01) F.dir = [ddx, ddy]; }
-    } else { t.t += dt; if (t.t >= t.dur) { if (!checkTask(t)) TASKS[t.a].run(t); next(); } }
+    } else { t.t += dt * (F.spd || 1); if (t.t >= t.dur) { if (!checkTask(t)) TASKS[t.a].run(t); next(); } }
   }
 
   /* ================= simulation ================= */
@@ -723,7 +723,9 @@
   }
   function renderQueue() {
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
-    const fh = F ? `<div class="chip helper"><span>Farmhand: ${!F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span></div>` : '';
+    const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${!F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
+      <button class="fhb" data-fh-toggle aria-label="${F.on ? 'Pause farmhand' : 'Start farmhand'}" title="${F.on ? 'Pause' : 'Start'}">${F.on ? '❚❚' : '▶'}</button>
+      <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button></div>` : '';
     setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh);
   }
 
@@ -1015,6 +1017,7 @@
       if (st.s === 'tend') st.p = ($('#hcrop') || {}).value; if (st.s === 'station') st.p = ($('#hrec') || {}).value;
       if (S.helper && S.helper.steps.length < fhMax() && (st.p || !['tend', 'station'].includes(st.s))) { S.helper.steps.push(st); toast(`Farmhand job added: ${esc(stepLabel(st))}.`, 'info'); } }
     else if (ds.fhDel !== undefined) { S.helper.steps.splice(+ds.fhDel, 1); S.helper.cur = null; S.helper.k = 0; }
+    else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }
     else if (ds.goto !== undefined) { UI.sel = +ds.goto; centerOn(+ds.goto); }
     else if (ds.shirt !== undefined) S.shirt = +ds.shirt;

@@ -242,7 +242,11 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .linkish { all: unset; cursor: pointer; flex: 1; min-width: 0; font-size: 13px; font-weight: 700; }
 .linkish:hover { color: var(--sun); }
 .linkish:focus-visible { outline: 2px solid var(--sun); }
-.chip.helper { box-shadow: inset 0 0 0 2px var(--leaf); padding: 6px 12px; font-weight: 600; }
+.chip.helper { box-shadow: inset 0 0 0 2px var(--leaf); padding: 4px 4px 4px 12px; font-weight: 600; gap: 6px; }
+.chip.helper.off { box-shadow: inset 0 0 0 2px var(--paper-dim); color: var(--paper-dim); }
+.fhb { cursor: pointer; min-width: 30px; height: 28px; padding: 0 8px; border: 0; border-radius: 3px; background: var(--wood-hi); color: var(--paper); font-family: var(--f-display); font-size: 12px; font-weight: 700; line-height: 1; }
+.fhb:hover { background: #6b4628; } .fhb.spd { color: var(--leaf); font-variant-numeric: tabular-nums; }
+.chip.helper.off .fhb:first-of-type { background: var(--leaf); color: #24160d; }
 /* category chips and groups */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
 .chipf { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 700; color: var(--paper-dim); background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: 99px; }
