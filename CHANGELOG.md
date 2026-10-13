@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.23 — 2026-10-13
+- Removed the automatic fade and See-through mode entirely (focusPoints/fadeOf/UI.fade gone).
+- Eye button / X now toggles building name labels (UI.labels), drawn as pills above every building after the object pass.
+
 ## v0.22 — 2026-10-13
 - Buildings ~25% shorter (art.js `dropRows`/`shortRows`): whole pixel rows above an 8px footing are removed, most-redundant
   first, with each run of identical rows capped at 40% removal so chimneys/awnings survive; animated frames share one row set.
