@@ -742,7 +742,7 @@
   const qtag = q => q ? `<span class="q q${q}">${QN[q]}</span>` : '';
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
-    if (a && a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number') && el.contains(a)) return; // don't yank a field mid-typing
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number')) && el.contains(a)) return; // don't yank a field mid-typing
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
   }
   function btn(t, label, opts = {}) {
@@ -1085,6 +1085,14 @@
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
+        <span class="eyebrow">Move your farm</span>
+        <p class="sub">Copy a save code here, then paste it into Menu → Import on another device or on the web version. Importing replaces the farm on that page.</p>
+        <div class="menu"><button class="btn ghost" data-export>${UI.exportCode ? 'Refresh save code' : 'Export save code'}</button><button class="btn ghost" data-import-open>Import a save code</button></div>
+        ${UI.exportCode ? `<label class="eyebrow" for="expcode">Your save code · ${Math.ceil(UI.exportCode.length / 1024)} KB of text</label><textarea id="expcode" class="code" readonly rows="4">${esc(UI.exportCode)}</textarea>
+          <div class="menu"><button class="btn pri" data-copy-code>${UI.copied ? 'Copied ✓' : 'Copy save code'}</button></div>` : ''}
+        ${UI.importOpen ? `<label class="eyebrow" for="impcode">Paste a save code</label><textarea id="impcode" class="code" rows="4" placeholder="HWZ1:…">${esc(UI.importText || '')}</textarea>
+          <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
+          <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
@@ -1203,6 +1211,16 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
+    else if ('export' in ds) { exportCode().then(c => { UI.exportCode = c; UI.copied = false; dirty(); }).catch(e => toast('Couldn’t make a save code: ' + esc(e.message), 'warn')); }
+    else if ('copyCode' in ds) { const ta = $('#expcode');
+      const ok = () => { UI.copied = true; dirty(); }, fallback = () => { ta.focus(); ta.select(); toast('Press and hold (or Ctrl/Cmd+C) to copy the selected code.', 'info'); };
+      try { navigator.clipboard.writeText(UI.exportCode).then(ok, fallback); } catch (e) { fallback(); } }
+    else if ('importOpen' in ds) { UI.importOpen = !UI.importOpen; UI.importErr = UI.importInfo = null; UI.confirmImport = false; }
+    else if ('import' in ds) {
+      if (!UI.importData) return;
+      if (!UI.confirmImport) { UI.confirmImport = true; dirty(); return; }
+      adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = null; UI.confirmImport = false; UI.exportCode = null;
+      toast(`<b>Farm imported.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Imported this farm from a save code', 'you'); }
     else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
     else if (ds.rot) rotateView(+ds.rot);
     else if (ds.zoom) { ds.zoom === 'home' ? (setView(UI.yaw, 1), centerOn(idx(...D.map.spawn))) : zoomAt(ds.zoom === 'in' ? 1.25 : .8, W / 2, H / 2); }
@@ -1213,7 +1231,14 @@
   document.addEventListener('change', e => { const id = e.target.id;
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
-  document.addEventListener('input', e => { if (e.target.id === 'pname') { S.name = e.target.value.trim() || 'Farmer'; renderTop(); }
+  document.addEventListener('input', e => {
+    if (e.target.id === 'impcode') { UI.importText = e.target.value; UI.confirmImport = false; UI.importData = null; UI.importErr = UI.importInfo = null;
+      const v = e.target.value.trim();
+      if (v) parseCode(v).then(o => { if (UI.importText !== e.target.value) return; UI.importData = o;
+          UI.importInfo = `Found <b>${esc(o.name || 'Farmer')}</b>’s farm: day ${o.day}, ${o.gold}g, ${o.tiles.filter(t => t.o).length} tiles, score ${o.score}.`; showImportStatus(); })
+        .catch(err => { if (UI.importText !== e.target.value) return; UI.importErr = err.message; showImportStatus(); });
+      showImportStatus();
+      return; } if (e.target.id === 'pname') { S.name = e.target.value.trim() || 'Farmer'; renderTop(); }
     const sq = e.target.dataset && e.target.dataset.sq; if (sq) { const max = +e.target.dataset.max, n = Math.max(1, Math.min(max, parseInt(e.target.value, 10) || 1));
       UI.sq[sq] = n; const out = document.querySelector(`[data-sqtotal="${sq}"]`); if (out) out.textContent = n * +e.target.dataset.price; } });
   function centerOn(i) { const [vx, vy] = view(tx(i), ty(i)); cam.u = isoU(vx, vy); cam.v = isoV(vx, vy); }
@@ -1237,7 +1262,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-062829';
+  const BUILD = '20261013-064010';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1248,6 +1273,40 @@
     if (e.target.closest('[data-reload]')) { save(); location.reload(); }
     else if (e.target.closest('[data-later]')) $('#update').hidden = true;
   });
+  /* ================= export / import a farm =================
+     A farm travels as a text "save code" the player copies and pastes, because pages here can't
+     download files. The code is the save, gzip-compressed where the browser supports it, then base64. */
+  const b64 = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+  async function exportCode() {
+    save(); const json = JSON.stringify(S), raw = new TextEncoder().encode(json);
+    if (window.CompressionStream) {
+      const z = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+      return 'HWZ1:' + b64(z); }
+    return 'HW1:' + b64(raw);
+  }
+  async function parseCode(code) {
+    code = (code || '').replace(/\s+/g, '');
+    let json;
+    if (code.startsWith('HWZ1:')) {
+      if (!window.DecompressionStream) throw new Error('This browser can’t read compressed save codes. Try another browser.');
+      const out = await new Response(new Blob([unb64(code.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      json = new TextDecoder().decode(out);
+    } else if (code.startsWith('HW1:')) json = new TextDecoder().decode(unb64(code.slice(4)));
+    else throw new Error('That isn’t a Harvestworks save code. It should start with HWZ1: or HW1:.');
+    const o = JSON.parse(json);
+    if (!o || o.v !== 1 || !Array.isArray(o.tiles) || o.tiles.length !== o.w * o.h || !o.inv) throw new Error('The save code is damaged or incomplete. Copy it again in full.');
+    return o;
+  }
+  function showImportStatus() { // update just the status line and button, so the text box keeps focus
+    const st = $('#impstatus'), b = document.querySelector('[data-import]'); if (!st) return;
+    st.innerHTML = UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : '';
+    if (b) { b.disabled = !UI.importData; b.className = 'btn pri'; b.textContent = 'Import this farm'; }
+  }
+  function adoptState(o) { // switch the running game over to an imported farm
+    S = o; migrate(); UI.yaw = S.yaw != null ? S.yaw : 0; UI.yawTo = null; UI.tilt = S.tilt || 1;
+    UI.sel = -1; UI.drawer = null; UI.html = {}; UI.tickShell = null; centerOn(idx(Math.round(S.av.x), Math.round(S.av.y))); save(); dirty();
+  }
   function boot(snap) {
     S = (snap && snap.tiles) ? snap : (load() || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
     if (!S.market) newState();

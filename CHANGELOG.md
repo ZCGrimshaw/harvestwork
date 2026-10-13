@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.17 — 2026-10-12
+- Export / import a farm as a save code (Menu → Move your farm). Codes are gzip-compressed (~1–3 KB of text),
+  validated before import, and importing needs a second tap to confirm.
+
 ## v0.16 — 2026-10-12
 - Market speed scales with activity (database change): active traders = players who traded in the last hour.
   Recovery to normal: 1–2 traders ~24h, 5 ~10h, 10 ~5h, 50 ~1h, 200 ~20 min (floor ~12 min).
