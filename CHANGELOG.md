@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.10.1 — 2026-10-12
+- Fix: no more blue/grey flash when tapping the map on phones; long-press no longer pops up the browser menu.
+
 ## v0.10 — 2026-10-12
 - The contract card lists each item the contract needs with have/need counts.
 - "See everything it takes" opens a production tree for the contract: every ingredient back to raw
