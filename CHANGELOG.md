@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.30 — 2026-10-13
+- Leaderboard (database): table farm_scores (farm uuid pk, player, name, show, score, days, updated_at; RLS, no
+  policies) + SECURITY DEFINER submit_score (name sanitised to 14 chars of letters/digits/space/'._-; rejects
+  score > 50,000 × days; owner-only upsert, at most every 20 s) and get_leaderboard (top 20 by score, top 20 by
+  pace = score/days for farms ≥ 7 days, your ranks, counts; farms idle > 120 days drop off; hidden names → "A farmer").
+- Game: per-farm id S.fid; score sent on first market connection and each new day; Leaderboard drawer (Menu, weekly
+  report) with Top score / Best pace tabs, your stats and ranks; Settings → "Show my farmer's name" (S.lbShow).
+  Web version only, like the shared market.
+
 ## v0.29 — 2026-10-13
 - Weekly report: S.wk tallies the week (gold/score/DP/tiles/contracts snapshot + crafted goods, harvest count, sales,
   purchases, orders). On days 8, 15, 22… newDay queues a report (if S.weekly !== false) shown as a title-overlay card

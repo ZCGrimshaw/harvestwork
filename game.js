@@ -103,6 +103,7 @@
     if (!S.log) S.log = [];
     if (!S.tick) S.tick = { open: true, spd: 'slow' };
     if (!S.wk) weekStart();
+    if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null;
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
@@ -183,8 +184,17 @@
     try { const r = await fetch(NET.url + fn, { method: 'POST', signal: ctl.signal, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
       if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(tm); }
   }
+  /* leaderboard: each farm reports its score and day once an in-game day; the board is read when opened */
+  const LB_MIN_DAYS = 7;
+  function sendScore() { if (!NET.ok || !S.fid) return;
+    rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
+  async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
+    if (!NET.ok) { await pullMarket(); }
+    if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }
+    try { sendScore(); await new Promise(r => setTimeout(r, 400)); UI.lb = await rpc('get_leaderboard', { p_farm: S.fid }); } catch (e) { UI.lb = { off: true }; } dirty(); }
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
+      if (!UI.sentScore) { UI.sentScore = true; sendScore(); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
@@ -270,6 +280,7 @@
     return { n: Math.ceil((S.day - 1) / 7), from: w.from, to: S.day - 1, gold: S.gold - w.gold, score: S.score - w.score, dp: S.dp - w.dp, tiles: tiles - w.tiles, ms: (S.ms || 0) - w.ms,
       built: (S.built || 0) - w.built, made, harvest: w.harvest, sold: w.sold, spent: w.spent, orders: w.orders }; }
   function newDay() {
+    sendScore();
     if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false) UI.pendingWeek = weekReport(); weekStart(); }
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
@@ -1275,6 +1286,20 @@
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'support') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
+    } else if (UI.drawer === 'lb') {
+      const L = UI.lb || {}, tab = UI.lbTab || 'top', fmt = n => Number(n).toLocaleString();
+      h = `<div class="phead"><div><h2>Leaderboard</h2><p class="sub">Every farm in the valley. <b>Top score</b> is total score; <b>Best pace</b> is score per day played, for farms at least ${LB_MIN_DAYS} days old.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      if (L.loading) h += `<p class="hint">Fetching the valley’s scores…</p>`;
+      else if (L.off) h += `<p class="hint">The leaderboard needs the shared valley connection, which isn’t available here. Play the web version at zcgrimshaw.github.io/harvestwork to see it.</p>`;
+      else { const me = L.me, pace = Math.round(S.score / Math.max(1, S.day) * 10) / 10;
+        h += `<div class="wgrid lbme">${[['Your score', fmt(Math.floor(S.score))], ['Days played', S.day], ['Your pace', pace + '/day']].map(([a, b]) => `<div class="wstat"><b>${b}</b><span>${a}</span></div>`).join('')}</div>`;
+        h += `<p class="hint">${me ? `You’re <b>#${me.rank}</b> of ${L.farms} by score${me.pace_rank ? ` and <b>#${me.pace_rank}</b> of ${L.paced} by pace` : `; you join the pace board on day ${LB_MIN_DAYS}`}.` : 'Your farm will appear after its next day starts.'}</p>`;
+        h += `<div class="tabs">${[['top', 'Top score'], ['pace', 'Best pace']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-lbtab="${k}">${n}</button>`).join('')}</div>`;
+        const rows = (L[tab] || []);
+        h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
+          : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
+        h += `<p class="hint small">${S.lbShow !== false ? `Shown as <b>${esc(S.name)}</b>. Change your name at the Homestead, or hide it in Settings.` : 'You’re hidden: others see “A farmer”. Change this in Settings.'}</p>`; }
+      h += `<div class="menu"><button class="btn ghost" data-lb-refresh>Refresh</button><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'settings') {
       h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <span class="eyebrow">Pausing</span><div class="opts">
@@ -1283,7 +1308,9 @@
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
-        <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p></div>
+        <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
+        <button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
+        <p class="hint small">${S.lbShow !== false ? 'Other players see your farmer’s name and score.' : 'Your score still counts, but others see “A farmer”.'}</p></div>
         <span class="eyebrow">Sound</span><div class="opts">
         <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
         ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
@@ -1292,7 +1319,7 @@
         <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'menu') {
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button></div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
         <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
@@ -1446,6 +1473,10 @@
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if ('weekly' in ds) { S.weekly = S.weekly === false; save(); }
+    else if ('lbshow' in ds) { S.lbShow = S.lbShow === false; save(); sendScore(); }
+    else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
+    else if ('lbRefresh' in ds) { openBoard(); return; }
+    else if (ds.lbtab) { UI.lbTab = ds.lbtab; }
     else if ('repay' in ds) { if (S.loan && S.gold >= S.loan.owed) repayLoan(false); else toast(`You need ${S.loan ? S.loan.owed : 0}g to repay the loan.`, 'warn'); }
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
@@ -1508,7 +1539,7 @@
 
   /* ================= loop ================= */
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
-  const paused = () => !!UI.title || (UI.drawer === 'menu' || UI.drawer === 'settings') && S.menuPause !== false;
+  const paused = () => !!UI.title || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -1534,7 +1565,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-201658';
+  const BUILD = '20261013-215308';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1669,7 +1700,7 @@
         <div class="wgrid">${stat('gold', sg(r.gold) + 'g')}${stat('score', sg(r.score))}${stat('Discovery earned', sg(Math.max(0, r.dp)))}${stat('sales', r.sold + 'g')}${stat('harvested', r.harvest)}${stat('orders filled', r.orders + r.ms)}</div>
         ${top ? `<span class="eyebrow">Made this week</span><div class="wmades">${top}</div>` : ''}
         <p class="sub">${[r.tiles > 0 ? `You claimed ${r.tiles} new tile${r.tiles === 1 ? '' : 's'}.` : '', r.built > 0 ? `You built ${r.built} new building${r.built === 1 ? '' : 's'}.` : '', r.ms > 0 ? `${r.ms} contract${r.ms === 1 ? '' : 's'} done.` : ''].filter(Boolean).join(' ') || 'A quiet week.'}${m ? ` Next contract: <b>${esc(m.name)}</b>.` : ''}</p>
-        <div class="tmenu"><button class="btn pri big" data-t="continue">Back to the farm</button></div>
+        <div class="tmenu"><button class="btn pri big" data-t="continue">Back to the farm</button><button class="btn big" data-lb-open>See the leaderboard</button></div>
         <button class="linkish small" data-t="weekoff">Turn off weekly reports</button></div>`; }
     else if (t === 'loan') h = `<div class="tcard"><h2>Wow, you really did yourself in…</h2>
         <p class="sub">No gold for seeds, nothing to sell, and no work left that brings in goods. The valley bank is lending you <b>${LOAN.amount}g</b> to get going again.</p>
