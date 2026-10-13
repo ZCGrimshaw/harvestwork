@@ -54,6 +54,7 @@
   function migrate() {
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
+    if (!S.log) S.log = [];
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
@@ -328,6 +329,14 @@
         q.push(n); } }
     return null;
   }
+  // Activity log: what the farmer and farmhand actually did, with the results they produced.
+  function logAct(text, who) { S.log.unshift({ d: S.day, c: clock(), text, who }); if (S.log.length > 150) S.log.length = 150; UI.logDirty = true; }
+  function runLogged(t, who) {
+    const g0 = S.gold, f0 = UI.floats.length; TASKS[t.a].run(t);
+    const res = UI.floats.slice(f0).map(f => f.text).filter(x => !/^\+\d+$/.test(x) && !/g$/.test(x)), dg = S.gold - g0;
+    const money = ['sell', 'buy', 'deliver', 'expand', 'build', 'place', 'upgrade', 'toolup', 'homeup', 'hire', 'reshape'].includes(t.a); // goal rewards aren't the action's doing
+    logAct(TASKS[t.a].label(t) + (res.length ? ' · ' + res.join(', ') : '') + (money && dg ? ` · ${dg > 0 ? '+' : '−'}${Math.abs(dg)}g` : ''), who);
+  }
   function fail(t, msg) { toast(`<b>${esc(TASKS[t.a].label(t))}:</b> ${esc(msg)}`, 'warn'); S.cur = null; S.av.path = []; dirty(); }
   function updateAvatar(dt) {
     const A = S.av;
@@ -341,7 +350,7 @@
         if (d <= st) { A.x = nx; A.y = ny; A.path.shift(); } else { A.x += dx / d * st; A.y += dy / d * st; }
       } else { const e = checkTask(t); if (e) return fail(t, e); t.ph = 'work'; t.t = 0; t.dur = workDur(t);
         const ddx = tx(t.i) - A.x, ddy = ty(t.i) - A.y; if (Math.abs(ddx) + Math.abs(ddy) > .01) A.dir = [ddx, ddy]; dirty(); }
-    } else { t.t += dt; if (t.t >= t.dur) { const e = checkTask(t); if (e) return fail(t, e); TASKS[t.a].run(t); S.cur = null; dirty(); UI.saveIn = Math.min(UI.saveIn, 1.5); } }
+    } else { t.t += dt; if (t.t >= t.dur) { const e = checkTask(t); if (e) return fail(t, e); runLogged(t, 'you'); S.cur = null; dirty(); UI.saveIn = Math.min(UI.saveIn, 1.5); } }
   }
 
   /* ================= farmhand ================= */
@@ -385,7 +394,7 @@
       if (moveActor(F, dt * (F.spd || 1), unlocked('crew') ? C.walkSpeed : D.farmhand.walkSpeed)) { if (checkTask(t)) return next();
         t.ph = 'work'; t.t = 0; t.dur = workDur(t) * (unlocked('crew') ? 1 : D.farmhand.workMult);
         const ddx = tx(t.i) - F.x, ddy = ty(t.i) - F.y; if (Math.abs(ddx) + Math.abs(ddy) > .01) F.dir = [ddx, ddy]; }
-    } else { t.t += dt * (F.spd || 1); if (t.t >= t.dur) { if (!checkTask(t)) TASKS[t.a].run(t); next(); } }
+    } else { t.t += dt * (F.spd || 1); if (t.t >= t.dur) { if (!checkTask(t)) runLogged(t, 'hand'); next(); } }
   }
 
   /* ================= simulation ================= */
@@ -1047,7 +1056,30 @@
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
   }
+  const latest = () => D.updates[0];
+  const unseen = () => S.seenUpdate !== latest().v;
+  function fmtAt(at) { const [d, t] = at.split(' '), [y, m, dd] = d.split('-').map(Number), [hh, mm] = t.split(':').map(Number);
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
+    return `${mon} ${dd}, ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'} PT`; }
+  function renderLogs() {
+    setHTML('#logbar', `<button class="ibtn lg ${UI.logOpen === 'act' ? 'on' : ''}" data-log="act" aria-expanded="${UI.logOpen === 'act'}">Activity ▾</button>
+      <button class="ibtn lg ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>`);
+    const el = $('#logpanel');
+    if (!UI.logOpen) { el.hidden = true; UI.html['#logpanel'] = ''; return; }
+    el.hidden = false;
+    let h;
+    if (UI.logOpen === 'act') {
+      h = `<div class="lphead"><b>Activity</b><span class="muted">Newest first · last ${S.log.length}</span><button class="close" data-log="act" aria-label="Close">×</button></div>`;
+      h += S.log.length ? `<ol class="loglist">${S.log.map(e => `<li><span class="when">Day ${e.d} ${e.c}</span><span class="what">${e.who === 'hand' ? '<em>Farmhand</em> ' : ''}${esc(e.text)}</span></li>`).join('')}</ol>`
+        : `<p class="hint">Nothing yet. Everything you and your farmhand finish will be listed here.</p>`;
+    } else {
+      h = `<div class="lphead"><b>Updates</b><span class="muted">What changed in the game</span><button class="close" data-log="upd" aria-label="Close">×</button></div>`;
+      h += `<ol class="loglist upd">${D.updates.map((u, k) => `<li><span class="when">v${u.v} · ${fmtAt(u.at)}${k === 0 && unseen() ? ' <span class="new">new</span>' : ''}</span><ul>${u.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('')}</ol>`;
+    }
+    setHTML('#logpanel', h);
+  }
   function renderUI() {
+    renderLogs();
     renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer();
   }
   function progress(key) {
@@ -1071,12 +1103,14 @@
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false; }
     else if (ds.tree) UI.drawer = 'tree';
+    else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
+      if (was === 'upd' && UI.logOpen !== 'upd') { S.seenUpdate = latest().v; save(); } } // closing Updates marks it as read
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
     else if (ds.pass) { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
-      if (d && !unlocked(d.id) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id);
+      if (d && !unlocked(d.id) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
         if (kit && !S.market.offers.includes(kit)) { S.market.offers.unshift(kit); S.market.offers = S.market.offers.slice(0, C.marketOffers); }
         toast(`<b>Unlocked ${esc(d.name)}.</b> ${esc(d.text)} <span class="where">${esc(d.where)}</span>`, 'disc'); emit('unlock'); save(); } }
@@ -1151,6 +1185,8 @@
     S = (snap && snap.tiles) ? snap : (load() || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
     if (!S.market) newState();
     if (isPhone()) UI.goalsOpen = false;
+    if (S.seenUpdate === undefined && S.time < 61) S.seenUpdate = D.updates[0].v; // brand-new farm: nothing to announce
+    if (unseen()) UI.logOpen = 'upd';
     resize(); centerOn(idx(Math.round(S.av.x), Math.round(S.av.y)));
     window.addEventListener('resize', resize);
     if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S);

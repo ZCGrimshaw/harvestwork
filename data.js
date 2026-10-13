@@ -406,3 +406,23 @@ window.HW_DATA = {
     ]
   }
 };
+
+/* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
+window.HW_DATA.updates = [
+  { v: '0.14', at: '2026-10-12 23:02', notes: ['Activity log: a list of everything you and your farmhand have done. Open it with the Activity button at the bottom left.', 'Updates log (this list): opens by itself after each update so you can see what changed.'] },
+  { v: '0.13', at: '2026-10-12 22:58', notes: ['Fertilized crops grow 40% faster as well as gaining +1 quality.'] },
+  { v: '0.12', at: '2026-10-12 22:56', notes: ['Add fertilizer to a crop that’s already growing.'] },
+  { v: '0.11', at: '2026-10-12 22:54', notes: ['Sell seeds, seedlings, saplings and fertilizer at the market (half price).', 'Storage and the market explain how to use seeds, saplings, fertilizer and kits.', 'Apple Seedling renamed Apple Tree Seedling.'] },
+  { v: '0.10.1', at: '2026-10-12 22:50', notes: ['No more blue flash when tapping the map on phones.'] },
+  { v: '0.10', at: '2026-10-12 22:47', notes: ['The contract card lists what you need with have/need counts.', '“See everything it takes” shows a production tree back to raw materials.'] },
+  { v: '0.9', at: '2026-10-12 22:42', notes: ['Clear all of the farmhand’s jobs from the status chip or the Homestead.'] },
+  { v: '0.8.1', at: '2026-10-12 22:40', notes: ['Upgrade costs wrap instead of hiding under the button.'] },
+  { v: '0.8', at: '2026-10-12 22:38', notes: ['Every station’s Capacity upgrades to 12 slots and Speed to ×5.0.', '“Fill ×N” loads as many batches as you can in one trip.'] },
+  { v: '0.7', at: '2026-10-12 22:35', notes: ['Farmhand play/pause and speed (1×/2×/3×) buttons.'] },
+  { v: '0.6', at: '2026-10-12 11:02', notes: ['Change this land: clear forest, boulders or ponds, or make woodland, ponds and rock fields.', 'A minimized contract sits in the top bar.'] },
+  { v: '0.5', at: '2026-10-12 10:58', notes: ['Minimize the goal/contract card.'] },
+  { v: '0.4', at: '2026-10-12 10:41', notes: ['Phone layout and touch controls (twist to turn, two-finger slide to tilt).'] },
+  { v: '0.3', at: '2026-10-11 23:11', notes: ['Upgrade rows show their cost and what you’re short of.'] },
+  { v: '0.2', at: '2026-10-11 22:58', notes: ['Storage keeps growing: Homestead levels past 220, Storage Barns and Warehouses.'] },
+  { v: '0.1', at: '2026-10-11 22:49', notes: ['First public build.'] }
+];

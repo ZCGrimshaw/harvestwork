@@ -17,4 +17,4 @@ Saves are kept in each player's own browser. Nothing is sent anywhere.
 ## Making a release
 1. Edit files in `src/`.
 2. Run `./build.sh`.
-3. Commit, add the release and its commit to `CHANGELOG.md`, and push.
+3. Add the release to `CHANGELOG.md` and to `updates` at the end of `src/data.js` (shown in-game), commit, and push.

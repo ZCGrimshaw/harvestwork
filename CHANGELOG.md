@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.14 — 2026-10-12
+- Activity log (button beside +, bottom left on phones): everything you and your farmhand finished, with results.
+- Updates log: in-game list of every release with its time; opens by itself after an update until you close it.
+
 ## v0.13 — 2026-10-12
 - Fertilized crops grow 40% faster (on top of the +1 quality).
 
