@@ -453,6 +453,13 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .supportbox .menu { justify-content: center; }
 #zoom .ibtn.eye { display: grid; place-items: center; }
 #zoom .ibtn.eye.on { background: var(--sun); color: #3a2416; }
+#title .tcard.splash, #title .tcard.main { width: min(560px, 100%); padding: 0 0 16px; overflow: hidden; }
+#title .tcard.splash > :not(.tart), #title .tcard.main > :not(.tart) { margin-left: 20px; margin-right: 20px; }
+#title .tcard > .btn { width: calc(100% - 40px); box-sizing: border-box; align-items: center; }
+.tart { display: block; width: 100%; height: auto; max-height: 56vh; object-fit: cover; object-position: 50% 100%; border-bottom: 2px solid var(--wood-lo); margin-bottom: 4px; }
+.tcard.main .tart { max-height: 38vh; }
+.tcard.splash .sub { margin-top: 12px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }

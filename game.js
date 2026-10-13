@@ -1326,7 +1326,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-172702';
+  const BUILD = '20261013-175918';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1428,11 +1428,11 @@
   function renderTitle() {
     const t = UI.title; if (!t) return; let h = '';
     const back = `<button class="btn ghost" data-t="main">Back</button>`;
-    if (t === 'splash') h = `<div class="tcard splash"><span class="twel">Welcome to</span><h1 class="tlogo">Harvestworks</h1><div class="tcrops">${cropRow()}</div>
+    if (t === 'splash') h = `<div class="tcard splash"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Welcome to Harvestworks</h1>
         <p class="sub">Grow, craft and trade your way from one patch of dirt to a farm that never stops growing.</p>
         <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
     else if (t === 'main') { const f = UI.tFile;
-      h = `<div class="tcard"><h1 class="tlogo">Harvestworks</h1><div class="tcrops">${cropRow()}</div><div class="tmenu">
+      h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvestworks</h1><div class="tmenu">
         ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
         <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="new">New farm</button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>

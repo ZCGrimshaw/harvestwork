@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.24 — 2026-10-13
+- Title art (title-art.webp, 1000px wide from the supplied artwork) heads the welcome splash and main menu, replacing the
+  text logo and crop icons; a visually hidden h1 keeps the name for screen readers. Image is cropped from the top on
+  short screens so the logo stays visible.
+
 ## v0.23.1 — 2026-10-13
 - Update loop fix: GitHub Pages serves files with ~10 min browser caching, so `location.reload()` could bring back the old
   game.js and the banner reappeared. Now build.sh stamps `?v=<build>` on the script tags, and Reload navigates to
