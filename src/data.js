@@ -1,4 +1,4 @@
-/* Infinifarm (formerly Harvestworks) — content definitions.
+/* Harvestworks — content definitions.
    Everything the game knows about items, recipes, buildings, terrain, the starting map,
    discoveries, orders and tutorial goals lives here. Gameplay code reads these tables;
    adding content should rarely require touching game.js. */
@@ -410,8 +410,9 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://www.paypal.com/qrcodes/managed/a66a32a4-6956-4fd4-bc36-2160ab957433?utm_source=consweb_more', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
-  { v: '0.20', at: '2026-10-13 10:10', notes: ['Harvestworks is now Infinifarm! Your farm carries over untouched.', 'New title screen and main menu: Continue, New farm (name your farmer), Load a save file, and Show your support.', 'New players can take a quick hands-on tutorial; replay it any time from the Menu.', 'Show your support is also in the Menu, with a PayPal button and a QR code to scan on computers.'] },
-  { v: '0.19.1', at: '2026-10-13 00:10', notes: ['Open Market → Buy has category filters, the same as Sell.'] },
+  { v: '0.20.1', backend: true, at: '2026-10-13 10:20', notes: ['Name back to Harvestworks. Show your support opens its own screen with a big QR code and an Open PayPal link (title menu and Menu).'] },
+  { v: '0.20', at: '2026-10-13 10:10', notes: ['New title screen and main menu: Continue, New farm (name your farmer) and Load a save file.', 'New players can take a quick hands-on tutorial; replay it any time from the Menu.'] },
+  { v: '0.19.1', at: '2026-10-13 00:20', notes: ['Open Market → Buy has category filters, the same as Sell.'] },
   { v: '0.19', at: '2026-10-13 00:15', notes: ['Open Market → Buy now sells every good you’ve made at least once (apples, bread, cider and the rest), at about 1.75× its normal value, Normal quality.', 'On the web version, buying pushes that good’s shared price up and selling pushes it down, for everyone.'] },
   { v: '0.18.1', at: '2026-10-13 00:05', notes: ['Fixed: choosing a save file in Menu → Load a save file did nothing. You now get a “Reading…” note, then a “Load this farm” button (or a clear error if the file isn’t a save).'] },
   { v: '0.18', at: '2026-10-12 23:42', notes: ['Menu → Download save file saves your whole farm as a .json file; Load a save file brings it back on any device or on the web version.', 'Save codes are still there under “Or copy and paste a save code instead”.'] },

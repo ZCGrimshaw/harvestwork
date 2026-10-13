@@ -1,4 +1,4 @@
-/* Infinifarm (formerly Harvestworks) — gameplay, rendering and UI.
+/* Harvestworks — gameplay, rendering and UI.
    Reads content from HW_DATA (data.js) and sprites from HW_ART (art.js). */
 (function () {
   'use strict';
@@ -1083,8 +1083,10 @@
         if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
+    } else if (UI.drawer === 'support') {
+      h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'menu') {
-      h = `<div class="phead"><div><h2>Infinifarm</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while this menu is open</button>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Move your farm</span>
@@ -1099,8 +1101,8 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         <span class="eyebrow">Show your support</span>
-        <p class="sub">Infinifarm is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
-        <div class="supportrow">${!isTouch() ? `<img class="qr sm" src="${D.support.qr}" alt="PayPal QR code for showing your support">` : ''}<div class="menu"><a class="btn pri" href="${esc(D.support.url)}" target="_blank" rel="noopener">Show your support ↗<small>Opens PayPal${!isTouch() ? ', or scan the code with your phone' : ''}</small></a></div></div>
+        <p class="sub">Harvestworks is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
+        <div class="menu"><button class="btn pri" data-drawer="support">Show your support</button></div>
         <div class="menu"><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>
         <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
@@ -1109,7 +1111,14 @@
     const sa = UI.drawer === 'menu' && $('#savedago');
     if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
-  const latest = () => D.updates[0];
+  // Show your support: a big QR code to scan with a phone, and a link that opens PayPal.
+  const supportHTML = () => `<h2>Show your support</h2>
+    <p class="sub">Harvestworks is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
+    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="PayPal QR code for showing your support"><span>Scan with your phone’s camera</span></div>
+    <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open PayPal ↗</a>`;
+  // Backend entries stay in the CHANGELOG only; players see the rest.
+  const PUB = D.updates.filter(u => !u.backend);
+  const latest = () => PUB[0];
   const unseen = () => S.seenUpdate !== latest().v;
   function fmtAt(at) { const [d, t] = at.split(' '), [y, m, dd] = d.split('-').map(Number), [hh, mm] = t.split(':').map(Number);
     const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
@@ -1127,7 +1136,7 @@
         : `<p class="hint">Nothing yet. Everything you and your farmhand finish will be listed here.</p>`;
     } else {
       h = `<div class="lphead"><b>Updates</b><span class="muted">What changed in the game</span><button class="close" data-log="upd" aria-label="Close">×</button></div>`;
-      h += `<ol class="loglist upd">${D.updates.map((u, k) => `<li><span class="when">v${u.v} · ${fmtAt(u.at)}${k === 0 && unseen() ? ' <span class="new">new</span>' : ''}</span><ul>${u.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('')}</ol>`;
+      h += `<ol class="loglist upd">${PUB.map((u, k) => `<li><span class="when">v${u.v} · ${fmtAt(u.at)}${k === 0 && unseen() ? ' <span class="new">new</span>' : ''}</span><ul>${u.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('')}</ol>`;
     }
     setHTML('#logpanel', h);
   }
@@ -1301,7 +1310,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-164213';
+  const BUILD = '20261013-164830';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1332,7 +1341,7 @@
       const out = await new Response(new Blob([unb64(code.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
       json = new TextDecoder().decode(out);
     } else if (code.startsWith('HW1:')) json = new TextDecoder().decode(unb64(code.slice(4)));
-    else throw new Error('That isn’t an Infinifarm save code. It should start with HWZ1: or HW1:.');
+    else throw new Error('That isn’t a Harvestworks save code. It should start with HWZ1: or HW1:.');
     return validState(JSON.parse(json), 'The save code is damaged or incomplete. Copy it again in full.');
   }
   function validState(o, msg) {
@@ -1342,14 +1351,14 @@
   // A save file is plain JSON: { format, saved, state }. Older save codes pasted into a .txt file also load.
   async function parseSaveText(text) {
     text = (text || '').trim();
-    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Infinifarm save.'); }
-      return validState(/^(harvestworks|infinifarm)-save$/.test(o.format) ? o.state : o, 'That file isn’t an Infinifarm save, or it’s damaged.'); }
+    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Harvestworks save.'); }
+      return validState(/^(harvestworks|infinifarm)-save$/.test(o.format) ? o.state : o, 'That file isn’t a Harvestworks save, or it’s damaged.'); }
     return parseCode(text);
   }
-  const saveFileName = () => `infinifarm-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
+  const saveFileName = () => `harvestworks-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
   async function downloadSave() {
     save();
-    const body = JSON.stringify({ format: 'infinifarm-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
+    const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
     const name = saveFileName();
     // Inside Claude the viewer's own download prompt is used; on a normal website a plain browser download.
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
@@ -1375,7 +1384,7 @@
     S = (snap && snap.tiles) ? snap : (saved || newState()); migrate(); UI.yaw = S.yaw != null ? S.yaw : (S.rot || 0) * Math.PI / 2; UI.tilt = S.tilt || 1;
     if (!S.market) newState();
     if (isPhone()) UI.goalsOpen = false;
-    if (S.seenUpdate === undefined && S.time < 61) S.seenUpdate = D.updates[0].v; // brand-new farm: nothing to announce
+    if (S.seenUpdate === undefined && S.time < 61) S.seenUpdate = latest().v; // brand-new farm: nothing to announce
     if (unseen()) UI.logOpen = 'upd';
     resize(); centerOn(idx(Math.round(S.av.x), Math.round(S.av.y)));
     window.addEventListener('resize', resize);
@@ -1398,11 +1407,11 @@
   function renderTitle() {
     const t = UI.title; if (!t) return; let h = '';
     const back = `<button class="btn ghost" data-t="main">Back</button>`;
-    if (t === 'splash') h = `<div class="tcard splash"><span class="twel">Welcome to</span><h1 class="tlogo">Infinifarm</h1><div class="tcrops">${cropRow()}</div>
+    if (t === 'splash') h = `<div class="tcard splash"><span class="twel">Welcome to</span><h1 class="tlogo">Harvestworks</h1><div class="tcrops">${cropRow()}</div>
         <p class="sub">Grow, craft and trade your way from one patch of dirt to a farm that never stops growing.</p>
         <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
     else if (t === 'main') { const f = UI.tFile;
-      h = `<div class="tcard"><h1 class="tlogo">Infinifarm</h1><div class="tcrops">${cropRow()}</div><div class="tmenu">
+      h = `<div class="tcard"><h1 class="tlogo">Harvestworks</h1><div class="tcrops">${cropRow()}</div><div class="tmenu">
         ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
         <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="new">New farm</button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
@@ -1418,20 +1427,16 @@
         <label class="field tname">Name <input id="tname" maxlength="14" placeholder="Farmer" autocomplete="off"></label>
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
-    else if (t === 'support') h = `<div class="tcard"><h2>Show your support</h2>
-        <p class="sub">Infinifarm is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
-        <div class="tmenu"><a class="btn pri big" href="${esc(D.support.url)}" target="_blank" rel="noopener">Show your support on PayPal ↗</a></div>
-        ${!isTouch() ? `<div class="tqr"><img class="qr" src="${D.support.qr}" alt="PayPal QR code for showing your support"><span>Or scan with your phone’s camera.</span></div>` : ''}
-        <div class="tmenu">${back}</div></div>`;
+    else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
     titleEl.className = 'title-' + t; titleEl.innerHTML = h; titleEl.hidden = false;
     const inp = $('#tname'); if (inp) inp.focus();
   }
   function startNewFarm(name, tut) {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
-    newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = D.updates[0].v;
+    newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v;
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
-    if (tut) startTut(); else toast(`<b>Welcome to Infinifarm, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
+    if (tut) startTut(); else toast(`<b>Welcome to Harvestworks, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
   }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;

@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.20.1 — 2026-10-13 · backend (hidden from the in-game updates log)
+- Name restored to Harvestworks everywhere players see it (save files `harvestworks-*.json`; `infinifarm-save` files from v0.20 still load).
+- Show your support opens its own screen (title menu and Menu → Show your support) with a large QR code and an Open PayPal link, on phones too.
+- `backend: true` on a D.updates entry hides it from the in-game Updates log and from the "new update" badge.
+
 ## v0.20 — 2026-10-13
 - Renamed to Infinifarm (visible name, save file names `infinifarm-*.json`, format `infinifarm-save`; old `harvestworks-save` files still load).
   localStorage keys unchanged so every farm carries over. Repo and web link unchanged.
