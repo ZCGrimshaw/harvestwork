@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.19 — 2026-10-13
+- Open Market Buy tab lists every crop/gathered/good/component in `S.disc` (made or owned at least once), priced at
+  value × 1.75 × shared multiplier (above the +50% demand sell price, so no buy-sell loop). Bought goods are Normal quality.
+
 ## v0.18.1 — 2026-10-13
 - Fix: Load a save file did nothing. The menu rewrote itself every second (the “last saved Xs ago” text), replacing the
   hidden file input while the picker was open, so the chosen file was lost. The input now lives outside the menu,
