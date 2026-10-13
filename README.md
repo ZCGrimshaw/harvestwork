@@ -28,3 +28,11 @@ The public key in `src/game.js` is the project's publishable key, which is meant
 1. Edit files in `src/`.
 2. Run `./build.sh`.
 3. Add the release to `CHANGELOG.md` and to `updates` at the end of `src/data.js` (shown in-game), commit, and push.
+
+## Release notes (in-game Updates log)
+- Every release gets an entry at the top of `HW_DATA.updates` in `src/data.js` and a section in `CHANGELOG.md`.
+- **Default: mark the entry `backend: true`** (hidden from players; no "new" badge). Only leave it visible when a player
+  would notice the change while playing: new features or content, visual changes, quality-of-life and control changes,
+  balance changes, and bug fixes they could have run into. Plumbing, hosting, links, refactors and dev tooling stay backend.
+- Write visible notes for players: what changed and where to find it, no file or function names.
+- Mark backend releases in `CHANGELOG.md` with "· backend (hidden from the in-game updates log)".

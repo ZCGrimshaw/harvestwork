@@ -1326,16 +1326,21 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-171929';
+  const BUILD = '20261013-172702';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
-      const v = await r.json(); if (v && v.build && v.build !== BUILD) $('#update').hidden = false;
+      const v = await r.json(); if (!v || !v.build || !(v.build > BUILD)) return;   // ids are timestamps, so newer sorts later
+      UI.newBuild = v.build;
+      let later = null; try { later = sessionStorage.getItem('hw.later'); } catch (e) { }
+      if (later !== v.build) $('#update').hidden = false;
     } catch (e) { /* not hosted, offline, or blocked: nothing to do */ }
   }
   document.addEventListener('click', e => {
-    if (e.target.closest('[data-reload]')) { save(); try { sessionStorage.setItem('infinifarm.skipTitle', '1'); } catch (er) { } location.reload(); }
-    else if (e.target.closest('[data-later]')) $('#update').hidden = true;
+    // Reload to an address that names the new build, so neither the browser nor GitHub's cache can hand back the old files.
+    if (e.target.closest('[data-reload]')) { save(); try { sessionStorage.setItem('infinifarm.skipTitle', '1'); } catch (er) { }
+      location.replace(location.pathname + '?v=' + encodeURIComponent(UI.newBuild || Date.now()) + location.hash); }
+    else if (e.target.closest('[data-later]')) { $('#update').hidden = true; try { sessionStorage.setItem('hw.later', UI.newBuild || ''); } catch (er) { } }
   });
   /* ================= export / import a farm =================
      A farm travels as a text "save code" the player copies and pastes, because pages here can't

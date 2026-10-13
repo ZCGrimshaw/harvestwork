@@ -410,6 +410,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.23.1', at: '2026-10-13 11:30', notes: ['Fixed: the “new version” banner could keep asking you to reload without actually loading the update. Reload now always brings in the latest version, and Later stops it asking again for that update.', 'The banner can now be reached from the title screen too.'] },
   { v: '0.23', at: '2026-10-13 11:15', notes: ['Buildings no longer fade when they’re in front of things; the shorter buildings keep the view clear.', 'The eye button (or X) now shows the name of every building on your farm.'] },
   { v: '0.22', at: '2026-10-13 11:00', notes: ['Buildings are about 25% shorter, so a busy farm is easier to see across. Each one keeps its look: chimneys, sails, awnings and all.', 'Busy farms are easier to read.'] },
   { v: '0.21', at: '2026-10-13 10:45', notes: ['Buildings, trees and rocks now fade when they stand in front of your farmer, your farmhand, the tile you’ve selected or the tile under your mouse, so nothing gets lost behind them.'] },

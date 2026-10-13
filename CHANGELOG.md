@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.23.1 — 2026-10-13
+- Update loop fix: GitHub Pages serves files with ~10 min browser caching, so `location.reload()` could bring back the old
+  game.js and the banner reappeared. Now build.sh stamps `?v=<build>` on the script tags, and Reload navigates to
+  `?v=<newBuild>` so index.html and scripts are fetched fresh. Banner only shows for a strictly newer build; Later is
+  remembered per build for the session. Verified against a local server sending `Cache-Control: max-age=600`.
+- Update banner z-index raised above the title screen (it was unclickable there).
+- Release-notes rule recorded in CLAUDE.md / README: entries default to backend unless players would notice.
+
 ## v0.23 — 2026-10-13
 - Removed the automatic fade and See-through mode entirely (focusPoints/fadeOf/UI.fade gone).
 - Eye button / X now toggles building name labels (UI.labels), drawn as pills above every building after the object pass.
