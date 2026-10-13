@@ -71,7 +71,7 @@ window.HW_DATA = {
     berry_seed:   { name: 'Berry Seeds', cat: 'seed', buy: 9, requires: 'berries', icon: ['seed', '#d6334a', '#d8b27a'] },
     tomato_seed:  { name: 'Tomato Seeds', cat: 'seed', buy: 7, requires: 'tomatoes', icon: ['seed', '#e0402a', '#d8b27a'] },
     pumpkin_seed: { name: 'Pumpkin Seeds', cat: 'seed', buy: 10, requires: 'pumpkins', icon: ['seed', '#f08a24', '#d8b27a'] },
-    apple_seedling:{ name: 'Apple Seedling', cat: 'seed', buy: 14, requires: 'apples', icon: ['sapling', '#5aa83f', '#c22a2a'] },
+    apple_seedling:{ name: 'Apple Tree Seedling', cat: 'seed', buy: 14, requires: 'apples', icon: ['sapling', '#5aa83f', '#c22a2a'] },
     flax_seed:    { name: 'Flax Seeds', cat: 'seed', buy: 6, requires: 'flax', icon: ['seed', '#6f8fd8', '#d8b27a'] },
     sapling:      { name: 'Sapling', cat: 'supply', buy: 3, requires: 'woodcutting', icon: ['sapling', '#5aa83f', '#7a4b28'] },
     fertilizer:   { name: 'Fertilizer', cat: 'supply', buy: 8, requires: 'compost', icon: ['sack', '#7a9a3a', '#4f6a24'] },

@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.11 — 2026-10-12
+- Seeds, seedlings, saplings and fertilizer can be sold at the market (half their buy price).
+- Storage and the market's Buy tab show how to use seeds, saplings, fertilizer and kits.
+- "Apple Seedling" is now "Apple Tree Seedling" (planted on a tilled Farm Plot).
+
 ## v0.10.1 — 2026-10-12
 - Fix: no more blue/grey flash when tapping the map on phones; long-press no longer pops up the browser menu.
 

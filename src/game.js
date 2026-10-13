@@ -92,7 +92,9 @@
   function canPay(cost) { for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) return `Needs ${cost.gold}g`; } else if (count(k) < cost[k]) return `Needs ${cost[k]} ${D.items[k].name}` + (k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : ''); } return null; }
   function pay(cost) { for (const k in cost) { if (k === 'gold') S.gold -= cost.gold; else take(k, cost[k]); } }
   function costTxt(cost) { return Object.entries(cost).map(([k, n]) => k === 'gold' ? `${n}g` : `${n} ${D.items[k].name}`).join(' + ') || 'Free'; }
-  function sellPrice(id, q) { const d = S.market.demand; return Math.round(D.items[id].value * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1)); }
+  // Seeds and supplies sell back for half their market price.
+  const baseValue = id => D.items[id].value || Math.max(1, Math.floor((D.items[id].buy || 2) / 2));
+  function sellPrice(id, q) { const d = S.market.demand; return Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1)); }
 
   /* ================= progression ================= */
   function gainScore(n, i) { n = Math.round(n); if (n <= 0) return; S.score += n; if (i !== undefined) float(i, `+${n}`, '#f6e27a'); }
@@ -117,7 +119,15 @@
   }
 
   /* ================= market & orders ================= */
-  const SELLABLE = ['crop', 'gathered', 'good', 'component'];
+  const SELLABLE = ['crop', 'gathered', 'good', 'component'];          // what orders and market demand use
+  const MARKET_BUYS = SELLABLE.concat(['seed', 'supply']);               // what the market will buy from you
+  // A short "how do I use this?" line for items that aren't obvious.
+  function useHint(id) { const it = D.items[id];
+    if (it.cat === 'seed') { const c = Object.values(D.crops).find(c => c.seed === id); return `Plant on a tilled Farm Plot: select the plot → Plant ${c ? c.name : ''}.`; }
+    if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
+    if (id === 'fertilizer') return 'Tick “Use fertilizer” on a tilled Farm Plot before planting.';
+    if (it.cat === 'kit') return 'Select empty grass you own → Place.';
+    return ''; }
   function rollMarket() {
     const kits = Object.keys(D.items).filter(id => D.items[id].cat === 'kit' && D.items[id].buy && unlocked(D.items[id].requires));
     for (let i = kits.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [kits[i], kits[j]] = [kits[j], kits[i]]; }
@@ -892,11 +902,11 @@
     h += `<div class="tabs">${['buy', 'sell', 'stations'].map(t => `<button class="tab ${UI.mtab === t ? 'on' : ''}" data-mtab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
     if (UI.mtab === 'buy') {
       const list = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && unlocked(D.items[id].requires));
-      h += grouped(list, null, id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${D.items[id].buy}g each · have ${count(id)}</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
+      h += grouped(list, null, id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${D.items[id].buy}g each · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
     } else if (UI.mtab === 'sell') {
-      const ids = Object.keys(S.inv).filter(id => SELLABLE.includes(D.items[id].cat) && count(id) > 0);
+      const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0);
       if (ids.length) h += chips('sell', groupCounts(ids));
       const sellRow = id => [0, 1, 2].filter(q => S.inv[id][q] > 0).map(q => { const n = S.inv[id][q], key = `${id}:${q}`, pr = sellPrice(id, q), v = Math.max(1, Math.min(n, UI.sq[key] || 1));
         return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each · have ${n}</small></div>
@@ -1011,7 +1021,7 @@
       h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items. Stations draw from here; station kits don’t count.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       const ids = Object.keys(S.inv).filter(id => count(id) > 0);
       if (ids.length) h += chips('inv', groupCounts(ids, count));
-      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small></div></div>`;
+      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
       h += ids.length ? grouped(ids, 'inv', slot, 'invgrid') : '<p class="hint">Storage is empty.</p>';
     } else if (UI.drawer === 'tree') {
       const m = D.milestones[S.ms];
