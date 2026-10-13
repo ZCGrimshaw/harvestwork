@@ -9,7 +9,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   let S = null;                                   // the whole saveable game state
-  const UI = { cat: { buy: 'all', sell: 'all', inv: 'all', disc: 'all' }, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
+  const UI = { cat: Object.assign({ buy: 'all', sell: 'all', inv: 'all', disc: 'all' }, (() => { try { return JSON.parse(localStorage.getItem('harvestworks.tabs')) || {}; } catch (e) { return {}; } })()), catShow: {}, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
                floats: [], parts: [], labels: false, sq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
   const cam = { u: 0, v: 80, z: 1.6 };
   // Phones: a narrow screen (portrait) or a short one (landscape), driven by touch.
@@ -964,15 +964,18 @@
   const groupOf = id => { const it = D.items[id]; return (D.itemGroups.find(g => g.items && g.items.includes(id)) || D.itemGroups.find(g => g.cats && g.cats.includes(it.cat)) || D.itemGroups[D.itemGroups.length - 1]).id; };
   const groupName = gid => D.itemGroups.find(g => g.id === gid).name;
   // filter chips: only categories that have something in them, with counts
+  // The chosen tab is remembered (also across visits). If it's empty right now, 'All' shows instead,
+  // but the choice is kept, so the tab comes back once it has something in it again.
   function chips(kind, counts, extra = []) {
-    const cur = UI.cat[kind], opts = [['all', 'All', null], ...extra, ...counts];
-    if (!opts.some(o => o[0] === cur)) UI.cat[kind] = 'all';
-    return `<div class="chips" role="group" aria-label="Filter by category">${opts.map(([id, name, n]) => `<button class="chipf ${UI.cat[kind] === id ? 'on' : ''}" data-cat="${kind}:${id}" aria-pressed="${UI.cat[kind] === id}">${esc(name)}${n != null ? `<span>${n}</span>` : ''}</button>`).join('')}</div>`;
+    const opts = [['all', 'All', null], ...extra, ...counts], cur = opts.some(o => o[0] === UI.cat[kind]) ? UI.cat[kind] : 'all';
+    UI.catShow[kind] = cur;
+    return `<div class="chips" role="group" aria-label="Filter by category">${opts.map(([id, name, n]) => `<button class="chipf ${cur === id ? 'on' : ''}" data-cat="${kind}:${id}" aria-pressed="${cur === id}">${esc(name)}${n != null ? `<span>${n}</span>` : ''}</button>`).join('')}</div>`;
   }
+  const catSel = kind => UI.catShow[kind] || UI.cat[kind] || 'all';
   // render ids grouped under category headings, honouring the active chip
   function grouped(ids, kind, row, wrap) {
     const by = {}; ids.forEach(id => (by[groupOf(id)] = by[groupOf(id)] || []).push(id));
-    const sel = kind ? UI.cat[kind] : 'all';
+    const sel = kind ? catSel(kind) : 'all';
     return D.itemGroups.filter(g => by[g.id] && (sel === 'all' || sel === g.id))
       .map(g => `<div class="grp"><span class="eyebrow">${esc(g.name)}</span>${wrap ? `<div class="${wrap}">` : ''}${by[g.id].map(row).join('')}${wrap ? '</div>' : ''}</div>`).join('');
   }
@@ -1207,7 +1210,7 @@
       const branchOf = d => (D.discoveryBranches.find(b => b.ids.includes(d.id)) || D.discoveryBranches[0]).id;
       const avail = D.discoveries.filter(d => !unlocked(d.id) && d.req.every(unlocked));
       h += chips('disc', D.discoveryBranches.map(b => [b.id, b.name, D.discoveries.filter(d => branchOf(d) === b.id && !unlocked(d.id)).length || null]), avail.length ? [['avail', 'Ready to unlock', avail.length]] : []);
-      const sel = UI.cat.disc, card = d => { const own = unlocked(d.id), reqOk = d.req.every(unlocked);
+      const sel = catSel('disc'), card = d => { const own = unlocked(d.id), reqOk = d.req.every(unlocked);
         const st = own ? 'own' : reqOk ? (S.dp >= d.cost ? 'can' : 'short') : 'lock';
         return `<div class="card ${st}"><div class="ctop"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div class="ctxt"><b>${esc(d.name)}</b><span class="cost">${own ? 'Unlocked' : d.cost + ' DP'}</span></div></div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p>
           ${own ? '' : !reqOk ? `<small>Needs ${d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)).join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
@@ -1364,7 +1367,7 @@
     else if ('tickToggle' in ds) { S.tick.open = !S.tick.open; save(); }
     else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
-    else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; }
+    else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
     else if (ds.pass) { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);

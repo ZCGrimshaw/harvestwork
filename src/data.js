@@ -484,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.27.2', at: '2026-10-13 14:20', notes: ['Discovery, Storage and the Market remember the category tab you last picked, even after you reload the game.'] },
   { v: '0.27.1', at: '2026-10-13 14:10', notes: ['On computers, the valley market ticker now runs along its own row under your gold and storage, so it’s easier to read.'] },
   { v: '0.27', at: '2026-10-13 14:00', notes: ['Harvestworks has sound! Gentle chimes when crops ripen, stations finish and contracts complete, soft sounds for chopping, mining, fishing, watering and selling, plus a breeze, birds by day and crickets at dusk.', 'Optional calm background music that never repeats itself.', 'Menu → Sound: turn sound on or off, and set Effects, Ambience and Music volumes. Press M to mute quickly.'] },
   { v: '0.26', at: '2026-10-13 13:45', notes: ['New in Menu → Options: choose whether the game pauses when you switch to another tab or app. Turn pausing off and your farm keeps working while you’re away (up to 2 hours), catching up when you come back.'] },

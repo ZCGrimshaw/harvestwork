@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.27.2 — 2026-10-13
+- Category tabs (Discovery, Storage, Market buy/sell) remember the last choice in localStorage 'harvestworks.tabs'.
+  chips() no longer resets the stored choice when that tab is temporarily empty (e.g. Ready to unlock); it shows All
+  meanwhile (UI.catShow) and returns to the chosen tab when it has entries again.
+
 ## v0.27.1 — 2026-10-13
 - Desktop layout: #top wraps; the ticker takes a second row under the stats (max 700px), Menu/Storage stay top-right;
   goal card, coach and move bar shift down to 104px. Phone layouts unchanged.
