@@ -55,6 +55,7 @@
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
+    if (!S.tick) S.tick = { open: true, spd: 'slow' };
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
@@ -95,7 +96,7 @@
   function costTxt(cost) { return Object.entries(cost).map(([k, n]) => k === 'gold' ? `${n}g` : `${n} ${D.items[k].name}`).join(' + ') || 'Free'; }
   // Seeds and supplies sell back for half their market price.
   const baseValue = id => D.items[id].value || Math.max(1, Math.floor((D.items[id].buy || 2) / 2));
-  function sellPrice(id, q) { const d = S.market.demand; return Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1)); }
+  function sellPrice(id, q) { const d = S.market.demand; return Math.max(1, Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1) * mult(id))); }
 
   /* ================= progression ================= */
   function gainScore(n, i) { n = Math.round(n); if (n <= 0) return; S.score += n; if (i !== undefined) float(i, `+${n}`, '#f6e27a'); }
@@ -120,6 +121,37 @@
   }
 
   /* ================= market & orders ================= */
+  /* ================= shared valley market =================
+     Prices are shared by everyone playing the hosted game. Each sale or purchase is reported to a small
+     Supabase database, which nudges that item's price for all players; prices drift back to normal over
+     a few hours. If the database can't be reached (offline, or on hosts that block outside connections)
+     the game simply uses its normal local prices. */
+  const NET = { url: 'https://xtbsmtystiozdogielrd.supabase.co/rest/v1/rpc/', key: 'sb_publishable_PJJnI2sfHAgoy0KnTIg6fQ_Jov1DbwY',
+                ok: false, tried: false, prices: {}, trades: [], at: 0, skew: 0 };
+  const PLAYER = (() => { try { let id = localStorage.getItem('harvestworks.player');
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('harvestworks.player', id); } return id; } catch (e) { return crypto.randomUUID(); } })();
+  async function rpc(fn, body) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(NET.url + fn, { method: 'POST', signal: ctl.signal, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(tm); }
+  }
+  async function pullMarket() {
+    try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.ok = true;
+      NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now(); }
+    catch (e) { NET.ok = false; }
+    NET.tried = true; UI.tickDirty = true; dirty();
+  }
+  function reportTrade(item, qty, side) {
+    if (!NET.ok || D.items[item].cat === 'kit') return;
+    NET.trades.unshift({ item, qty, side, created_at: new Date(Date.now() - NET.skew).toISOString(), mine: true }); NET.trades.length = Math.min(NET.trades.length, 40);
+    UI.tickDirty = true;
+    rpc('record_trade', { p_player: PLAYER, p_item: item, p_qty: qty, p_side: side }).then(m => { if (typeof m === 'number') { NET.prices[item] = m; dirty(); } }).catch(() => {});
+  }
+  const mult = id => (NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1;
+  const buyPrice = id => Math.max(1, Math.round(D.items[id].buy * mult(id)));
+  function moveTag(id) { const m = mult(id); if (Math.abs(m - 1) < .005) return '';
+    const pct = Math.round((m - 1) * 100); return `<span class="mv ${pct > 0 ? 'up' : 'dn'}" title="Shared valley price">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`; }
+
   const SELLABLE = ['crop', 'gathered', 'good', 'component'];          // what orders and market demand use
   const MARKET_BUYS = SELLABLE.concat(['seed', 'supply']);               // what the market will buy from you
   // A short "how do I use this?" line for items that aren't obvious.
@@ -241,11 +273,11 @@
     load: { label: t => `Load ${t.n > 1 ? t.n + '× ' : ''}${D.items[Object.keys(D.recipes[t.p].out)[0]].name}`,
       check: t => loadErr(t.i, t.p), run: t => { const n = Math.max(1, Math.min(t.n || 1, fillCount(t.i, t.p))); for (let k = 0; k < n; k++) doLoad(t.i, t.p); } },
     collect: { label: () => 'Collect', check: t => collectErr(t.i), run: t => doCollect(t.i) },
-    buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const it = D.items[t.p];
-        if (S.gold < it.buy * t.n) return `Needs ${it.buy * t.n}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
-      run: t => { S.gold -= D.items[t.p].buy * t.n; addItem(t.p, t.n, 0, true); float(t.i, `-${D.items[t.p].buy * t.n}g`, '#ffb3a0'); emit('buy'); } },
+    buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const c = buyPrice(t.p) * t.n;
+        if (S.gold < c) return `Needs ${c}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
+      run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
-      run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; float(t.i, `+${g}g`, '#f6e27a');
+      run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
     deliver: { label: t => t.p === 'ms' ? `Deliver: ${D.milestones[S.ms] ? D.milestones[S.ms].name : 'contract'}` : 'Deliver order',
       check: t => { const o = t.p === 'ms' ? D.milestones[S.ms] : S.orders.find(o => o.id === t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
@@ -771,7 +803,7 @@
     for (const [ter, G] of Object.entries(D.gather)) if (G.out[id] || (id === 'copper_ore' && ter === 'boulder')) {
       const req = id === 'copper_ore' ? 'prospecting' : G.needs, name = D.terrain[ter].name;
       return unlocked(req) ? `Gather from a ${name}` : `Gather from a ${name} · unlock “${D.discoveries.find(d => d.id === req).name}” first`; }
-    if (D.items[id].buy) return `Buy at the Open Market (${D.items[id].buy}g each)`;
+    if (D.items[id].buy) return `Buy at the Open Market (${buyPrice(id)}g each)`;
     return 'Raw material';
   }
   function tree(id, n, minQ = 0, seen = []) {
@@ -912,18 +944,19 @@
   function marketPanel(i) {
     const d = S.market.demand;
     let h = head('Open Market', 'Every trade sends your farmer to the stall.');
+    h += `<p class="netline ${NET.ok ? 'on' : ''}">${NET.ok ? `<b>Shared valley prices</b> · everyone’s sales move them · updated ${Math.max(0, Math.round((Date.now() - NET.at) / 1000))}s ago` : NET.tried ? 'Shared prices unavailable here, so this market uses local prices.' : 'Connecting to the valley market…'}</p>`;
     if (d) h += `<div class="demand">${ico(d.item)}<span>Today: <b>${esc(D.items[d.item].name)}</b> sells for <b>+${d.pct}%</b></span></div>`;
     h += `<div class="tabs">${['buy', 'sell', 'stations'].map(t => `<button class="tab ${UI.mtab === t ? 'on' : ''}" data-mtab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
     if (UI.mtab === 'buy') {
       const list = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && unlocked(D.items[id].requires));
-      h += grouped(list, null, id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${D.items[id].buy}g each · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
+      h += grouped(list, null, id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
     } else if (UI.mtab === 'sell') {
       const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0);
       if (ids.length) h += chips('sell', groupCounts(ids));
       const sellRow = id => [0, 1, 2].filter(q => S.inv[id][q] > 0).map(q => { const n = S.inv[id][q], key = `${id}:${q}`, pr = sellPrice(id, q), v = Math.max(1, Math.min(n, UI.sq[key] || 1));
-        return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each · have ${n}</small></div>
+        return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each ${moveTag(id)} · have ${n}</small></div>
           <div class="sellctl">${btn({ a: 'sell', i, p: id, q, n: 1 }, 'Sell 1', { cls: 'sm' })}${n > 1 ? btn({ a: 'sell', i, p: id, q, n }, `All · ${pr * n}g`, { cls: 'sm' }) : ''}
           <span class="qtybox"><input type="number" class="qty" id="sq-${id}-${q}" data-sq="${key}" data-max="${n}" data-price="${pr}" min="1" max="${n}" step="1" value="${v}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to sell"><button class="btn sm pri" data-sellqty="${key}" data-i="${i}">Sell · <span data-sqtotal="${key}">${pr * v}</span>g</button></span></div></div>`; }).join('');
       h += ids.length ? grouped(ids, 'sell', sellRow) : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
@@ -1078,8 +1111,40 @@
     }
     setHTML('#logpanel', h);
   }
+  /* ticker: recent valley trades scrolling across the top bar */
+  const TICK_SPEED = { slow: 32, fast: 60 }; // px per second
+  function agoTxt(iso) { const s = Math.max(0, (Date.now() - NET.skew - Date.parse(iso)) / 1000);
+    return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)}m ago` : `${Math.floor(s / 3600)}h ago`; }
+  function tickerText() {
+    if (!NET.tried) return 'Connecting to the valley market…';
+    if (!NET.ok) return 'Valley market offline: prices are local. Shared prices work on the web version at zcgrimshaw.github.io/harvestwork';
+    const items = NET.trades.filter(t => D.items[t.item]).slice(0, 25).map(t => {
+      const it = D.items[t.item], pr = t.side === 'sell' ? sellPrice(t.item, 0) : buyPrice(t.item), mv = moveTag(t.item);
+      return `<span class="tk"><b>${t.qty} ${esc(it.name)}</b> ${t.side === 'sell' ? 'sold' : 'bought'}${t.mine ? ' (you)' : ''} · ${agoTxt(t.created_at)} · now ${pr}g ${mv}</span>`; });
+    return items.length ? items.join('<span class="sep">◆</span>') : 'The valley market is quiet. Sell something to get prices moving.';
+  }
+  function renderTicker() {
+    const T = S.tick || (S.tick = { open: true, spd: 'slow' }), el = $('#ticker');
+    const shell = `${T.open ? '' : 'closed'}|${T.spd}`;
+    if (UI.tickShell !== shell) { UI.tickShell = shell; UI.tickText = null;
+      el.className = T.open ? 'open' : 'closed';
+      el.innerHTML = T.open ? `<span class="tklabel">Valley market</span><div class="tkwin"><div class="tktrack"><span class="tkc"></span><span class="tkc" aria-hidden="true"></span></div></div>
+        <button class="tkb" data-tick-speed aria-label="Ticker speed: ${T.spd}, tap to change" title="Speed">${T.spd === 'slow' ? 'Slow' : 'Fast'}</button>
+        <button class="tkb" data-tick-toggle aria-label="Collapse ticker" title="Collapse">–</button>`
+        : `<button class="tkopen" data-tick-toggle aria-label="Show valley market ticker">Valley market ▸</button>`; }
+    if (!T.open) return;
+    const txt = tickerText(); if (txt === UI.tickText && !UI.tickDirty) return;
+    UI.tickText = txt; UI.tickDirty = false;
+    el.querySelectorAll('.tkc').forEach(c => { c.innerHTML = txt + '<span class="sep">◆</span>'; });
+  }
+  function tickTicker(dt) {
+    const T = S.tick; if (!T || !T.open) return; const tr = document.querySelector('#ticker .tktrack'), c = tr && tr.firstElementChild; if (!c) return;
+    const w = c.offsetWidth; if (!w) return;
+    if (!mq('(prefers-reduced-motion: reduce)')) UI.tickX = ((UI.tickX || 0) + TICK_SPEED[T.spd] * dt) % w;
+    tr.style.transform = `translateX(${-(UI.tickX || 0)}px)`;
+  }
   function renderUI() {
-    renderLogs();
+    renderLogs(); renderTicker();
     renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer();
   }
   function progress(key) {
@@ -1105,6 +1170,8 @@
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
       if (was === 'upd' && UI.logOpen !== 'upd') { S.seenUpdate = latest().v; save(); } } // closing Updates marks it as read
+    else if ('tickToggle' in ds) { S.tick.open = !S.tick.open; save(); }
+    else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
@@ -1157,7 +1224,7 @@
   let last = performance.now(), uiT = 0;
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    if (!paused()) update(dt); tickYaw(dt);
+    if (!paused()) update(dt); tickYaw(dt); tickTicker(dt);
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     draw();
@@ -1170,7 +1237,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-060236';
+  const BUILD = '20261013-062016';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1193,6 +1260,7 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
+    pullMarket(); setInterval(() => { if (!document.hidden) pullMarket(); }, 30000);
     if (S.time < 61 && S.goal === 0) toast(`<b>Welcome to Harvestworks.</b> Follow the goal card to get your homestead going.`, 'goal');
   }
   window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };

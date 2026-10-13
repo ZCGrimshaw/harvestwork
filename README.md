@@ -14,6 +14,13 @@ Saves are kept in each player's own browser. Nothing is sent anywhere.
 - `CHANGELOG.md` — what changed in each tagged release
 - `ROADMAP.md` — ideas not built yet
 
+## Shared market
+Prices are shared through a Supabase project (`harvestworks`). The game only calls two database
+functions over the public API: `get_market()` (prices + recent trades) and `record_trade(...)`
+(report a sale/purchase; capped at 50 units per report and 40 reports per player per 10 minutes).
+Tables have row-level security with no policies, so they can't be read or written directly.
+The public key in `src/game.js` is the project's publishable key, which is meant to be public.
+
 ## Making a release
 1. Edit files in `src/`.
 2. Run `./build.sh`.

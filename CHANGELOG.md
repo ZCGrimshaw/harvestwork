@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.15 — 2026-10-12
+- Shared valley market (web version only): sales and purchases are reported to a Supabase database
+  (project "harvestworks") and move prices for every player, within 0.5×–1.6×, recovering over ~3 hours.
+  Station kits keep fixed prices. Falls back to local prices when the database can't be reached.
+- Market rows show ▲/▼ price movement and a "Shared valley prices" status line.
+- Valley market ticker in the top bar (strip under the top bar on phones): recent trades scrolling;
+  collapse to a button; Slow/Fast speeds; remembered per save.
+
 ## v0.14 — 2026-10-12
 - Activity log (button beside +, bottom left on phones): everything you and your farmhand finished, with results.
 - Updates log: in-game list of every release with its time; opens by itself after an update until you close it.

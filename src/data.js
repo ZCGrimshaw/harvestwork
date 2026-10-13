@@ -409,6 +409,7 @@ window.HW_DATA = {
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.updates = [
+  { v: '0.15', at: '2026-10-12 23:20', notes: ['Shared valley market: on the web version, every player’s sales and purchases move prices for everyone. Prices drift back to normal over a few hours, between half and 1.6× of normal.', 'The market shows each price’s movement (▲/▼) and whether shared prices are connected.', 'Valley market ticker in the top bar shows recent trades. Collapse it with –, and switch between Slow and Fast.'] },
   { v: '0.14', at: '2026-10-12 23:02', notes: ['Activity log: a list of everything you and your farmhand have done. Open it with the Activity button at the bottom left.', 'Updates log (this list): opens by itself after each update so you can see what changed.'] },
   { v: '0.13', at: '2026-10-12 22:58', notes: ['Fertilized crops grow 40% faster as well as gaining +1 quality.'] },
   { v: '0.12', at: '2026-10-12 22:56', notes: ['Add fertilizer to a crop that’s already growing.'] },
