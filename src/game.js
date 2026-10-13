@@ -10,7 +10,7 @@
 
   let S = null;                                   // the whole saveable game state
   const UI = { cat: { buy: 'all', sell: 'all', inv: 'all', disc: 'all' }, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
-               floats: [], parts: [], sq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
+               floats: [], parts: [], fade: {}, xray: false, sq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
   const cam = { u: 0, v: 80, z: 1.6 };
   // Phones: a narrow screen (portrait) or a short one (landscape), driven by touch.
   const mq = q => window.matchMedia && window.matchMedia(q).matches;
@@ -582,10 +582,13 @@
     else if (k === 'ArrowUp' || k === 'w') cam.v -= s / 2; else if (k === 'ArrowDown' || k === 's') cam.v += s / 2;
     else if (k === '+' || k === '=') zoomAt(1.2, W / 2, H / 2); else if (k === '-') zoomAt(1 / 1.2, W / 2, H / 2);
     else if (k === 'q' || k === 'Q') rotateView(-1); else if (k === 'e' || k === 'E') rotateView(1);
+    else if (k === 'x' || k === 'X') toggleXray();
     else if (k === 'Escape') { if (UI.drawer) UI.drawer = null; else UI.sel = -1; dirty(); }
     else return; clampCam();
   });
 
+  function toggleXray() { UI.xray = !UI.xray; const b = $('[data-xray]'); if (b) { b.classList.toggle('on', UI.xray); b.setAttribute('aria-pressed', UI.xray); }
+    toast(UI.xray ? '<b>See-through on.</b> Buildings and trees are faded so you can see behind them.' : 'See-through off.', 'info'); }
   function primaryAction(i) {
     const T = T_(i), b = T.b;
     if (!T.o) return null;
@@ -643,6 +646,26 @@
     if (T.t === 'water') return 'water:' + ((((S.time * 1.2) | 0) + T.v) % 3);
     return T.t + ':' + T.v;
   }
+  /* See-through: tall things (buildings, trees, rocks) fade when they stand in front of what you're
+     looking at — your farmers, the selected tile, the hovered tile and the current job — or all of them
+     while See-through mode is on (the eye button or X). Fades ease in and out so nothing pops. */
+  const FADE_TO = .38;
+  function focusPoints(p) {
+    const pts = [], add = (x, y, up) => { const v = view(x, y), [sx, sy] = toScreen(x, y); pts.push({ d: v[0] + v[1], sx, sy, up: up * p }); };
+    add(S.av.x, S.av.y, 24); if (S.helper) add(S.helper.x, S.helper.y, 24);
+    if (UI.sel >= 0) add(tx(UI.sel), ty(UI.sel), 20);
+    if (UI.hover >= 0 && !isTouch()) add(tx(UI.hover), ty(UI.hover), 20);
+    if (S.cur) add(tx(S.cur.i), ty(S.cur.i), 20);
+    return pts;
+  }
+  function fadeOf(i, d, sx, sy, p, hgt, pts) {
+    let want = 1;
+    if (UI.xray && i !== UI.sel) want = FADE_TO;
+    else { const l = sx - 15 * p, r = sx + 15 * p, t = sy - hgt * p, b = sy + 3 * p;
+      for (const f of pts) if (f.d < d - .01 && f.sx + 9 * p > l && f.sx - 9 * p < r && f.sy + 4 * p > t && f.sy - f.up < b) { want = FADE_TO; break; } }
+    const cur = UI.fade[i] === undefined ? 1 : UI.fade[i], nx = cur + (want - cur) * .22;
+    UI.fade[i] = Math.abs(nx - want) < .01 ? want : nx; return UI.fade[i];
+  }
   function draw() {
     const p = P(), now = S.time;
     cx.imageSmoothingEnabled = false;
@@ -680,6 +703,7 @@
     // task target markers
     [S.cur, ...S.queue].forEach((t, k) => { if (!t) return; tilePoly(t.i, 3); cx.strokeStyle = k ? 'rgba(143,211,239,.55)' : 'rgba(143,211,239,.9)'; cx.lineWidth = p * .7; cx.stroke(); });
     // objects + avatar, depth sorted
+    const pts = focusPoints(p);
     const actors = [{ A: S.av, cur: S.cur, shirt: S.shirt, hat: S.hat }];
     if (S.helper) actors.push({ A: S.helper, cur: S.helper.cur, shirt: 2, hat: 1, tag: 'Farmhand' });
     actors.forEach(a => { const v = view(a.A.x, a.A.y); a.d = v[0] + v[1] + .5; }); actors.sort((m, n) => m.d - n.d); let ai = 0;
@@ -696,7 +720,7 @@
       while (ai < actors.length && vd[i][0] + vd[i][1] > actors[ai].d) drawAv(actors[ai++]);
       const T = S.tiles[i], b = T.b, [sx, sy] = toScreen(x, y);
       if (sx < -40 * p || sx > W + 40 * p || sy < -60 * p || sy > H + 60 * p) continue;
-      const a = T.o ? 1 : .72;
+      const a = T.o ? 1 : .72, d = vd[i][0] + vd[i][1];
       if (b) {
         if (b.type === 'farm') {
           if (b.st === 'growing' || b.st === 'ready') { const st = b.st === 'ready' ? 2 : b.g < D.crops[b.crop].grow / 2 ? 0 : 1; blit(ART.get(`crop:${b.crop}.${st}`), sx, sy, p, 16, 16); }
@@ -707,16 +731,16 @@
           if (b.type === 'stove' && active) key = 'stove_on';
           if (b.type === 'mill' || b.type === 'sawmill') key += ':' + (active ? ((now * 4) | 0) % 2 : 0);
           if (D.buildings[b.type].kind === 'sprinkler') key = (b.type === 'big_sprinkler' ? 'big_sprinkler:' : 'sprinkler:') + (b.fx > 0 ? ((now * 6) | 0) % 2 : 0);
-          const img = ART.get(key); blit(img, sx, sy, p, 16, img.height - 4);
+          const img = ART.get(key), fa = fadeOf(i, d, sx, sy, p, img.height - 4, pts); blit(img, sx, sy, p, 16, img.height - 4, fa < 1 ? fa : undefined);
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
             if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - 26 * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
         }
       } else if (T.r) {
-        if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a);
+        if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a * fadeOf(i, d, sx, sy, p, img.height - 4, pts));
           if (T.r.st === 'sapling' && T.o) bar(sx, sy + 4 * p, p, T.r.g / D.gather.forest.regrow, '#7cc04b'); }
-        else if (T.t === 'boulder') { const img = ART.get('rocks:' + T.r.stock); blit(img, sx, sy, p, 16, img.height - 4, a); }
+        else if (T.t === 'boulder') { const img = ART.get('rocks:' + T.r.stock); blit(img, sx, sy, p, 16, img.height - 4, a * fadeOf(i, d, sx, sy, p, img.height - 4, pts)); }
         else if (T.t === 'water' && T.v === 1) blit(ART.get('reeds'), sx, sy, p, 16, 16, a);
       }
     }
@@ -1104,7 +1128,7 @@
         <p class="sub">Harvestworks is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
         <div class="menu"><button class="btn pri" data-drawer="support">Show your support</button></div>
         <div class="menu"><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>
-        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
+        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>Buildings and trees fade when they’re in front of your farmer or the tile you picked. The eye button fades them all.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>Buildings and trees fade when they’re in front of your farmer, the selected tile or the tile under the mouse. X or the eye button fades them all (See-through).</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
@@ -1251,6 +1275,7 @@
       adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = UI.fileInfo = UI.fileErr = null; UI.confirmImport = false; UI.exportCode = null;
       toast(`<b>Farm imported.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Imported this farm from a save code', 'you'); }
     else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
+    else if ('xray' in ds) toggleXray();
     else if (ds.rot) rotateView(+ds.rot);
     else if (ds.zoom) { ds.zoom === 'home' ? (setView(UI.yaw, 1), centerOn(idx(...D.map.spawn))) : zoomAt(ds.zoom === 'in' ? 1.25 : .8, W / 2, H / 2); }
     else return;

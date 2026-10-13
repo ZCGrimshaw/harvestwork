@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.21 — 2026-10-13
+- Visibility: tall sprites (buildings, trees, rocks) ease to 38% opacity when they are nearer the viewer than a focus point
+  (farmer, farmhand, selected tile, hovered tile on mouse devices, current job target) and their sprite box overlaps it.
+  Per-tile fade eased each frame (UI.fade).
+- See-through mode (eye button in the view controls, key X): fades all tall sprites except the selected tile's. Session-only.
+
 ## v0.20.2 — 2026-10-13 · backend (hidden from the in-game updates log)
 - Show your support switched from PayPal to Ko-fi: https://ko-fi.com/zerocrunchgames. New support-qr.png generated for that URL
   (verified by decoding); button reads "Open Ko-fi".
