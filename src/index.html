@@ -124,7 +124,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .ldb { display: flex; flex-direction: column; gap: 4px; flex: none; } .ldb .btn { width: 100%; justify-content: center; align-items: center; }
 .rname { display: block; font-size: 13px; margin-bottom: 2px; }
 .why { display: block; color: var(--paper-dim); font-size: 11px; margin-top: 2px; }
-.recipe small.cost { display: block; color: var(--sun); font-size: 12px; font-weight: 700; margin-top: 3px; }
+.recipe small.cost { white-space: normal; display: block; color: var(--sun); font-size: 12px; font-weight: 700; margin-top: 3px; }
 .why.short { color: #e88a8a; }
 .recipe.locked { color: var(--paper-dim); flex-wrap: wrap; }
 .recipe.locked small { font-size: 12px; }
@@ -209,7 +209,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .card.lock .dimg { filter: grayscale(.9) brightness(.8); }
 .card.own .dimg { background: radial-gradient(ellipse at 50% 70%, rgba(245,197,66,.18), transparent 70%); }
 .ctop b { font-family: var(--f-display); font-size: 16px; font-weight: 600; line-height: 1.2; }
-.cost { font-family: var(--f-display); color: var(--plum); white-space: nowrap; }
+.card .cost { font-family: var(--f-display); color: var(--plum); white-space: nowrap; }
 .invgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 14px; }
 .slot { display: flex; gap: 10px; align-items: center; padding: 8px; background: rgba(0,0,0,.2); border-radius: var(--r); }
 .slot small { display: block; color: var(--paper-dim); font-size: 12px; }

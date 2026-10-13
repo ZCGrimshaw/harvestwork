@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.8.1 — 2026-10-12
+- Fix: upgrade costs wrap onto a new line instead of running under the Upgrade button.
+
 ## v0.8 — 2026-10-12
 - Every station's Capacity upgrade now goes to +10 batch slots (12 total), and Speed to ×5.0.
   Later levels use bricks, gears and copper, and need the Brick Kiln / Tinkering discoveries.
