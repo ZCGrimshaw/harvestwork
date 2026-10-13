@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.8 — 2026-10-12
+- Every station's Capacity upgrade now goes to +10 batch slots (12 total), and Speed to ×5.0.
+  Later levels use bricks, gears and copper, and need the Brick Kiln / Tinkering discoveries.
+- "Fill ×N" button loads as many batches as the free slots and your ingredients allow, in one trip.
+- Long batch queues show the first four and a "+N more queued" line.
+
 ## v0.7 — 2026-10-12
 - Farmhand status chip has a play/pause button and a speed button (1× → 2× → 3×).
 

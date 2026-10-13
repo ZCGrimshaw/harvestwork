@@ -191,11 +191,18 @@ window.HW_DATA = {
   },
 
   // Station upgrade axes. Level costs are indexed by current level.
+  // Station upgrades. Each list entry is the price of the next level; `gate` names a discovery a level needs.
+  // Capacity (batch slots) and Speed run long on purpose: they're what keeps automation growing late game.
   upgrades: {
-    speed:    { name: 'Speed', effect: [1, 0.75, 0.55], label: l => `×${[1, 1.33, 1.8][l]} speed`,
-                cost: [{ gold: 40, plank: 2 }, { gold: 90, plank: 4, stone: 2 }] },
-    capacity: { name: 'Capacity', effect: [0, 1, 2], label: l => `+${[0, 1, 2][l]} slots`,
-                cost: [{ gold: 50, crate: 1 }, { gold: 110, crate: 2 }] },
+    speed:    { name: 'Speed', effect: [1, 0.75, 0.55, 0.42, 0.33, 0.26, 0.2], label: l => `×${(1 / [1, 0.75, 0.55, 0.42, 0.33, 0.26, 0.2][l]).toFixed(1)} speed`,
+                cost: [{ gold: 40, plank: 2 }, { gold: 90, plank: 4, stone: 2 }, { gold: 200, plank: 6, brick: 4 },
+                       { gold: 350, brick: 6, gear: 2 }, { gold: 600, brick: 10, gear: 4 }, { gold: 950, brick: 14, gear: 6, copper_ingot: 2 }],
+                gate: [null, null, 'kiln', 'tinkering', 'tinkering', 'tinkering'] },
+    capacity: { name: 'Capacity', effect: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], label: l => `+${l} slot${l === 1 ? '' : 's'}`,
+                cost: [{ gold: 50, crate: 1 }, { gold: 110, crate: 2 }, { gold: 180, crate: 3 }, { gold: 260, crate: 3, brick: 4 },
+                       { gold: 360, crate: 4, brick: 6 }, { gold: 480, crate: 4, brick: 8, gear: 1 }, { gold: 620, crate: 5, brick: 10, gear: 2 },
+                       { gold: 800, crate: 6, brick: 12, gear: 3 }, { gold: 1000, crate: 7, brick: 14, gear: 4 }, { gold: 1250, crate: 8, brick: 16, gear: 5 }],
+                gate: [null, null, null, 'kiln', 'kiln', 'tinkering', 'tinkering', 'tinkering', 'tinkering', 'tinkering'] },
     quality:  { name: 'Quality', effect: [0, 1, 2], label: l => ['No bonus', '+1 quality tier', '+2 quality tiers'][l],
                 cost: [{ gold: 150, plank: 4, stone: 4 }, { gold: 400, gear: 3 }], gate: [null, 'mastery'] }
   },

@@ -175,6 +175,8 @@
     if (!unlocked(R.requires)) return 'Recipe locked';
     if (b.q.length >= stationSlots(b)) return 'All slots busy';
     for (const k in R.in) if (count(k) < R.in[k]) return `Needs ${R.in[k]} ${D.items[k].name}`; return null; }
+  function fillCount(i, rid) { const b = T_(i).b, R = D.recipes[rid]; if (loadErr(i, rid)) return 0;
+    let n = stationSlots(b) - b.q.length; for (const k in R.in) n = Math.min(n, Math.floor(count(k) / R.in[k])); return Math.max(0, n); }
   function doLoad(i, rid) { const b = T_(i).b, R = D.recipes[rid]; let q = Object.keys(R.in).length ? 2 : 0;
     for (const k in R.in) q = Math.min(q, take(k, R.in[k], 0, 'high'));
     q = Math.min(2, q + D.upgrades.quality.effect[b.lv.quality]);
@@ -221,8 +223,8 @@
       run: t => { const n = gatherOut('water', 'fish').fish; T_(t.i).r.stock--; addItem('fish', n); float(t.i, `+${n} Fish`, '#fff'); gainScore(C.score.fish, t.i); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
     mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : T_(t.i).r.stock < 1 ? 'No boulders left. They resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
       run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
-    load: { label: t => `Load ${D.items[Object.keys(D.recipes[t.p].out)[0]].name}`,
-      check: t => loadErr(t.i, t.p), run: t => doLoad(t.i, t.p) },
+    load: { label: t => `Load ${t.n > 1 ? t.n + '× ' : ''}${D.items[Object.keys(D.recipes[t.p].out)[0]].name}`,
+      check: t => loadErr(t.i, t.p), run: t => { const n = Math.max(1, Math.min(t.n || 1, fillCount(t.i, t.p))); for (let k = 0; k < n; k++) doLoad(t.i, t.p); } },
     collect: { label: () => 'Collect', check: t => collectErr(t.i), run: t => doCollect(t.i) },
     buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const it = D.items[t.p];
         if (S.gold < it.buy * t.n) return `Needs ${it.buy * t.n}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
@@ -789,8 +791,10 @@
     const B = D.buildings[b.type], slots = stationSlots(b);
     let h = head(B.name, esc(B.desc));
     h += `<div class="slots"><span class="eyebrow">Batches ${b.q.length}/${slots}</span>`;
-    h += b.q.length ? b.q.map((j, k) => { const out = Object.keys(D.recipes[j.r].out)[0];
+    const SHOW = 4, more = b.q.length - SHOW;
+    h += b.q.length ? b.q.slice(0, SHOW).map((j, k) => { const out = Object.keys(D.recipes[j.r].out)[0];
       return `<div class="row">${ico(out)}<div class="grow1"><b>${esc(D.items[out].name)}</b> ${qtag(j.qual)} ${j.done ? '<span class="ok">· ready</span>' : k === b.q.findIndex(x => !x.done) ? '' : '<span class="muted">· waiting</span>'}${j.done ? '' : pbar(`s:${i}:${k}`)}</div></div>`; }).join('')
+        + (more > 0 ? `<p class="hint">+${more} more batch${more === 1 ? '' : 'es'} queued (${b.q.filter(j => j.done).length} ready in total).</p>` : '')
       : `<p class="hint">Empty. Load a recipe below; ingredients come from storage.</p>`;
     if (b.q.some(j => j.done)) h += btn({ a: 'collect', i }, 'Collect finished goods', { cls: 'pri' });
     if (unlocked('autocollect')) h += `<button class="toggle ${b.auto ? 'on' : ''}" data-auto="${i}" aria-pressed="${!!b.auto}"><i></i>Auto-collect finished goods into storage</button>`;
@@ -802,7 +806,7 @@
       const ins = Object.entries(R.in).map(([k, n]) => `<span class="in ${count(k) >= n ? '' : 'short'}">${ico(k)}${n}<small>(${count(k)})</small></span>`).join('<span class="plus">+</span>');
       const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
       const le = checkTask({ a: 'load', i, p: id });
-      return `<div class="recipe"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)}</b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div>${btn({ a: 'load', i, p: id }, 'Load', { err: le })}</div>`;
+      return `<div class="recipe"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)}</b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>`;
     }).join('');
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
@@ -1061,7 +1065,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-053515';
+  const BUILD = '20261013-053814';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
