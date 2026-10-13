@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.27.3 — 2026-10-13
+- Desktop ticker row spans the full width (flex-basis 100%); collapsed button unchanged.
+
 ## v0.27.2 — 2026-10-13
 - Category tabs (Discovery, Storage, Market buy/sell) remember the last choice in localStorage 'harvestworks.tabs'.
   chips() no longer resets the stored choice when that tab is temporarily empty (e.g. Ready to unlock); it shows All
