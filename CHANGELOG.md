@@ -3,6 +3,24 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.25 — 2026-10-13
+- World grows to 36×36 (6×6 grid of 6×6 areas); the original 12×12 sits in the middle and counts as one area.
+  `expandWorld()` (run from migrate) lifts old saves in and remaps every stored tile index (queue, current task,
+  farmer and farmhand positions/paths, farmhand routine). Unsurveyed tiles are `t: 'void'`: not drawn, walked or picked.
+- Survey (discovery `surveying`, req Workbench): pick a dashed area next to open land; task runs at the Homestead.
+  Cost: 500g ×1.6 per survey + fence kits + planks, bricks from the 2nd, roof tiles from the 4th. Theme per area is
+  fixed by position (`themeAt`); `genRegion` lays weighted terrain from `D.regionThemes[...].mix`, smooths once and
+  guarantees the area's resource appears. Camera bounds follow open land (+ surveyable ring once unlocked).
+- New terrain + generic `gather` task: Wildflower Meadow (flowers), Clay Bank (clay), Reed Marsh (reeds), Iron Seam
+  (iron ore + stone), each with a discovery, regrowing stock, farmhand support and a "clear to grass" reshape.
+- New stations Dye Vat, Potter's Wheel, Forge; recipes Wildflower Honey (Beehive), Dye, Dyed Cloth, Roof Tiles (Kiln),
+  Clay Pot, Basket (Workbench), Iron Ingot, Iron Tools; 5 new contracts; Crafts item group; "New lands" discovery branch.
+- Building caps: stations 1 per area, Storage Barn 2 per area, Warehouse 1 per area; checked on kit purchase and on
+  placing; existing duplicates are kept. Market Stations tab lists every unlocked kit with "Built n of cap".
+- Move buildings (discovery `rollers`): stations, storage, sprinklers; keeps upgrades/batches; queue and farmhand jobs
+  follow. Cost (80g + kit price) ×1.5^recent moves + planks or bricks; one step of surcharge wears off every 3 days.
+- Water reeds decoration sprite renamed `pondreeds` (the `reeds` key is now the marsh ground tile).
+
 ## v0.24 — 2026-10-13
 - Title art (title-art.webp, 1000px wide from the supplied artwork) heads the welcome splash and main menu, replacing the
   text logo and crop icons; a visually hidden h1 keeps the name for screen readers. Image is cropped from the top on

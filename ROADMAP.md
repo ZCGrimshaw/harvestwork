@@ -2,13 +2,8 @@
 
 Not built yet; picked up when we choose to.
 
-- **Map expansion (pinned 2026-10-12):** buy a 6×6 region beyond the map edge for gold + materials.
-  Proposed shape: a "Survey" action at the edge picks a side and adds a 6×6 region of unclaimed land,
-  still bought tile by tile; each region has a theme (meadow, woods, quarry, lake, later ore hills/orchards).
-  Cost rises per region (gold, planks, stone, fence kits; later bricks/gears).
-  Technical: resize the grid, remap tile indices (selection, queue, farmhand jobs) when growing north/west,
-  draw non-rectangular outlines, and convert old saves.
-- More discoveries as the tree is worked through (ore beyond copper, orchards, more automation).
+- ~~Map expansion~~ (done in v0.25: survey 6×6 areas with their own terrain, plus building caps and moving buildings).
+- More discoveries as the tree is worked through (more area themes, orchards, more automation).
 - ~~Visibility as the farm grows~~ (done: v0.21 auto-fade + See-through toggle; v0.22 buildings 25% shorter).
 - **Supporter pack (pinned 2026-10-13):** cosmetic-only perks for Ko-fi supporters (nothing that affects gold or the shared market).
   First pack: supporter outfits/hats (S.shirt / S.hat already exist), one seasonal theme (autumn), ambient life

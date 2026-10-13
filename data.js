@@ -22,14 +22,18 @@ window.HW_DATA = {
     expandStoneAt: 4,                      // from the 5th purchase, land also needs stone
     expandFenceAt: 8,                      // from the 9th, a fence kit
     farmPlotCost: { gold: 20 },
+    regionSize: 6,                          // new areas are 6×6
+    worldRegions: 6,                        // the world is 6×6 areas; your starting land fills the middle 2×2
+    survey: { gold: 500, goldMult: 1.6, fence: 2, plank: 10, plankStep: 5, brickFrom: 1, brick: 4, brickStep: 4, roofFrom: 3, roof: 6, roofStep: 2 },
+    move: { gold: 80, heat: 1.5, coolDays: 3 }, // moving a building: base gold + kit price, ×1.5 per recent move
     workTime: {
       till: 1.2, plant: 0.8, water: 0.8, harvest: 1, chop: 2, replant: 0.8, fish: 2.5, mine: 2.2,
       load: 0.6, collect: 0.5, buy: 0.3, sell: 0.3, deliver: 0.6, build: 2.5, place: 2.5,
-      expand: 1.5, upgrade: 2, homeup: 2, reshape: 3, fertilize: 0.8
+      expand: 1.5, upgrade: 2, homeup: 2, reshape: 3, fertilize: 0.8, gather: 1.8, survey: 3, move: 4
     },
     // Score: every productive action pays a little; complex production pays more.
     score: { till: 1, plant: 1, water: 1, harvest: 3, chop: 3, replant: 1, fish: 3, mine: 3,
-             craftPerDepth: 4, build: 10, expand: 15, upgrade: 12, sellPer: 5 },
+             craftPerDepth: 4, build: 10, expand: 15, upgrade: 12, sellPer: 5, gather: 3, survey: 60 },
     // Discovery: first-time accomplishments only. Repetition never earns it.
     firsts: { harvest: 1, craft: 1, craftDeep: 1, gather: 1, expand: 1, sell: 1, order: 1,
               orderCrafted: 1, good: 1, excellent: 2, build: 1 }
@@ -43,13 +47,34 @@ window.HW_DATA = {
     water:   { name: 'Pond', cost: 40, walk: false,
                desc: 'Fish here. Stock refills over time.', future: 'Irrigation and water power later.' },
     boulder: { name: 'Boulder Field', cost: 45, walk: true,
-               desc: 'Break boulders into stone. Rocks slowly resurface.', future: 'Ore and metalwork later.' }
+               desc: 'Break boulders into stone. Rocks slowly resurface.', future: 'Ore and metalwork later.' },
+    // found only in new areas you survey
+    flowers: { name: 'Wildflower Meadow', cost: 40, walk: true,
+               desc: 'Pick wildflowers. They bloom again over time.', future: 'Beehives turn flowers into extra honey; a Dye Vat turns them into dye.' },
+    clay:    { name: 'Clay Bank', cost: 45, walk: true,
+               desc: 'Dig soft clay. The bank slowly fills back in.', future: 'Fire clay into roof tiles, or throw pots on a Potter’s Wheel.' },
+    reeds:   { name: 'Reed Marsh', cost: 40, walk: true,
+               desc: 'Cut reeds. They grow back quickly.', future: 'Weave reeds into baskets at the Workbench.' },
+    ore:     { name: 'Iron Seam', cost: 60, walk: true,
+               desc: 'Mine iron ore from the rocky seam. It slowly weathers out again.', future: 'Forge iron ingots and tools.' }
+  },
+
+  // New areas beyond the starting land. Each theme mixes terrain (weights) and brings one new resource.
+  regionThemes: {
+    meadow:   { name: 'Meadow', desc: 'Rolling grass full of wildflowers, with a few trees.', mix: { grass: 48, flowers: 38, forest: 9, water: 5 } },
+    claybank: { name: 'Clay Banks', desc: 'A riverbank of soft clay between ponds and stones.', mix: { grass: 40, clay: 28, water: 20, boulder: 12 } },
+    marsh:    { name: 'Marsh', desc: 'Reedy wetland and open water, with dry grass at the edges.', mix: { grass: 35, reeds: 35, water: 25, forest: 5 } },
+    hills:    { name: 'Iron Hills', desc: 'Rocky hills where seams of iron ore break the surface.', mix: { grass: 38, ore: 22, boulder: 28, forest: 12 } }
   },
 
   gather: {
     forest:  { action: 'chop', needs: 'woodcutting', out: { log: 2, sapling: 1 }, regrow: 45 },
     water:   { action: 'fish', needs: 'fishing', out: { fish: 1 }, stock: 3, regen: 22 },
-    boulder: { action: 'mine', needs: 'stonecutting', out: { stone: 2 }, stock: 4, regen: 35 }
+    boulder: { action: 'mine', needs: 'stonecutting', out: { stone: 2 }, stock: 4, regen: 35 },
+    flowers: { action: 'gather', verb: 'Pick flowers', what: 'Blooms', sprite: 'blooms', needs: 'wildflowers', out: { flowers: 3 }, stock: 3, regen: 30 },
+    clay:    { action: 'gather', verb: 'Dig clay', what: 'Clay', sprite: 'claypit', needs: 'claydigging', out: { clay: 2 }, stock: 4, regen: 34 },
+    reeds:   { action: 'gather', verb: 'Cut reeds', what: 'Reeds', sprite: 'reedbed', needs: 'reedcutting', out: { reeds: 3 }, stock: 3, regen: 26 },
+    ore:     { action: 'gather', verb: 'Mine iron ore', what: 'Ore', sprite: 'orevein', needs: 'ironmining', out: { iron_ore: 1, stone: 1 }, stock: 3, regen: 45 }
   },
 
   crops: {
@@ -121,6 +146,18 @@ window.HW_DATA = {
     berry_juice:  { name: 'Berry Juice', cat: 'good', value: 40, icon: ['jar', '#9a2a5a', '#7a7a84'] },
     mead:         { name: 'Mead', cat: 'good', value: 90, icon: ['jar', '#e8c060', '#7a4b28'] },
     smoked_fish:  { name: 'Smoked Fish', cat: 'good', value: 40, icon: ['fish', '#a8703a', '#6e4425'] },
+    // new areas
+    flowers:      { name: 'Wildflowers', cat: 'gathered', value: 4, icon: ['berry', '#e86aa8', '#5aa83f'] },
+    clay:         { name: 'Clay', cat: 'gathered', value: 5, icon: ['stone', '#c98a5a', '#9a5e3a'] },
+    reeds:        { name: 'Reeds', cat: 'gathered', value: 3, icon: ['grain', '#a8c060', '#6f8a3a'] },
+    iron_ore:     { name: 'Iron Ore', cat: 'gathered', value: 14, icon: ['stone', '#8a6a5a', '#5a4a46'] },
+    dye:          { name: 'Dye', cat: 'component', value: 20, icon: ['jar', '#9a4ac8', '#e8e0d0'] },
+    dyed_cloth:   { name: 'Dyed Cloth', cat: 'good', value: 120, icon: ['cloth', '#9a4ac8', '#6a2a98'] },
+    roof_tile:    { name: 'Roof Tiles', cat: 'component', value: 12, icon: ['brick', '#d0703a', '#8a3e1e'] },
+    clay_pot:     { name: 'Clay Pot', cat: 'good', value: 34, icon: ['jar', '#c8703a', '#8a4a26'] },
+    basket:       { name: 'Basket', cat: 'good', value: 30, icon: ['crate', '#d8b46a', '#9a7a3a'] },
+    iron_ingot:   { name: 'Iron Ingot', cat: 'component', value: 60, icon: ['ingot', '#a8adb8', '#6e737e'] },
+    iron_tools:   { name: 'Iron Tools', cat: 'good', value: 170, icon: ['tool', '#a8adb8', '#6e737e'] },
 
     sawmill_kit:  { name: 'Sawmill Kit', cat: 'kit', buy: 50, building: 'sawmill', requires: 'sawmill', icon: ['kit', '#c98a4a', '#9aa0aa'] },
     mill_kit:     { name: 'Flour Mill Kit', cat: 'kit', buy: 70, building: 'mill', requires: 'mill', icon: ['kit', '#c98a4a', '#f2ead8'] },
@@ -139,7 +176,10 @@ window.HW_DATA = {
     smokehouse_kit:{ name: 'Smokehouse Kit', cat: 'kit', buy: 110, building: 'smokehouse', requires: 'smokehouse', icon: ['kit', '#6e4425', '#9aa0aa'] },
     barn_kit:     { name: 'Storage Barn Kit', cat: 'kit', buy: 60, building: 'barn', requires: 'sawmill', icon: ['kit', '#c8483a', '#f2ead8'] },
     warehouse_kit:{ name: 'Warehouse Kit', cat: 'kit', buy: 220, building: 'warehouse', requires: 'warehouse', icon: ['kit', '#8a8a94', '#b5523b'] },
-    smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] }
+    smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] },
+    dyevat_kit:   { name: 'Dye Vat Kit', cat: 'kit', buy: 130, building: 'dyevat', requires: 'dyeing', icon: ['kit', '#9a4ac8', '#c98a4a'] },
+    potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
+    forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] }
   },
 
   // Categories used to sort lists in the market, storage and Discovery screens.
@@ -152,6 +192,7 @@ window.HW_DATA = {
     { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey'] },
     { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish'] },
     { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead'] },
+    { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools'] },
     { id: 'materials', name: 'Building materials', cats: ['component'] },
     { id: 'kits', name: 'Station kits', cats: ['kit'] },
     { id: 'other', name: 'Other', cats: ['good'] }
@@ -162,10 +203,12 @@ window.HW_DATA = {
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] }
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] },
+    { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
 
-  // kind: home | farm | station | market | board
+  // kind: home | farm | station | market | board | storage | sprinkler
+  // Stations and storage are limited per area you own (perArea, default 1); survey new land to build more.
   buildings: {
     homestead: { name: 'Homestead', kind: 'home', desc: 'Your home and shared storage. Every station draws from and returns to it.' },
     farm:      { name: 'Farm Plot', kind: 'farm', desc: 'Till, plant, water, harvest.' },
@@ -186,9 +229,12 @@ window.HW_DATA = {
     hive:      { name: 'Beehive', kind: 'station', slots: 2, place: { plank: 3 }, desc: 'Bees make honey on their own. Load a batch to collect it.' },
     shed:      { name: 'Mushroom Shed', kind: 'station', slots: 2, place: { log: 4 }, desc: 'Grows mushrooms on old logs in the dark.' },
     smokehouse:{ name: 'Smokehouse', kind: 'station', slots: 2, place: { brick: 4, plank: 2 }, desc: 'Smokes fish over charcoal.' },
-    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, place: { plank: 4 }, desc: 'Adds 40 storage. Build as many as you like.' },
-    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. Build as many as you like.' },
-    smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' }
+    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, perArea: 2, place: { plank: 4 }, desc: 'Adds 40 storage. Two per area you own.' },
+    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. One per area you own.' },
+    smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' },
+    dyevat:    { name: 'Dye Vat', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
+    potter:    { name: 'Potter’s Wheel', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
+    forge:     { name: 'Forge', kind: 'station', slots: 2, place: { brick: 8, stone: 6 }, desc: 'Smelts iron ore over charcoal and hammers ingots into tools.' }
   },
 
   // Station upgrade axes. Level costs are indexed by current level.
@@ -249,13 +295,21 @@ window.HW_DATA = {
     honey:          { station: 'hive', in: {}, out: { honey: 1 }, time: 30 },
     mushrooms:      { station: 'shed', in: { log: 1 }, out: { mushrooms: 3 }, time: 25 },
     smoked_fish:    { station: 'smokehouse', in: { fish: 2, charcoal: 1 }, out: { smoked_fish: 2 }, time: 24 },
-    copper_ingot:   { station: 'smelter', in: { copper_ore: 2, charcoal: 1 }, out: { copper_ingot: 1 }, time: 20 }
+    copper_ingot:   { station: 'smelter', in: { copper_ore: 2, charcoal: 1 }, out: { copper_ingot: 1 }, time: 20 },
+    flower_honey:   { station: 'hive', in: { flowers: 2 }, out: { honey: 2 }, time: 24, requires: 'wildflowers' },
+    dye:            { station: 'dyevat', in: { flowers: 3 }, out: { dye: 1 }, time: 14 },
+    dyed_cloth:     { station: 'dyevat', in: { linen: 1, dye: 1 }, out: { dyed_cloth: 1 }, time: 22 },
+    roof_tile:      { station: 'kiln', in: { clay: 2 }, out: { roof_tile: 2 }, time: 14, requires: 'claydigging' },
+    clay_pot:       { station: 'potter', in: { clay: 2 }, out: { clay_pot: 1 }, time: 14 },
+    basket:         { station: 'workbench', in: { reeds: 4 }, out: { basket: 1 }, time: 14, requires: 'reedcutting' },
+    iron_ingot:     { station: 'forge', in: { iron_ore: 2, charcoal: 1 }, out: { iron_ingot: 1 }, time: 22 },
+    iron_tools:     { station: 'forge', in: { iron_ingot: 2, plank: 1 }, out: { iron_tools: 1 }, time: 26 }
   },
 
   // Spend Discovery here. Each states what it enables and where to find it.
   discoveries: [
     { id: 'woodcutting', pic: ['forest:1', 'tree', 'log'], name: 'Woodcutting', cost: 1, req: [], text: 'Chop forest trees for logs and saplings.', where: 'Buy a Forest tile at your land’s west edge, then select it.' },
-    { id: 'fishing', pic: ['water:0', 'reeds', 'fish'], name: 'Fishing', cost: 1, req: [], text: 'Catch fish from ponds; grill them at the Stove.', where: 'Buy a Pond tile east of the Homestead.' },
+    { id: 'fishing', pic: ['water:0', 'pondreeds', 'fish'], name: 'Fishing', cost: 1, req: [], text: 'Catch fish from ponds; grill them at the Stove.', where: 'Buy a Pond tile east of the Homestead.' },
     { id: 'stew', pic: ['grass:0', 'stove_on', 'veggie_stew'], name: 'Veggie Stew', cost: 1, req: [], text: 'Cook a carrot and a potato into a stew worth twice as much.', where: 'Stove → recipes.' },
     { id: 'sawmill', pic: ['grass:1', 'sawmill:0', 'plank'], name: 'Sawmill', cost: 2, req: ['woodcutting'], text: 'Saw logs into planks for building.', where: 'Open Market → Stations. Place it on empty grass.' },
     { id: 'stonecutting', pic: ['boulder:0', 'rocks:4', 'stone'], name: 'Stonecutting', cost: 2, req: [], text: 'Break boulders into stone for stations and land.', where: 'Buy a Boulder Field (grey rocky tiles) next to your land. Boulder Fields never cost stone.' },
@@ -292,7 +346,18 @@ window.HW_DATA = {
     { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
     { id: 'tinkering', pic: ['grass:0', 'big_sprinkler:1', 'gear'], name: 'Tinkering', cost: 4, req: ['smelter', 'workbench'], text: 'Make gears, and Deluxe Sprinklers that water a 5×5 square.', where: 'Workbench → Gear, Deluxe Sprinkler.' },
     { id: 'warehouse', pic: ['grass:0', 'warehouse', 'crate'], name: 'Warehouses', cost: 3, req: ['cellar', 'tinkering'], text: 'Big brick warehouses that each add 120 storage.', where: 'Open Market → Stations. Needs 10 bricks and 2 gears to place.' },
-    { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: +2 quality tiers.', where: 'Select a station → Upgrades → Quality.' }
+    { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: +2 quality tiers.', where: 'Select a station → Upgrades → Quality.' },
+
+    // new lands: open areas beyond the starting map, each with its own resource
+    { id: 'surveying', pic: ['flowers:0', 'board', 'fence_kit'], name: 'Land Surveying', cost: 3, req: ['workbench'], text: 'Open whole new areas beyond your map, each with its own terrain. Every area you own also lets you build one more of each station.', where: 'Select a dashed area past the edge of your map → Survey.' },
+    { id: 'rollers', pic: ['grass:1', 'stove', ['loop', '#e8c04a', '#9a6a3c']], name: 'Rollers & Skids', cost: 3, req: ['surveying', 'tuning'], text: 'Move a station, storage building or sprinkler to a new spot, upgrades and all. Costly, and pricier each time.', where: 'Select a building → Move this building.' },
+    { id: 'wildflowers', pic: ['flowers:1', 'blooms:3', 'flowers'], name: 'Wildflowers', cost: 2, req: ['surveying'], text: 'Pick wildflowers in Meadow areas. Beehives turn them into extra honey.', where: 'Wildflower Meadow tiles; Beehive → Wildflower Honey.' },
+    { id: 'dyeing', pic: ['grass:0', 'dyevat', 'dyed_cloth'], name: 'Dye Works', cost: 3, req: ['wildflowers', 'loom'], text: 'Boil wildflowers into dye, then dye linen into valuable cloth.', where: 'Open Market → Stations.' },
+    { id: 'claydigging', pic: ['clay:0', 'claypit:4', 'clay'], name: 'Clay Digging', cost: 2, req: ['surveying'], text: 'Dig clay in Clay Bank areas and fire it into roof tiles at the Brick Kiln.', where: 'Clay Bank tiles; Brick Kiln → Roof Tiles.' },
+    { id: 'pottery', pic: ['grass:1', 'potter', 'clay_pot'], name: 'Pottery', cost: 3, req: ['claydigging', 'kiln'], text: 'Throw clay into pots on a Potter’s Wheel.', where: 'Open Market → Stations.' },
+    { id: 'reedcutting', pic: ['reeds:0', 'reedbed:3', 'basket'], name: 'Reed Cutting', cost: 2, req: ['surveying'], text: 'Cut reeds in Marsh areas and weave them into baskets.', where: 'Reed Marsh tiles; Workbench → Basket.' },
+    { id: 'ironmining', pic: ['ore:0', 'orevein:3', 'iron_ore'], name: 'Iron Mining', cost: 3, req: ['surveying', 'prospecting'], text: 'Mine iron ore from seams in the Iron Hills.', where: 'Iron Seam tiles.' },
+    { id: 'ironworking', pic: ['grass:0', 'forge', 'iron_tools'], name: 'Ironworking', cost: 4, req: ['ironmining', 'smelter'], text: 'Smelt iron ingots and forge sturdy iron tools.', where: 'Open Market → Stations.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -323,7 +388,11 @@ window.HW_DATA = {
     'water>grass':   { cost: { gold: 30, stone: 4 }, back: {}, verb: 'Fill in the pond', note: 'Pack the pond with stone and earth.' },
     'grass>forest':  { cost: { gold: 10, sapling: 2 }, back: {}, verb: 'Plant a woodland', note: 'Starts as saplings that grow into a tree to chop.' },
     'grass>water':   { cost: { gold: 40 }, back: {}, verb: 'Dig a pond', note: 'A new pond for fishing. Your farmer can’t walk across it.' },
-    'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, verb: 'Pile a rock field', note: 'Rocks that resurface over time for steady stone.' }
+    'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, verb: 'Pile a rock field', note: 'Rocks that resurface over time for steady stone.' },
+    'flowers>grass': { cost: { gold: 15 }, back: {}, verb: 'Mow the meadow', note: 'Cut the wildflowers back to plain grass.' },
+    'clay>grass':    { cost: { gold: 25 }, back: { clay: 2 }, verb: 'Drain the clay', note: 'Dig out the soft clay and lay turf. You keep 2 clay.' },
+    'reeds>grass':   { cost: { gold: 25 }, back: { reeds: 2 }, verb: 'Drain the marsh', note: 'Cut the reeds and dry the ground. You keep 2 reeds.' },
+    'ore>grass':     { cost: { gold: 40 }, back: { stone: 2 }, verb: 'Level the seam', note: 'Break up the rock and cover it over. You keep 2 stone.' }
   },
 
   farmhand: { speeds: [1, 2, 3], hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
@@ -349,7 +418,12 @@ window.HW_DATA = {
     { name: 'Linen Order', need: [['linen', 4, 0], ['canvas', 1, 0]], gold: 360, dp: 4, hint: 'Grow flax and weave it at the Loom.' },
     { name: 'Copper Rush', need: [['copper_ingot', 4, 0]], gold: 420, dp: 4, hint: 'Prospect boulders, then smelt the ore with charcoal.' },
     { name: 'Gearworks', need: [['gear', 6, 0]], gold: 500, dp: 5, hint: 'Tinkering at the Workbench.' },
-    { name: 'Grand Market Fair', need: [['apple_pie', 2, 1], ['mead', 2, 0], ['mushroom_soup', 2, 1]], gold: 900, dp: 6, hint: 'Good-quality ingredients, tuned stations, and everything you’ve built.' }
+    { name: 'Grand Market Fair', need: [['apple_pie', 2, 1], ['mead', 2, 0], ['mushroom_soup', 2, 1]], gold: 900, dp: 6, hint: 'Good-quality ingredients, tuned stations, and everything you’ve built.' },
+    { name: 'Spring Bouquets', need: [['flowers', 8, 0], ['honey', 4, 0]], gold: 420, dp: 4, hint: 'Unlock Land Surveying, open a Meadow area and pick wildflowers.' },
+    { name: 'Roofer’s Order', need: [['roof_tile', 8, 0], ['clay_pot', 2, 0]], gold: 520, dp: 4, hint: 'Survey Clay Banks; fire clay at the Kiln and throw pots on a Potter’s Wheel.' },
+    { name: 'Market Baskets', need: [['basket', 4, 0]], gold: 480, dp: 4, hint: 'Survey a Marsh, cut reeds and weave baskets at the Workbench.' },
+    { name: 'Iron Age', need: [['iron_ingot', 4, 0], ['iron_tools', 1, 0]], gold: 900, dp: 6, hint: 'Survey the Iron Hills, mine ore and build a Forge.' },
+    { name: 'Royal Tailor', need: [['dyed_cloth', 3, 1]], gold: 1200, dp: 7, hint: 'Good-quality linen and dye at a tuned Dye Vat.' }
   ],
 
   startOrders: [
@@ -410,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.25', at: '2026-10-13 13:30', notes: ['New lands: unlock Land Surveying in Discovery, then select a dashed area past your map’s edge to survey it. Each area is a Meadow, Clay Banks, Marsh or Iron Hills, and every survey costs more than the last.', 'New resources in those areas: wildflowers, clay, reeds and iron ore, with new things to make: Wildflower Honey, Dye and Dyed Cloth (Dye Vat), Roof Tiles and Clay Pots (Potter’s Wheel), Baskets, and Iron Ingots and Iron Tools (Forge). Five new contracts use them.', 'Building limits: you can build one of each station per area you own, and two Storage Barns. Buildings you already have stay. Surveying new land raises the limit.', 'Rollers & Skids (Discovery): move a station, storage building or sprinkler to a new spot, upgrades and all. It’s pricey, and each move costs more for a few days.'] },
   { v: '0.24', at: '2026-10-13 11:45', notes: ['New title art on the welcome screen and main menu.'] },
   { v: '0.23.1', at: '2026-10-13 11:30', notes: ['Fixed: the “new version” banner could keep asking you to reload without actually loading the update. Reload now always brings in the latest version, and Later stops it asking again for that update.', 'The banner can now be reached from the title screen too.'] },
   { v: '0.23', at: '2026-10-13 11:15', notes: ['Buildings no longer fade when they’re in front of things; the shorter buildings keep the view clear.', 'The eye button (or X) now shows the name of every building on your farm.'] },

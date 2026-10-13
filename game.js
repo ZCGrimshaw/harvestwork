@@ -25,6 +25,7 @@
     if (t === 'forest') return { st: 'tree', g: 0 };
     if (t === 'water') return { stock: D.gather.water.stock, rt: 0 };
     if (t === 'boulder') return { stock: D.gather.boulder.stock, rt: 0 };
+    if (D.gather[t] && D.gather[t].stock) return { stock: D.gather[t].stock, rt: 0 };
     return null;
   }
   function makeB(type) {
@@ -47,15 +48,61 @@
     for (const [id, n] of Object.entries(C.startInventory)) addItem(id, n, 0, true);
     C.startKnown.forEach(id => S.disc.includes(id) || S.disc.push(id));
     D.startOrders.forEach(o => S.orders.push({ id: S.uid++, kind: 'raw', name: 'Neighbour’s request', need: o.need, gold: o.gold, score: Math.round(o.gold * .6) }));
-    rollMarket();
+    rollMarket(); expandWorld();
     return S;
   }
+  /* ================= the wider world =================
+     The world is a grid of 6×6 areas (C.worldRegions across). Your starting land fills the middle 2×2 and
+     counts as one area; every area you survey adds one more. Unsurveyed tiles are 'void': never drawn or walked.
+     Older 12×12 saves are lifted into the middle of the bigger world and every stored tile index is remapped. */
+  const RS = () => C.regionSize, RW = () => S.w / C.regionSize;
+  function expandWorld() {
+    if (S.regions) return;
+    const ow = S.w, oh = S.h, N = C.regionSize * C.worldRegions, off = (N - ow) / 2;
+    const map = i => ((i / ow | 0) + off) * N + (i % ow) + off;
+    const tiles = []; for (let k = 0; k < N * N; k++) tiles.push({ t: 'void', o: false, b: null, r: null, v: 0 });
+    S.tiles.forEach((T, i) => { tiles[map(i)] = T; });
+    S.tiles = tiles; S.w = N; S.h = N;
+    const fix = t => { if (t && typeof t.i === 'number') t.i = map(t.i); };
+    S.queue.forEach(fix); fix(S.cur);
+    S.av.x += off; S.av.y += off; S.av.path = (S.av.path || []).map(map);
+    if (S.helper) { S.helper.x += off; S.helper.y += off; S.helper.path = (S.helper.path || []).map(map); (S.helper.steps || []).forEach(fix); fix(S.helper.cur); }
+    const R = C.worldRegions; S.regions = [];
+    for (let k = 0; k < R * R; k++) { const rx = k % R, ry = k / R | 0, home = rx * RS() >= off && rx * RS() < off + ow && ry * RS() >= off && ry * RS() < off + oh;
+      S.regions.push({ open: home, theme: home ? 'home' : themeAt(rx, ry) }); }
+    S.surveys = 0; UI.live = null;
+  }
+  function themeAt(rx, ry) { const T = Object.keys(D.regionThemes); return T[(rx * 3 + ry * 5 + (rx * ry) % 3) % T.length]; }
+  const regionOf = i => ((ty(i) / RS() | 0) * RW() + (tx(i) / RS() | 0));
+  const regionTiles = r => { const x0 = (r % RW()) * RS(), y0 = (r / RW() | 0) * RS(), o = []; for (let y = 0; y < RS(); y++) for (let x = 0; x < RS(); x++) o.push(idx(x0 + x, y0 + y)); return o; };
+  function regionNbrs(r) { const rx = r % RW(), ry = r / RW() | 0, o = []; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = rx + dx, y = ry + dy; if (x >= 0 && y >= 0 && x < RW() && y < RW()) o.push(y * RW() + x); }); return o; }
+  const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open);
+  const areas = () => 1 + (S.surveys || 0);
+  const isVoid = i => S.tiles[i].t === 'void';
+  // Lay out a freshly surveyed area: weighted terrain from its theme, smoothed once so like joins like.
+  function genRegion(r) {
+    const th = D.regionThemes[S.regions[r].theme], ids = regionTiles(r), rnd = (seed => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; })(r * 7919 + 101);
+    const keys = Object.keys(th.mix), tot = keys.reduce((n, k) => n + th.mix[k], 0);
+    const pickT = () => { let x = rnd() * tot; for (const k of keys) { x -= th.mix[k]; if (x <= 0) return k; } return keys[0]; };
+    const t = {}; ids.forEach(i => { t[i] = pickT(); });
+    ids.forEach(i => { const c = {}; nbrs(i).forEach(n => { if (t[n]) c[t[n]] = (c[t[n]] || 0) + 1; }); const best = Object.keys(c).sort((a, b) => c[b] - c[a])[0]; if (best && c[best] >= 3) t[i] = best; });
+    const special = keys.find(k => D.gather[k] && D.gather[k].action === 'gather');
+    if (special && !ids.some(i => t[i] === special)) t[ids[(rnd() * ids.length) | 0]] = special; // every area shows its resource
+    ids.forEach(i => { S.tiles[i] = { t: t[i], o: false, b: null, r: initRes(t[i]), v: (tx(i) * 7 + ty(i) * 13) % 3 }; });
+  }
+  function surveyCost() { const n = S.surveys || 0, V = C.survey, c = { gold: Math.round(V.gold * Math.pow(V.goldMult, n) / 50) * 50, fence_kit: V.fence + n, plank: V.plank + V.plankStep * n };
+    if (n >= V.brickFrom) c.brick = V.brick + V.brickStep * (n - V.brickFrom);
+    if (n >= V.roofFrom) c.roof_tile = V.roof + V.roofStep * (n - V.roofFrom);
+    return c; }
+  const homeIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'homestead');
+  const startOff = () => (S.w - D.map.rows[0].length) / 2;
   // Bring older saves up to date: new fields get defaults, nothing existing changes.
   function migrate() {
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
     if (!S.tick) S.tick = { open: true, spd: 'slow' };
+    expandWorld(); UI.live = null;
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
@@ -186,6 +233,7 @@
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
   function newDay() {
     rollMarket();
+    if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
     toast(`<b>Day ${S.day}.</b> ${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
     dirty();
   }
@@ -201,6 +249,17 @@
     return c;
   }
   const isEmptyGrass = i => T_(i).o && T_(i).t === 'grass' && !T_(i).b;
+  /* building limits: stations and storage are capped per area you own */
+  const capFor = bt => { const B = D.buildings[bt]; return B.kind === 'station' || B.kind === 'storage' ? areas() * (B.perArea || 1) : Infinity; };
+  const builtCount = bt => S.tiles.reduce((n, T) => n + (T.b && T.b.type === bt ? 1 : 0), 0);
+  const kitFor = bt => Object.keys(D.items).find(id => D.items[id].building === bt);
+  const capMsg = bt => { const B = D.buildings[bt], n = capFor(bt); return `Limit reached: ${n} ${B.name}${n === 1 ? '' : 's'} with ${areas()} area${areas() === 1 ? '' : 's'}. Survey new land to build more.`; };
+  /* moving buildings: expensive, and pricier for each recent move */
+  const MOVABLE = ['station', 'storage', 'sprinkler'];
+  function moveCost(bt) { const k = kitFor(bt), kit = k && D.items[k], B = D.buildings[bt], heat = Math.pow(C.move.heat, S.moveHeat || 0);
+    const c = { gold: Math.round((C.move.gold + (kit && kit.buy || 60)) * heat / 10) * 10 };
+    if (B.place && (B.place.brick || 0) > 0) c.brick = Math.max(2, Math.round(B.place.brick / 2)); else c.plank = Math.max(2, Math.round(((B.place && B.place.plank) || 2) / 2) + 1);
+    return c; }
   function outRoom(out) { let n = 0; for (const k in out) n += out[k]; return room() >= n; }
   const FULL = 'Storage is full. Sell goods or upgrade the Homestead.';
 
@@ -272,10 +331,33 @@
       run: t => { const n = gatherOut('water', 'fish').fish; T_(t.i).r.stock--; addItem('fish', n); float(t.i, `+${n} Fish`, '#fff'); gainScore(C.score.fish, t.i); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
     mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : T_(t.i).r.stock < 1 ? 'No boulders left. They resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
       run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
+    gather: { label: t => (D.gather[T_(t.i).t] || {}).verb || 'Gather',
+      check: t => { const T = T_(t.i), G = D.gather[T.t]; if (!G || !T.r) return 'Nothing to gather here';
+        if (!unlocked(G.needs)) return `Unlock ${D.discoveries.find(d => d.id === G.needs).name} first`;
+        if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(G.out) ? null : FULL; },
+      run: t => { const T = T_(t.i), G = D.gather[T.t]; T.r.stock--; const got = [];
+        for (const k in G.out) { addItem(k, G.out[k]); got.push(`+${G.out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
+        float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i); emit('gather'); } },
+    survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
+      check: t => { if (!unlocked('surveying')) return 'Unlock Land Surveying in Discovery'; if (!surveyable(t.p)) return 'Survey land next to an area you already have'; return canPay(surveyCost()); },
+      run: t => { pay(surveyCost()); S.regions[t.p].open = true; genRegion(t.p); S.surveys = (S.surveys || 0) + 1; UI.live = null; UI.bounds = null;
+        const th = D.regionThemes[S.regions[t.p].theme]; gainScore(C.score.survey, t.i); float(t.i, `New area: ${th.name}`, '#b8f08a');
+        first('survey:' + S.regions[t.p].theme, 2, `New area: ${th.name}`);
+        toast(`<b>${esc(th.name)} surveyed.</b> Buy its tiles from the edge of your land as usual. You now have ${areas()} areas, so you can build ${areas()} of each station.`, 'goal'); } },
+    move: { label: t => `Move ${t.nm || 'building'}`,
+      check: t => { const b = T_(t.p) && T_(t.p).b; if (!unlocked('rollers')) return 'Unlock Rollers & Skids';
+        if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return 'Nothing to move'; if (t.i === t.p) return 'Pick a different tile';
+        if (!isEmptyGrass(t.i)) return 'Pick empty grass you own'; return canPay(moveCost(b.type)); },
+      run: t => { const b = T_(t.p).b; pay(moveCost(b.type)); T_(t.i).b = b; T_(t.p).b = null;
+        S.queue.forEach(q => { if (q.i === t.p) q.i = t.i; });
+        if (S.helper) { S.helper.steps.forEach(st => { if (st.i === t.p) st.i = t.i; }); if (S.helper.cur && S.helper.cur.i === t.p) S.helper.cur = null; }
+        S.moveHeat = (S.moveHeat || 0) + 1; S.moveCool = 0; if (UI.sel === t.p) UI.sel = t.i;
+        float(t.i, `${D.buildings[b.type].name} moved`, '#b8f08a'); } },
     load: { label: t => `Load ${t.n > 1 ? t.n + '× ' : ''}${D.items[Object.keys(D.recipes[t.p].out)[0]].name}`,
       check: t => loadErr(t.i, t.p), run: t => { const n = Math.max(1, Math.min(t.n || 1, fillCount(t.i, t.p))); for (let k = 0; k < n; k++) doLoad(t.i, t.p); } },
     collect: { label: () => 'Collect', check: t => collectErr(t.i), run: t => doCollect(t.i) },
-    buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const c = buyPrice(t.p) * t.n;
+    buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const c = buyPrice(t.p) * t.n, bt = D.items[t.p].building;
+        if (bt && builtCount(bt) + count(t.p) + t.n > capFor(bt)) return builtCount(bt) >= capFor(bt) ? capMsg(bt) : 'You already have a kit waiting to be placed';
         if (S.gold < c) return `Needs ${c}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
       run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
@@ -295,7 +377,8 @@
     build: { label: () => 'Build Farm Plot', check: t => !isEmptyGrass(t.i) ? 'Tile is not empty grass' : canPay(C.farmPlotCost),
       run: t => { pay(C.farmPlotCost); T_(t.i).b = makeB('farm'); gainScore(C.score.build / 2, t.i); } },
     place: { label: t => `Place ${D.buildings[D.items[t.p].building].name}`,
-      check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; return canPay(D.buildings[D.items[t.p].building].place); },
+      check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; const bt = D.items[t.p].building;
+        if (builtCount(bt) >= capFor(bt)) return capMsg(bt); return canPay(D.buildings[bt].place); },
       run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++;
         gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`);
         toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
@@ -368,7 +451,7 @@
   function runLogged(t, who) {
     const g0 = S.gold, f0 = UI.floats.length; TASKS[t.a].run(t);
     const res = UI.floats.slice(f0).map(f => f.text).filter(x => !/^\+\d+$/.test(x) && !/g$/.test(x)), dg = S.gold - g0;
-    const money = ['sell', 'buy', 'deliver', 'expand', 'build', 'place', 'upgrade', 'toolup', 'homeup', 'hire', 'reshape'].includes(t.a); // goal rewards aren't the action's doing
+    const money = ['sell', 'buy', 'deliver', 'expand', 'build', 'place', 'upgrade', 'toolup', 'homeup', 'hire', 'reshape', 'survey', 'move'].includes(t.a); // goal rewards aren't the action's doing
     logAct(TASKS[t.a].label(t) + (res.length ? ' · ' + res.join(', ') : '') + (money && dg ? ` · ${dg > 0 ? '+' : '−'}${Math.abs(dg)}g` : ''), who);
   }
   function fail(t, msg) { toast(`<b>${esc(TASKS[t.a].label(t))}:</b> ${esc(msg)}`, 'warn'); S.cur = null; S.av.path = []; dirty(); }
@@ -402,7 +485,7 @@
     if (st.s === 'tend' && b && b.type === 'farm') t = b.st === 'raw' ? { a: 'till' } : b.st === 'tilled' ? { a: 'plant', p: st.p, f: 0 } : b.st === 'growing' && !b.wet ? { a: 'water' } : b.st === 'ready' ? { a: 'harvest' } : null;
     else if (st.s === 'station' && b && b.q) t = b.q.some(x => x.done) ? { a: 'collect' } : { a: 'load', p: st.p };
     else if (st.s === 'forest' && T.r) t = T.r.st === 'tree' ? { a: 'chop' } : T.r.st === 'stump' ? { a: 'replant' } : null;
-    else if (st.s === 'fish' || st.s === 'mine') t = { a: st.s };
+    else if (st.s === 'fish' || st.s === 'mine' || st.s === 'gather') t = { a: st.s };
     if (!t) return null; t.i = st.i;
     if (checkTask(t)) return null;
     const same = x => x && x.a === t.a && x.i === t.i; if (same(S.cur) || S.queue.some(same)) return null; // the farmer has it
@@ -411,6 +494,7 @@
   function stepLabel(st) {
     if (st.s === 'tend') return `Tend plot · ${D.crops[st.p].name}`;
     if (st.s === 'station') return `Run ${D.buildings[T_(st.i).b ? T_(st.i).b.type : 'stove'].name} · ${D.items[Object.keys(D.recipes[st.p].out)[0]].name}`;
+    if (st.s === 'gather') return (D.gather[T_(st.i).t] || {}).verb || 'Gather';
     return { forest: 'Chop and replant a tree', fish: 'Fish the pond', mine: 'Break stone' }[st.s];
   }
   function updateHelper(dt) {
@@ -478,7 +562,9 @@
   function pick(mx, my) {
     const u = (mx - W / 2) / P() + cam.u, v = (my - H / 2) / P() + cam.v;
     const [fx, fy] = unview(...fromIso(u, v)), x = Math.round(fx), y = Math.round(fy);
-    return inB(x, y) ? idx(x, y) : -1;
+    if (!inB(x, y)) return -1; const i = idx(x, y);
+    if (isVoid(i)) return unlocked('surveying') && surveyable(regionOf(i)) ? i : -1; // only the dashed areas you could survey
+    return i;
   }
   // turn and/or tilt the world while keeping whatever is at screen centre in place
   function setView(a, t) {
@@ -528,9 +614,18 @@
     if (Math.abs(diff) < .002) { setYaw(UI.yawTo); UI.yawTo = null; return; }
     const f = Math.min(1, dt * 12 * CAM_SPEED); setYaw(UI.yaw + diff * f); UI.yawTo = UI.yaw + diff * (1 - f);
   }
+  // Keep the camera over land you can see: the open areas plus a ring of surveyable ones.
+  function landBox() {
+    if (UI.bounds) return UI.bounds; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    S.regions.forEach((R, r) => { if (!R.open && !(unlocked('surveying') && surveyable(r))) return; const rx = r % RW(), ry = r / RW() | 0;
+      x0 = Math.min(x0, rx * RS()); y0 = Math.min(y0, ry * RS()); x1 = Math.max(x1, rx * RS() + RS() - 1); y1 = Math.max(y1, ry * RS() + RS() - 1); });
+    return (UI.bounds = [x0, y0, x1, y1]);
+  }
   function clampCam() {
-    cam.z = Math.max(.7, Math.min(3.2, cam.z));
-    cam.u = Math.max(-S.h * 16, Math.min(S.w * 16, cam.u)); cam.v = Math.max(0, Math.min((S.w + S.h) * 8 * UI.tilt, cam.v));
+    cam.z = Math.max(.5, Math.min(3.2, cam.z));
+    const [x0, y0, x1, y1] = landBox(); let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].forEach(([x, y]) => { const [vx, vy] = view(x, y), u = isoU(vx, vy), v = isoV(vx, vy); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); });
+    cam.u = Math.max(u0, Math.min(u1, cam.u)); cam.v = Math.max(v0, Math.min(v1, cam.v));
   }
   function zoomAt(f, mx, my) {
     const u0 = (mx - W / 2) / P() + cam.u, v0 = (my - H / 2) / P() + cam.v;
@@ -583,7 +678,7 @@
     else if (k === '+' || k === '=') zoomAt(1.2, W / 2, H / 2); else if (k === '-') zoomAt(1 / 1.2, W / 2, H / 2);
     else if (k === 'q' || k === 'Q') rotateView(-1); else if (k === 'e' || k === 'E') rotateView(1);
     else if (k === 'x' || k === 'X') toggleLabels();
-    else if (k === 'Escape') { if (UI.drawer) UI.drawer = null; else UI.sel = -1; dirty(); }
+    else if (k === 'Escape') { if (UI.moving != null) UI.moving = null; else if (UI.drawer) UI.drawer = null; else UI.sel = -1; dirty(); }
     else return; clampCam();
   });
 
@@ -601,6 +696,7 @@
     if (!b && T.t === 'forest') return T.r.st === 'tree' ? { a: 'chop' } : T.r.st === 'stump' ? { a: 'replant' } : null;
     if (T.t === 'water') return { a: 'fish' };
     if (T.t === 'boulder') return { a: 'mine' };
+    if (D.gather[T.t] && D.gather[T.t].action === 'gather') return { a: 'gather' };
     return null;
   }
   function clickTile(i) {
@@ -659,16 +755,17 @@
     const p = P(), now = S.time;
     cx.imageSmoothingEnabled = false;
     cx.fillStyle = '#1e3a30'; cx.fillRect(0, 0, W, H);
-    const order = []; for (let i = 0; i < S.tiles.length; i++) order.push(i);
-    const vd = S.tiles.map((_, i) => view(tx(i), ty(i)));
+    if (!UI.live) { UI.live = []; S.tiles.forEach((T, i) => { if (T.t !== 'void') UI.live.push(i); }); }
+    const order = UI.live.slice(), vd = {};
+    order.forEach(i => { vd[i] = view(tx(i), ty(i)); });
     order.sort((a, b) => (vd[a][0] + vd[a][1]) - (vd[b][0] + vd[b][1]) || vd[a][0] - vd[b][0]);
-    const frontier = new Set(); S.tiles.forEach((T, i) => { if (!T.o && nbrs(i).some(n => S.tiles[n].o)) frontier.add(i); });
+    const frontier = new Set(); order.forEach(i => { if (!S.tiles[i].o && nbrs(i).some(n => S.tiles[n].o)) frontier.add(i); });
     // screen step for one tile along world x and world y at the current angle
     { const o = toScreen(0, 0), ax = toScreen(1, 0), ay = toScreen(0, 1); UI.ex = [ax[0] - o[0], ax[1] - o[1]]; UI.ey = [ay[0] - o[0], ay[1] - o[1]]; }
     // the map's earthen sides, drawn under the tops along its outer edges
     const skirt = 4 * p;
     for (const i of order) { const x = tx(i), y = ty(i);
-      N4.forEach(([dx, dy]) => { if (inB(x + dx, y + dy)) return;
+      N4.forEach(([dx, dy]) => { if (inB(x + dx, y + dy) && !isVoid(idx(x + dx, y + dy))) return;
         if (dx * UI.ex[1] + dy * UI.ey[1] <= .01) return; // only edges facing the viewer show a side
         const c1 = toScreen(x + .5 * dx - .5 * dy, y + .5 * dy + .5 * dx), c2 = toScreen(x + .5 * dx + .5 * dy, y + .5 * dy - .5 * dx);
         const water = S.tiles[i].t === 'water', lit = (c2[0] - c1[0]) * (c2[1] - c1[1]) > 0;
@@ -685,10 +782,20 @@
     const pulse = .5 + .5 * Math.sin(now * 3);
     frontier.forEach(i => { tilePoly(i, 1.5);
       cx.setLineDash([3 * p, 2 * p]); cx.strokeStyle = `rgba(246,226,122,${.35 + .4 * pulse})`; cx.lineWidth = p * .7; cx.stroke(); cx.setLineDash([]); });
+    // areas you could survey: a dashed outline with the area's name
+    const survLabels = [];
+    if (unlocked('surveying')) S.regions.forEach((R, r) => { if (!surveyable(r)) return;
+      const rx = r % RW() * RS(), ry = (r / RW() | 0) * RS(), e = RS() - .5, on = UI.hover >= 0 && isVoid(UI.hover) && regionOf(UI.hover) === r || UI.sel >= 0 && isVoid(UI.sel) && regionOf(UI.sel) === r;
+      cx.beginPath(); [[-.5, -.5], [e, -.5], [e, e], [-.5, e]].forEach(([a, b], k) => { const [sx, sy] = toScreen(rx + a, ry + b); k ? cx.lineTo(sx, sy) : cx.moveTo(sx, sy); }); cx.closePath();
+      cx.fillStyle = on ? 'rgba(246,226,122,.16)' : 'rgba(246,226,122,.05)'; cx.fill();
+      cx.setLineDash([5 * p, 4 * p]); cx.strokeStyle = `rgba(246,226,122,${on ? .9 : .3 + .25 * pulse})`; cx.lineWidth = p * (on ? 1.1 : .7); cx.stroke(); cx.setLineDash([]);
+      const [lx, ly] = toScreen(rx + RS() / 2 - .5, ry + RS() / 2 - .5); survLabels.push({ sx: lx, sy: ly, name: `Survey: ${D.regionThemes[R.theme].name}` }); });
+    if (survLabels.length) drawLabels(p, survLabels);
     // hover & selection
-    if (UI.hover >= 0 && UI.hover !== UI.sel) { tilePoly(UI.hover); cx.strokeStyle = 'rgba(255,255,255,.45)'; cx.lineWidth = p * .8; cx.stroke(); }
+    if (UI.hover >= 0 && UI.hover !== UI.sel && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.strokeStyle = 'rgba(255,255,255,.45)'; cx.lineWidth = p * .8; cx.stroke(); }
     if (UI.sel >= 0 && S.tiles[UI.sel].b && D.buildings[S.tiles[UI.sel].b.type].kind === 'sprinkler') around(UI.sel, D.buildings[S.tiles[UI.sel].b.type].radius).forEach(j => { if (j === UI.sel) return; tilePoly(j, 1); cx.fillStyle = 'rgba(143,211,239,.18)'; cx.fill(); });
-    if (UI.sel >= 0) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
+    if (UI.sel >= 0 && !isVoid(UI.sel)) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
+    if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill(); }
     // task target markers
     [S.cur, ...S.queue].forEach((t, k) => { if (!t) return; tilePoly(t.i, 3); cx.strokeStyle = k ? 'rgba(143,211,239,.55)' : 'rgba(143,211,239,.9)'; cx.lineWidth = p * .7; cx.stroke(); });
     // objects + avatar, depth sorted
@@ -731,7 +838,8 @@
         if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a);
           if (T.r.st === 'sapling' && T.o) bar(sx, sy + 4 * p, p, T.r.g / D.gather.forest.regrow, '#7cc04b'); }
         else if (T.t === 'boulder') { const img = ART.get('rocks:' + T.r.stock); blit(img, sx, sy, p, 16, img.height - 4, a); }
-        else if (T.t === 'water' && T.v === 1) blit(ART.get('reeds'), sx, sy, p, 16, 16, a);
+        else if (T.t === 'water' && T.v === 1) blit(ART.get('pondreeds'), sx, sy, p, 16, 16, a);
+        else if (D.gather[T.t] && D.gather[T.t].sprite) { const img = ART.get(D.gather[T.t].sprite + ':' + T.r.stock); blit(img, sx, sy, p, 16, img.height - 4, a); }
       }
     }
     while (ai < actors.length) drawAv(actors[ai++]);
@@ -928,7 +1036,7 @@
     else h += Object.entries(D.upgrades).map(([ax, U]) => { const l = b.lv[ax], max = l >= U.cost.length;
       const e = max ? null : checkTask({ a: 'upgrade', i, p: ax });
       return `<div class="recipe"><div class="grow1"><b class="rname">${U.name} <span class="muted">· now ${U.label(l)}</span></b>${max ? '<small class="why">Fully upgraded</small>' : `<small class="cost">Next: ${U.label(l + 1)} · Cost: ${costTxt(U.cost[l])}</small>${e ? `<small class="why short">${esc(e)}</small>` : ''}`}</div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { err: e })}</div>`; }).join('');
-    return h + fhControl(i, 'station');
+    return h + fhControl(i, 'station') + moveSection(i);
   }
   function homePanel(i) {
     let h = head(`${S.name}’s Homestead`, esc(D.buildings.homestead.desc));
@@ -980,15 +1088,11 @@
           <span class="qtybox"><input type="number" class="qty" id="sq-${id}-${q}" data-sq="${key}" data-max="${n}" data-price="${pr}" min="1" max="${n}" step="1" value="${v}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to sell"><button class="btn sm pri" data-sellqty="${key}" data-i="${i}">Sell · <span data-sqtotal="${key}">${pr * v}</span>g</button></span></div></div>`; }).join('');
       h += ids.length ? grouped(ids, 'sell', sellRow) : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
     } else {
-      const built = new Set(S.tiles.filter(t => t.b).map(t => t.b.type));
-      const fresh = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires) && (!built.has(it.building) || D.buildings[it.building].kind === 'storage'); }); // storage is always stocked
-      const list = [...new Set([...fresh, ...S.market.offers])];
-      h += `<p class="hint">New stations and storage buildings are always stocked; extra copies of other stations rotate each morning. Place a kit on empty grass you own.</p>`;
-      const kitRow = id => { const it = D.items[id], B = D.buildings[it.building];
-        return `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)} Placing needs: ${costTxt(B.place)}.</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, `${it.buy}g`, { cls: 'sm' })}</div>`; };
-      const extra = list.filter(id => !fresh.includes(id));
-      if (fresh.length) h += `<div class="grp"><span class="eyebrow">New stations & storage</span>${fresh.map(kitRow).join('')}</div>`;
-      if (extra.length) h += `<div class="grp"><span class="eyebrow">Build another · today’s stock</span>${extra.map(kitRow).join('')}</div>`;
+      const list = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires); });
+      h += `<p class="hint">You can build <b>one of each station per area</b> you own (two Storage Barns per area). You have ${areas()} area${areas() === 1 ? '' : 's'}${unlocked('surveying') ? '; survey new land for more' : ''}. Place a kit on empty grass you own.</p>`;
+      const kitRow = id => { const it = D.items[id], B = D.buildings[it.building], n = builtCount(it.building), c = capFor(it.building);
+        return `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>Built ${n} of ${c}${count(id) ? ` · ${count(id)} kit waiting` : ''} · ${esc(B.desc)} Placing needs: ${costTxt(B.place)}.</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, `${it.buy}g`, { cls: 'sm' })}</div>`; };
+      if (list.length) h += grouped(list, null, kitRow);
       if (!list.length) h += `<p class="hint">No station kits yet. Unlock Sawmill (after Woodcutting) in Discovery.</p>`;
     }
     return h;
@@ -1012,6 +1116,9 @@
       if (T.r.st === 'tree') h += btn({ a: 'chop', i }, 'Chop tree', { cls: 'pri', sub: `${gatherOut('forest', 'chop').log} logs + 1 sapling` });
       else if (T.r.st === 'stump') h += btn({ a: 'replant', i }, 'Plant sapling', { cls: 'pri', sub: `${count('sapling')} saplings` });
       else h += `<div class="row"><div class="grow1">Sapling growing${pbar('t:' + i)}</div></div>`;
+    } else if (G.action === 'gather') {
+      h += `<div class="row"><div class="grow1">${esc(G.what)} available: <b>${T.r.stock}/${G.stock}</b>${T.r.stock < G.stock ? pbar('r:' + i, 'thin') : ''}</div></div>`;
+      h += btn({ a: 'gather', i }, G.verb, { cls: 'pri', sub: Object.entries(G.out).map(([k, n]) => `+${n} ${D.items[k].name}`).join(' · ') });
     } else {
       h += `<div class="row"><div class="grow1">${T.t === 'water' ? 'Fish' : 'Boulders'} available: <b>${T.r.stock}/${G.stock}</b>${T.r.stock < G.stock ? pbar('r:' + i, 'thin') : ''}</div></div>`;
       h += btn({ a: G.action, i }, T.t === 'water' ? 'Fish' : 'Break stone', { cls: 'pri', sub: T.t === 'water' ? `+${gatherOut('water', 'fish').fish} fish` : `+${gatherOut('boulder', 'mine').stone} stone` });
@@ -1028,19 +1135,37 @@
   }
   function storagePanel(i) {
     const B = D.buildings[T_(i).b.type];
-    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>`;
+    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i);
   }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
-    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>`;
+    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + moveSection(i);
   }
   function emptyPanel(i) {
     let h = head('Empty grassland', 'Build a farm plot or place a station kit here.');
+    if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
+      h += btn({ a: 'move', i, p: UI.moving, nm }, `Move the ${esc(nm)} here`, { cls: 'pri', sub: costTxt(moveCost(b.type)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
     h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: 'pri', sub: costTxt(C.farmPlotCost) });
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
     h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building]; return btn({ a: 'place', i, p: id }, `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}` }); }).join('')
       : `<p class="hint">Station kits are sold at the Open Market once unlocked.</p>`;
     return h + reshapeSection(i);
+  }
+  function surveyPanel(i) {
+    const r = regionOf(i), R = S.regions[r], th = D.regionThemes[R.theme], hi = homeIdx();
+    const finds = Object.keys(th.mix).filter(k => k !== 'grass').map(k => D.terrain[k].name);
+    let h = head(`Unsurveyed: ${th.name}`, esc(th.desc));
+    h += `<p class="state">A 6×6 area. Surveyors report: ${esc(finds.join(', '))}.</p>`;
+    h += btn({ a: 'survey', i: hi, p: r }, `Survey the ${esc(th.name)}`, { cls: 'pri', sub: costTxt(surveyCost()) });
+    h += `<p class="hint">Surveying opens the area; then buy its tiles one by one from the edge of your land, as usual. Each new area also lets you build one more of each station and two more Storage Barns (you have ${areas()} area${areas() === 1 ? '' : 's'} now). Every survey costs more than the last.</p>`;
+    const res = Object.keys(th.mix).find(k => D.gather[k] && D.gather[k].action === 'gather');
+    if (res) { const G = D.gather[res], d = D.discoveries.find(x => x.id === G.needs); if (!unlocked(G.needs)) h += `<p class="hint">Working its ${esc(D.terrain[res].name)} tiles needs <b>${esc(d.name)}</b> in Discovery.</p>`; }
+    return h;
+  }
+  function moveSection(i) {
+    const b = T_(i).b; if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return '';
+    if (!unlocked('rollers')) return '';
+    return `<span class="eyebrow">Move this building</span><p class="hint">Keeps its upgrades, batches and farmhand jobs. Costs ${costTxt(moveCost(b.type))}${(S.moveHeat || 0) > 0 ? ' (higher after recent moves; the surcharge eases every few days)' : ''}.</p><button class="btn ghost" data-move-start="${i}">Pick a new spot</button>`;
   }
   function lockedPanel(i, T) {
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
@@ -1051,6 +1176,9 @@
     const G = D.gather[T.t]; if (G && !unlocked(G.needs)) h += `<p class="hint">Working it needs <b>${esc(D.discoveries.find(d => d.id === G.needs).name)}</b>.</p>`;
     return h + `<p class="tip">${esc(Tr.future)}</p>`;
   }
+  function renderMoveBar() { const el = $('#movebar'), b = UI.moving != null && T_(UI.moving).b;
+    if (!b) { UI.moving = null; el.hidden = true; return; } el.hidden = false;
+    setHTML('#movebar', `<span><b>Moving the ${esc(D.buildings[b.type].name)}.</b> ${isTouch() ? 'Tap' : 'Click'} empty grass you own, then choose “Move here”.</span><button class="btn ghost sm" data-move-cancel>Cancel</button>`); }
   function renderPanel() {
     const i = UI.sel; const el = $('#panel');
     document.body.classList.toggle('sheet-open', i >= 0);
@@ -1058,7 +1186,8 @@
     if (UI.lastSel !== i) { const a = document.activeElement; if (a && el.contains(a)) a.blur(); UI.lastSel = i; } // new tile: let the panel redraw
     el.hidden = false; const T = S.tiles[i];
     let h;
-    if (!T.o) h = lockedPanel(i, T);
+    if (T.t === 'void') h = surveyPanel(i);
+    else if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
       h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : boardPanel(i); }
     else if (T.r) h = gatherPanel(i, T);
@@ -1189,7 +1318,7 @@
   }
   function renderUI() {
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach();
+    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar();
   }
   function progress(key) {
     const [k, a, b] = key.split(':');
@@ -1207,9 +1336,12 @@
     const el = e.target.closest('button'); if (!el) return;
     const ds = el.dataset;
     if ('task' in ds) { const t = { a: ds.a, i: +ds.i }; if (ds.p !== undefined) t.p = isNaN(+ds.p) || ds.p === '' ? ds.p : (ds.a === 'deliver' ? +ds.p : ds.p);
-      if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; queueTask(t); }
+      if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; if (ds.nm) t.nm = ds.nm;
+      if (t.a === 'move' || t.a === 'survey') t.p = +ds.p; queueTask(t); if (t.a === 'move') UI.moving = null; }
     else if ('close' in ds) UI.sel = -1;
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
+    else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
+    else if ('moveCancel' in ds) { UI.moving = null; }
     else if ('titleOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; openTitle('main'); }
     else if ('tutReplay' in ds) { UI.drawer = null; startTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
@@ -1228,6 +1360,7 @@
       if (d && !unlocked(d.id) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
         if (kit && !S.market.offers.includes(kit)) { S.market.offers.unshift(kit); S.market.offers = S.market.offers.slice(0, C.marketOffers); }
+        UI.bounds = null;
         toast(`<b>Unlocked ${esc(d.name)}.</b> ${esc(d.text)} <span class="where">${esc(d.where)}</span>`, 'disc'); emit('unlock'); save(); } }
     else if (ds.sellqty) { const [id, q] = ds.sellqty.split(':'), inp = document.querySelector(`[data-sq="${ds.sellqty}"]`);
       const max = +inp.dataset.max, n = Math.max(1, Math.min(max, parseInt(inp.value, 10) || 1)); UI.sq[ds.sellqty] = n; inp.blur();
@@ -1265,10 +1398,10 @@
       if (!UI.confirmImport) { UI.confirmImport = true; dirty(); return; }
       adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = UI.fileInfo = UI.fileErr = null; UI.confirmImport = false; UI.exportCode = null;
       toast(`<b>Farm imported.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Imported this farm from a save code', 'you'); }
-    else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
+    else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
     else if ('labels' in ds) toggleLabels();
     else if (ds.rot) rotateView(+ds.rot);
-    else if (ds.zoom) { ds.zoom === 'home' ? (setView(UI.yaw, 1), centerOn(idx(...D.map.spawn))) : zoomAt(ds.zoom === 'in' ? 1.25 : .8, W / 2, H / 2); }
+    else if (ds.zoom) { ds.zoom === 'home' ? (setView(UI.yaw, 1), centerOn(homeIdx())) : zoomAt(ds.zoom === 'in' ? 1.25 : .8, W / 2, H / 2); }
     else return;
     dirty();
   });
@@ -1326,7 +1459,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-175918';
+  const BUILD = '20261013-192145';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1455,7 +1588,7 @@
   function startNewFarm(name, tut) {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
     newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v;
-    UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(idx(...D.map.spawn)); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
+    UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
     if (tut) startTut(); else toast(`<b>Welcome to Harvestworks, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
   }
@@ -1478,7 +1611,7 @@
   /* ================= tutorial =================
      A short hands-on coach: each step waits for the player to actually do the thing, then moves on.
      Gameplay beyond planting is handed to the goal card, which already walks through it. */
-  const farmIdx = () => { const f = D.map.structures.find(st => st[0] === 'farm'); return idx(f[1], f[2]); };
+  const farmIdx = () => { const f = D.map.structures.find(st => st[0] === 'farm'); return idx(f[1] + startOff(), f[2] + startOff()); };
   const hasJob = a => (S.cur && S.cur.a === a && S.cur.i === farmIdx()) || S.queue.some(q => q.a === a && q.i === farmIdx());
   const TUT = [
     { t: 'Look around', d: () => isTouch() ? 'Drag with one finger to move around your land.' : 'Drag with the left mouse button to move around your land. The arrow keys work too.',
@@ -1509,7 +1642,7 @@
     setHTML('#coach', `<div class="cstep">Tutorial · ${n + 1} of ${TUT.length}</div><b class="ct">${st.t}</b><p>${st.d()}</p>
       <div class="cbtns">${st.next ? `<button class="btn pri sm" data-tut-next>${st.next}</button>` : '<span class="cwait">Waiting for you…</span>'}<button class="linkish small" data-tut-skip>Skip tutorial</button></div>`); }
 
-  window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
