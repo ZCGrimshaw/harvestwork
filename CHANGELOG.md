@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.13 — 2026-10-12
+- Fertilized crops grow 40% faster (on top of the +1 quality).
+
 ## v0.12 — 2026-10-12
 - "Add fertilizer" on a growing crop: fertilize after planting, any time before it's ready (+1 quality at harvest).
 

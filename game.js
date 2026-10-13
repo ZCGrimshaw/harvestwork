@@ -125,7 +125,7 @@
   function useHint(id) { const it = D.items[id];
     if (it.cat === 'seed') { const c = Object.values(D.crops).find(c => c.seed === id); return `Plant on a tilled Farm Plot: select the plot → Plant ${c ? c.name : ''}.`; }
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
-    if (id === 'fertilizer') return 'Tick “Use fertilizer” on a tilled Farm Plot before planting.';
+    if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
     if (it.cat === 'kit') return 'Select empty grass you own → Place.';
     return ''; }
   function rollMarket() {
@@ -395,7 +395,7 @@
     S.tiles.forEach((T, i) => {
       const b = T.b;
       if (b && b.type === 'farm' && b.st === 'growing') {
-        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45);
+        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1);
         if (!b.half && b.g >= cr.grow / 2) { b.half = true; b.wet = false; dirty(); }
         if (b.g >= cr.grow) { b.st = 'ready'; float(i, 'Ready!', '#b8f08a'); dirty(); }
       } else if (b && b.q) {
@@ -829,7 +829,7 @@
     if (b.st === 'raw') h += `<p class="state">Untilled soil.</p>` + btn({ a: 'till', i }, 'Till soil', { cls: 'pri' }) + btn({ a: 'clearplot', i }, 'Clear plot', { cls: 'ghost', sub: 'Turns it back into grass you can build on. No refund.' });
     else if (b.st === 'tilled') {
       h += `<p class="state">Tilled and ready for seeds.</p>`;
-      if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · +1 quality</label>`;
+      if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
       const seeds = Object.keys(D.crops).filter(k => count(D.crops[k].seed) > 0);
       h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s` })).join('')}</div>`
         : `<p class="hint">No seeds. Buy some at the Open Market.</p>`;
@@ -839,7 +839,7 @@
       const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
       h += `<p class="hint">Quality: watered early ${b.w[0] ? '✓' : '—'} · watered late ${b.w[1] ? '✓' : '—'}${b.fert ? ' · fertilized ✓' : ''} → <b>${b.st === 'ready' ? QN[q] : 'aiming ' + QN[Math.min(2, (b.w[0] && (b.w[1] || !b.half) ? 1 : 0) + (b.fert ? 1 : 0))]}</b></p>`;
       if (b.st === 'growing') h += btn({ a: 'water', i }, 'Water', { cls: 'pri', sub: b.half ? 'Second watering: Good quality' : 'Wet soil grows 2× faster' });
-      if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `+1 quality at harvest · ${count('fertilizer')} in storage` });
+      if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
     }
     return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.</p>`;
@@ -1136,7 +1136,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-055651';
+  const BUILD = '20261013-055811';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

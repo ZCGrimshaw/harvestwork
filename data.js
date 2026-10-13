@@ -17,6 +17,7 @@ window.HW_DATA = {
     marketOffers: 3,
     qualityNames: ['Basic', 'Good', 'Excellent'],
     qualityMult: [1, 1.5, 2.2],
+    fertGrowth: 1.4,                      // fertilized crops grow 40% faster
     expandStep: 8,                         // land gets pricier with every purchase
     expandStoneAt: 4,                      // from the 5th purchase, land also needs stone
     expandFenceAt: 8,                      // from the 9th, a fence kit
@@ -261,7 +262,7 @@ window.HW_DATA = {
     { id: 'wheat', pic: ['farm_tilled', 'crop:wheat.2', null], name: 'Wheat', cost: 2, req: [], text: 'Wheat seeds join the market.', where: 'Open Market → Buy.' },
     { id: 'mill', pic: ['grass:0', 'mill:0', 'flour'], name: 'Flour Mill', cost: 2, req: ['wheat', 'sawmill'], text: 'Grind wheat into flour.', where: 'Open Market → Stations. Needs 2 planks to place.' },
     { id: 'baking', pic: ['grass:2', 'stove_on', 'bread'], name: 'Baking', cost: 1, req: ['mill'], text: 'Bake flour into bread at the Stove.', where: 'Stove → recipes.' },
-    { id: 'compost', pic: ['farm_wet', 'crop:carrot.1', 'fertilizer'], name: 'Fertilizer', cost: 2, req: [], text: 'Fertilized crops come out one quality tier higher.', where: 'Open Market → Buy, then tick “Use fertilizer” when planting.' },
+    { id: 'compost', pic: ['farm_wet', 'crop:carrot.1', 'fertilizer'], name: 'Fertilizer', cost: 2, req: [], text: 'Fertilized crops grow 40% faster and come out one quality tier higher.', where: 'Open Market → Buy, then tick “Use fertilizer” when planting.' },
     { id: 'berries', pic: ['farm_tilled', 'crop:berries.2', null], name: 'Berry Bushes', cost: 2, req: [], text: 'Berry seeds join the market.', where: 'Open Market → Buy.' },
     { id: 'preserver', pic: ['grass:0', 'preserver', 'jam'], name: 'Preserver', cost: 3, req: ['sawmill'], text: 'Turn berries and carrots into jam and pickles.', where: 'Open Market → Stations.' },
     { id: 'workbench', pic: ['grass:1', 'workbench', 'fence_kit'], name: 'Workbench', cost: 3, req: ['sawmill', 'stonecutting'], text: 'Build fence kits for big expansions and crates for storage.', where: 'Open Market → Stations.' },
