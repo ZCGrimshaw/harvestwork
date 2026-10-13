@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.20.2 — 2026-10-13 · backend (hidden from the in-game updates log)
+- Show your support switched from PayPal to Ko-fi: https://ko-fi.com/zerocrunchgames. New support-qr.png generated for that URL
+  (verified by decoding); button reads "Open Ko-fi".
+
 ## v0.20.1 — 2026-10-13 · backend (hidden from the in-game updates log)
 - Name restored to Harvestworks everywhere players see it (save files `harvestworks-*.json`; `infinifarm-save` files from v0.20 still load).
 - Show your support opens its own screen (title menu and Menu → Show your support) with a large QR code and an Open PayPal link, on phones too.

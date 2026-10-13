@@ -408,8 +408,9 @@ window.HW_DATA = {
 };
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
-window.HW_DATA.support = { url: 'https://www.paypal.com/qrcodes/managed/a66a32a4-6956-4fd4-bc36-2160ab957433?utm_source=consweb_more', qr: 'support-qr.png' };
+window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.20.2', backend: true, at: '2026-10-13 10:30', notes: ['Show your support now points to Ko-fi (ko-fi.com/zerocrunchgames) instead of PayPal, with a new QR code.'] },
   { v: '0.20.1', backend: true, at: '2026-10-13 10:20', notes: ['Name back to Harvestworks. Show your support opens its own screen with a big QR code and an Open PayPal link (title menu and Menu).'] },
   { v: '0.20', at: '2026-10-13 10:10', notes: ['New title screen and main menu: Continue, New farm (name your farmer) and Load a save file.', 'New players can take a quick hands-on tutorial; replay it any time from the Menu.'] },
   { v: '0.19.1', at: '2026-10-13 00:20', notes: ['Open Market → Buy has category filters, the same as Sell.'] },

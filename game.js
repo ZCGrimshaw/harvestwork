@@ -1111,11 +1111,11 @@
     const sa = UI.drawer === 'menu' && $('#savedago');
     if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
-  // Show your support: a big QR code to scan with a phone, and a link that opens PayPal.
+  // Show your support: a big QR code to scan with a phone, and a link that opens Ko-fi.
   const supportHTML = () => `<h2>Show your support</h2>
     <p class="sub">Harvestworks is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
-    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="PayPal QR code for showing your support"><span>Scan with your phone’s camera</span></div>
-    <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open PayPal ↗</a>`;
+    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="QR code for the Harvestworks Ko-fi page"><span>Scan with your phone’s camera</span></div>
+    <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open Ko-fi ↗</a>`;
   // Backend entries stay in the CHANGELOG only; players see the rest.
   const PUB = D.updates.filter(u => !u.backend);
   const latest = () => PUB[0];
@@ -1310,7 +1310,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-164830';
+  const BUILD = '20261013-170200';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
