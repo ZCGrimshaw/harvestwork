@@ -10,7 +10,7 @@ Not built yet; picked up when we choose to.
   (butterflies, birds, fireflies, lit windows, station smoke/steam). Later: more themes, placeable decorations,
   supporter building trim. Unlock via Menu → Supporter pack: start with one shared code shown in the Ko-fi thank-you
   message; move to per-supporter codes (Ko-fi webhook → Supabase) only if sharing becomes a problem. Unlock saved in S.
-- **Animals (pinned 2026-10-13, "not too soon"):** peaceful only, never slaughter. Ideas: Chicken Coop (eggs → baking),
+- **Animals (pinned 2026-10-13, ideas approved; build later, "not too soon"):** peaceful only, never slaughter. Ideas: Chicken Coop (eggs → baking),
   Dairy Barn with cows (milk → butter, cheese), sheep on a Pasture (wool → yarn at the Loom), ducks on ponds (feathers),
   goats; animals eat spare crops (a new use for surplus), happiness from feeding/brushing raises quality; animals wander
   their pen. Pets: a farm dog that follows the farmer and a cat that naps on the Homestead step. Wild life for ambience
