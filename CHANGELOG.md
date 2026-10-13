@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.27.1 — 2026-10-13
+- Desktop layout: #top wraps; the ticker takes a second row under the stats (max 700px), Menu/Storage stay top-right;
+  goal card, coach and move bar shift down to 104px. Phone layouts unchanged.
+
 ## v0.27 — 2026-10-13
 - Sound (new src/sound.js, all Web Audio synthesis, no files): bells/plucks on C-major pentatonic with a generated
   convolution reverb. Effects per task (played from runLogged; farmhand at 55%), crop ready, station done, goals,
