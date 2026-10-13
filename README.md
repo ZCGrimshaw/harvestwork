@@ -18,6 +18,9 @@ Saves are kept in each player's own browser. Nothing is sent anywhere.
 Prices are shared through a Supabase project (`harvestworks`). The game only calls two database
 functions over the public API: `get_market()` (prices + recent trades) and `record_trade(...)`
 (report a sale/purchase; capped at 50 units per report and 40 reports per player per 10 minutes).
+Market speed scales with activity: `market_active()` counts players who traded in the last hour;
+`market_tau(n)` sets how fast prices recover (about a day for 1–2 traders, minutes for hundreds) and
+`market_impact(n)` shrinks each trade's effect as the market grows. Tune those two functions to rebalance.
 Tables have row-level security with no policies, so they can't be read or written directly.
 The public key in `src/game.js` is the project's publishable key, which is meant to be public.
 

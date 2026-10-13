@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.16 — 2026-10-12
+- Market speed scales with activity (database change): active traders = players who traded in the last hour.
+  Recovery to normal: 1–2 traders ~24h, 5 ~10h, 10 ~5h, 50 ~1h, 200 ~20 min (floor ~12 min).
+  Each unit's effect scales by 1/sqrt(traders/2), so large markets don't slam to the limits.
+- Market status line shows active traders and settle time.
+
 ## v0.15 — 2026-10-12
 - Shared valley market (web version only): sales and purchases are reported to a Supabase database
   (project "harvestworks") and move prices for every player, within 0.5×–1.6×, recovering over ~3 hours.
