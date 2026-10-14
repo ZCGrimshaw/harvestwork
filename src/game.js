@@ -1572,6 +1572,17 @@
   function renderMoveBar() { const el = $('#movebar'), b = UI.moving != null && T_(UI.moving).b;
     if (!b) { UI.moving = null; el.hidden = true; return; } el.hidden = false;
     setHTML('#movebar', `<span><b>Moving the ${esc(D.buildings[b.type].name)}.</b> ${isTouch() ? 'Tap' : 'Click'} empty grass you own, then choose “Move here”.</span><button class="btn ghost sm" data-move-cancel>Cancel</button>`); }
+  /* On larger screens the action panel floats beside the selected tile (right of it, or left if there's no room)
+     and follows it as the view moves. Phones keep the bottom sheet. */
+  function placePanel() { const el = $('#panel');
+    if (el.hidden || UI.sel < 0 || isPhone()) { if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = ''; delete el.dataset.fl; } return; }
+    const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, w = el.offsetWidth, h = el.offsetHeight, gap = 44 * cam.z;
+    const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight;
+    let left = sx + Math.max(34, gap); if (left + w > W - 10) left = sx - Math.max(34, gap) - w;
+    left = Math.max(10, Math.min(W - w - 10, left));
+    const top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2));
+    const L = Math.round(left) + 'px', T = Math.round(top) + 'px';
+    if (el.style.left !== L || el.style.top !== T) { el.style.left = L; el.style.top = T; el.style.right = 'auto'; el.dataset.fl = 1; } }
   function renderPanel() {
     const i = UI.sel; const el = $('#panel');
     document.body.classList.toggle('sheet-open', i >= 0);
@@ -1988,7 +1999,7 @@
     if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
-    draw();
+    draw(); placePanel();
     uiT -= dt; if (UI.dirty || uiT <= 0) { renderUI(); UI.dirty = false; uiT = .5; }
     document.querySelectorAll('[data-prog]').forEach(el => { el.style.width = (Math.min(1, progress(el.dataset.prog)) * 100).toFixed(1) + '%'; });
     requestAnimationFrame(frame);

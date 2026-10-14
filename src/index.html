@@ -545,6 +545,12 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .online b { font-variant-numeric: tabular-nums; }
 @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(124,208,91,.55); } 70% { box-shadow: 0 0 0 6px rgba(124,208,91,0); } 100% { box-shadow: 0 0 0 0 rgba(124,208,91,0); } }
 @media (max-width: 700px) { .online .lg { display: none; } .online { padding: 5px 8px; } }
+/* action panel: every action you can take gets a gold border; none is singled out */
+#panel .btn.pri { background: var(--wood-hi); color: var(--paper); } #panel .btn.pri small { color: var(--paper-dim); }
+#panel .btn.pri:hover:not(:disabled) { background: #6b4628; }
+#panel .btn[data-task]:not(:disabled), #panel .btn.pri:not(:disabled) { border-color: var(--sun); box-shadow: 0 3px 0 var(--wood-lo), inset 0 0 0 1px rgba(245,197,66,.35); }
+#panel .btn[data-task]:not(:disabled):hover { border-color: #ffd65e; }
+#panel[data-fl] { transition: none; max-height: calc(100% - 150px); }
 /* weekly challenge + medals */
 .wboard li { padding: 4px 8px; } .wboard li span { font-variant-numeric: tabular-nums; }
 .wlast { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--paper-dim); }
