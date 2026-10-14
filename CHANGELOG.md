@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.36.4 — 2026-10-14
+- placePanel(): offset from the tile grows by 20% of the panel's width (mirrored when it opens on the left).
+
 ## v0.36.3 — 2026-10-14
 - placePanel(): on non-phone layouts #panel floats beside the selected tile (right, or left when there's no room),
   clamped below the top bar, updated each frame. Panel buttons: no filled .pri; every enabled action gets a gold border.

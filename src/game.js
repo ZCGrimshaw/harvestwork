@@ -1578,7 +1578,8 @@
     if (el.hidden || UI.sel < 0 || isPhone()) { if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = ''; delete el.dataset.fl; } return; }
     const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, w = el.offsetWidth, h = el.offsetHeight, gap = 44 * cam.z;
     const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight;
-    let left = sx + Math.max(34, gap); if (left + w > W - 10) left = sx - Math.max(34, gap) - w;
+    const off = Math.max(34, gap) + w * .2; // 20% of the panel's width further out, so it clears the tile's neighbours
+    let left = sx + off; if (left + w > W - 10) left = sx - off - w;
     left = Math.max(10, Math.min(W - w - 10, left));
     const top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2));
     const L = Math.round(left) + 'px', T = Math.round(top) + 'px';

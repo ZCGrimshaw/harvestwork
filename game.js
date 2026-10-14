@@ -1578,7 +1578,8 @@
     if (el.hidden || UI.sel < 0 || isPhone()) { if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = ''; delete el.dataset.fl; } return; }
     const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, w = el.offsetWidth, h = el.offsetHeight, gap = 44 * cam.z;
     const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight;
-    let left = sx + Math.max(34, gap); if (left + w > W - 10) left = sx - Math.max(34, gap) - w;
+    const off = Math.max(34, gap) + w * .2; // 20% of the panel's width further out, so it clears the tile's neighbours
+    let left = sx + off; if (left + w > W - 10) left = sx - off - w;
     left = Math.max(10, Math.min(W - w - 10, left));
     const top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2));
     const L = Math.round(left) + 'px', T = Math.round(top) + 'px';
@@ -2009,7 +2010,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-202313';
+  const BUILD = '20261014-202435';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
