@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.36.2 — 2026-10-14
+- Live "open now" chip (#online) left of Storage: per-page-load random id pings presence_ping every 30 s (hidden tabs
+  too); the server counts ids seen in the last 150 s; presence_leave on pagehide. Table presence, stale rows pruned.
+
 ## v0.36.1 — 2026-10-14
 - nameHTML(): the locked player name UI, now shown in every mode (Settings → Your player name) and on the weekly screen;
   the weekly board refreshes after locking a name. Server: locked "Grimshaw" for the owner's player id and renamed

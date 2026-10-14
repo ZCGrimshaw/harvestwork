@@ -537,6 +537,14 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .mbadge { font: 700 10.5px var(--f-display); letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; vertical-align: middle; margin-left: 4px; }
 .mbadge.online { background: var(--sky); color: #1e3a30; } .mbadge.private { background: var(--plum); color: #24160d; }
 .slot.other { opacity: .65; }
+/* open copies of the game, top right */
+#topbtns { align-items: center; }
+.online { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; font: 600 13px var(--f-display); color: var(--paper); background: rgba(36,22,13,.72); border: 2px solid var(--wood-lo); border-radius: 999px; white-space: nowrap; cursor: default; }
+.online[hidden] { display: none; }
+.online i { width: 8px; height: 8px; border-radius: 50%; background: #7cd05b; box-shadow: 0 0 0 0 rgba(124,208,91,.6); animation: livepulse 2.4s infinite; }
+.online b { font-variant-numeric: tabular-nums; }
+@keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(124,208,91,.55); } 70% { box-shadow: 0 0 0 6px rgba(124,208,91,0); } 100% { box-shadow: 0 0 0 0 rgba(124,208,91,0); } }
+@media (max-width: 700px) { .online .lg { display: none; } .online { padding: 5px 8px; } }
 /* weekly challenge + medals */
 .wboard li { padding: 4px 8px; } .wboard li span { font-variant-numeric: tabular-nums; }
 .wlast { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--paper-dim); }
@@ -567,6 +575,7 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
     <div id="stats"></div>
     <div id="ticker" aria-label="Recent valley market trades"></div>
     <div id="topbtns">
+      <span id="online" class="online" hidden></span>
       <button class="ibtn inv" data-drawer="inv">Storage</button>
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>

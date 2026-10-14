@@ -503,6 +503,13 @@
     if (!NET.ok) { await pullMarket(); }
     if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }
     try { sendScore(); await new Promise(r => setTimeout(r, 400)); UI.lb = await rpc('get_leaderboard', { p_farm: S.fid }); } catch (e) { UI.lb = { off: true }; } dirty(); }
+  /* How many copies of the game are open right now: each page load gets a random id and pings every 30 s
+     (background tabs too). The server counts ids seen in the last 2½ minutes. Nothing else is sent. */
+  const INST = crypto.randomUUID();
+  async function pingPresence() { try { const n = await rpc('presence_ping', { p_inst: INST }); if (typeof n === 'number') { NET.open = Math.max(1, n); renderOpen(); } } catch (e) { } }
+  function renderOpen() { const el = $('#online'); if (!el) return; el.hidden = !NET.open; if (!NET.open) return;
+    el.innerHTML = `<i></i><b>${NET.open}</b><span class="lg">&nbsp;playing</span>`; el.title = `${NET.open} cop${NET.open === 1 ? 'y' : 'ies'} of Harvest Valley open right now`; }
+  window.addEventListener('pagehide', () => { try { fetch(NET.url + 'presence_leave', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_inst: INST }) }); } catch (e) { } });
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
@@ -1991,7 +1998,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-161857';
+  const BUILD = '20261014-201633';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2083,6 +2090,7 @@
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
     pullMarket(); setInterval(() => { if (!document.hidden) pullMarket(); }, 30000);
+    pingPresence(); setInterval(pingPresence, 30000);
     let skip = false; try { skip = sessionStorage.getItem('infinifarm.skipTitle') === '1'; sessionStorage.removeItem('infinifarm.skipTitle'); } catch (e) { }
     if (!(snap && snap.tiles) && !skip) { let seen = false; try { seen = localStorage.getItem('infinifarm.seen') === '1'; } catch (e) { } openTitle(seen || UI.hadSave ? 'main' : 'splash'); }
     if (S.tut) startTut(S.tut.n);
