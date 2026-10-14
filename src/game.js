@@ -1355,7 +1355,10 @@
         <span class="eyebrow">Pausing</span><div class="opts">
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while the Menu or Settings is open</button>
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
-        <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p></div>
+        <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p>
+        <span class="optlabel">Pause when I haven’t done anything for</span>
+        <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleMins() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleMins() === m}">${m ? m + ' min' : 'Never'}</button>`).join('')}</div>
+        <p class="hint small">${idleMins() ? `If you don’t tap, click or press a key for ${idleMins()} minutes, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
@@ -1379,7 +1382,8 @@
         <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
-        <p class="sub">Your backup code <button class="codechip" data-copy-cloud title="Copy">${fmtCode(S.cloud.code)}</button> brings this farm back on any phone or computer: Main menu → Restore from a backup code.</p>
+        <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
+        <p class="sub">This code brings your farm back on any phone or computer: Main menu → Restore from a backup code.</p>
         <p class="hint small">Last backed up ${Math.max(1, Math.round((Date.now() - S.cloud.at) / 60000))} min ago (day ${S.cloud.day}). ${S.cloud.auto !== false ? 'It backs up again by itself every 10 minutes or so while you play.' : 'Automatic backups are off.'} Write the code down or take a screenshot. Anyone with the code can load a copy of your farm.</p>` : `
         <p class="sub">Back up your farm to the valley and get a short code that brings it back on any phone or computer.</p>`}
         <div class="menu"><button class="btn pri" data-cloud-backup ${UI.cloudBusy ? 'disabled' : ''}>${UI.cloudBusy ? 'Backing up…' : S.cloud && S.cloud.at ? 'Back up now' : 'Back up my farm'}</button><button class="btn ghost" data-restore-open>Restore from a backup code</button>
@@ -1535,6 +1539,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
+    else if (ds.idle !== undefined) { S.idlePause = +ds.idle; save(); }
     else if ('weekly' in ds) { S.weekly = S.weekly === false; save(); }
     else if ('lbshow' in ds) { S.lbShow = S.lbShow === false; save(); sendScore(); }
     else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
@@ -1551,7 +1556,10 @@
     else if ('shareSave' in ds) { shareSave(); return; }
     else if ('cloudBackup' in ds) { cloudBackup(true); return; }
     else if ('cloudAuto' in ds) { S.cloud.auto = S.cloud.auto === false; save(); }
-    else if ('copyCloud' in ds) { const t = fmtCode(S.cloud.code); try { navigator.clipboard.writeText(t).then(() => toast(`Copied ${t}`, 'info'), () => toast(`Your code: ${t}`, 'info')); } catch (e) { toast(`Your code: ${t}`, 'info'); } return; }
+    else if ('copyCloud' in ds) { const t = fmtCode(S.cloud.code), done = () => { UI.cloudCopied = true; dirty(); clearTimeout(UI.cloudCopiedT); UI.cloudCopiedT = setTimeout(() => { UI.cloudCopied = false; dirty(); }, 2500); };
+      const fallback = () => { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+        let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } ta.remove(); ok ? done() : toast(`Couldn’t copy automatically. Your code: <b>${t}</b>`, 'info'); };
+      try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); } return; }
     else if ('restoreOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.rest = null; openTitle('restore'); return; }
     else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
     else if ('toggleCode' in ds) { UI.showCode = !UI.showCode; }
@@ -1612,7 +1620,13 @@
 
   /* ================= loop ================= */
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
-  const paused = () => !!UI.title || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
+  // Idle pause: no tap, click, scroll or key for the chosen number of minutes.
+  const IDLE_OPTS = [0, 2, 5, 10, 30], idleMins = () => S.idlePause === undefined ? 10 : S.idlePause;
+  UI.lastInput = performance.now();
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { UI.lastInput = performance.now(); if (UI.idle) { UI.idle = false; $('#idlebar').hidden = true; dirty(); } }, { capture: true, passive: true }));
+  function checkIdle(now) { if (UI.idle || !idleMins() || UI.title || UI.catchup) return;
+    if (now - UI.lastInput > idleMins() * 60000) { UI.idle = true; save(); const el = $('#idlebar'); el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
+  const paused = () => !!UI.title || UI.idle || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -1624,7 +1638,7 @@
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    tickCatchUp(); SND.setHour(hour());
+    tickCatchUp(); SND.setHour(hour()); checkIdle(now);
     if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);

@@ -499,6 +499,11 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 #rcode { text-transform: uppercase; letter-spacing: .1em; font-family: var(--f-display); }
 .fullbar { margin-top: 12px; padding: 8px 10px; background: rgba(224,72,94,.16); border: 1px solid rgba(224,72,94,.6); border-radius: var(--r); font-size: 13px; line-height: 1.4; }
 .fullbar.soft { background: rgba(245,197,66,.1); border-color: rgba(245,197,66,.45); }
+.coderow { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; flex-wrap: wrap; }
+.coderow .codechip { cursor: text; user-select: all; font-size: 17px; padding: 7px 10px; }
+.coderow .btn { width: auto; margin: 0; }
+.optlabel { font-weight: 700; font-size: 13.5px; margin-top: 6px; }
+.updatebar.idlebar { top: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 15; text-align: center; border-color: var(--sky); }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
@@ -537,14 +542,15 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="toasts" aria-live="polite"></div>
   <div id="update" class="updatebar" role="status" hidden><span><b>A new version of Harvestworks is ready.</b> Your farm is saved; reload when you’re ready.</span><button class="btn pri sm" data-reload>Reload now</button><button class="btn ghost sm" data-later>Later</button></div>
   <div id="movebar" class="updatebar movebar" role="status" hidden></div>
+  <div id="idlebar" class="updatebar idlebar" role="status" hidden></div>
   <div id="drawer" hidden></div>
   <div id="coach" class="wood" role="status" hidden></div>
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261014-043228"></script>
-<script src="art.js?v=20261014-043228"></script>
-<script src="sound.js?v=20261014-043228"></script>
-<script src="game.js?v=20261014-043228"></script>
+<script src="data.js?v=20261014-043652"></script>
+<script src="art.js?v=20261014-043652"></script>
+<script src="sound.js?v=20261014-043652"></script>
+<script src="game.js?v=20261014-043652"></script>
 
 </body></html>

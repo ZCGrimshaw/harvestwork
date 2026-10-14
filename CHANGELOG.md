@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.32 — 2026-10-13
+- Idle pause: S.idlePause minutes (default 10; Never/2/5/10/30 in Settings → Pausing). Any pointerdown/keydown/wheel/
+  touch resets the timer; when it runs out the game pauses (paused() includes UI.idle), saves, and shows a centred
+  "Paused while you were away" bar until the next input. Not counted during title screens or away-time catch-up.
+- Cloud backup: code shown as selectable text with a Copy code button (clipboard API, execCommand fallback,
+  "Copied ✓" for 2.5 s).
+
 ## v0.31.1 — 2026-10-13
 - Market Buy tab: red notice when storage is full, amber when 5 or fewer spaces remain.
 

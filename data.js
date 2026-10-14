@@ -484,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.32', at: '2026-10-13 21:55', notes: ['The game now pauses itself if you haven’t done anything for a while (10 minutes to start). Pick Never, 2, 5, 10 or 30 minutes in Settings → Pausing. Any tap, click or key carries on.', 'Menu → Cloud backup has a clear Copy code button next to your backup code.'] },
   { v: '0.31.1', at: '2026-10-13 21:45', notes: ['The Open Market’s Buy tab now warns you when storage is full (or nearly full), before you try to buy.'] },
   { v: '0.31', at: '2026-10-13 21:40', notes: ['Cloud backup: Menu → Cloud backup saves your farm to the valley and gives you a 12-letter code. On any phone or computer, choose Restore from a backup code on the main menu to get your farm back. It backs up on its own every 10 minutes or so while you play.', 'On phones, Share save file opens your phone’s share sheet so you can save the file to Files, AirDrop it or email it.'] },
   { v: '0.30.1', at: '2026-10-13 15:30', notes: ['Settings → Leaderboard name: lock in a name that’s yours alone across the valley. If it’s taken you’ll be offered the next free number, like Zac1. Locked names show a ✓ on the leaderboard.'] },

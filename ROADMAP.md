@@ -15,8 +15,6 @@ Not built yet; picked up when we choose to.
   goats; animals eat spare crops (a new use for surplus), happiness from feeding/brushing raises quality; animals wander
   their pen. Pets: a farm dog that follows the farmer and a cat that naps on the Homestead step. Wild life for ambience
   (rabbits, birds landing, butterflies) can share work with the supporter pack's ambient life.
-- **Backup code copy button (pinned 2026-10-13):** a clear "Copy" button beside the backup code in Menu → Cloud backup
-  (today the code chip itself copies when tapped, which isn't obvious).
-- **Idle auto-pause (pinned 2026-10-13):** pause the game when the player hasn't done anything for a while; Settings →
-  Pausing lets them pick the delay (e.g. Off / 2 / 5 / 10 / 30 minutes). Any tap, click or key resumes.
+- ~~Backup code copy button~~ (done in v0.32).
+- ~~Idle auto-pause~~ (done in v0.32).
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
