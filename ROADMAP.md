@@ -22,6 +22,8 @@ Not built yet; picked up when we choose to.
   (a) Daily quests on your own farm: 3 small goals a day (e.g. "Bake 4 bread", "Sell 300g of goods", "Harvest 20
   carrots"), rewards in gold/Discovery, a streak counter and a weekly bonus for 7 days in a row.
   (b) ~~Daily challenge~~ folded into the Weekly challenge below; (a) stays as its own idea.
+- **Next build (pinned 2026-10-14):** the live "open now" chip at the top right shows just the green dot and the number;
+  drop the word "playing" (renderOpen in game.js; keep the tooltip). Release note: visible, small visual change.
 - **Weekly challenge: 10-minute runs from next week (pinned 2026-10-14):** starting with the week that opens Monday
   2026-10-19 00:00 UTC (week 2963; Sunday 5pm Pacific), ranked and practice runs last 10 minutes instead of 15. Change WEEK_RUN
   in game.js per week (keep 15 for week 2962 so this week's runs stay fair), the 900 s limit in weekly_score on the
