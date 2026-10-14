@@ -21,6 +21,15 @@ Not built yet; picked up when we choose to.
   by the date, like race head starts). Two shapes to choose between when we build it:
   (a) Daily quests on your own farm: 3 small goals a day (e.g. "Bake 4 bread", "Sell 300g of goods", "Harvest 20
   carrots"), rewards in gold/Discovery, a streak counter and a weekly bonus for 7 days in a row.
-  (b) Daily challenge: a solo race on that day's shared head start to a target score, with a "today's fastest
-  farmers" board; one ranked attempt per day, practice runs after. Reuses the race preset, race bar and leaderboard.
+  (b) ~~Daily challenge~~ folded into the Weekly challenge below; (a) stays as its own idea.
+- **Weekly challenge (pinned 2026-10-14):** main-menu mode (online only). Everyone gets the same seeded head start for
+  the week (race preset seeded by year+week). One ranked attempt per day (enforced server-side, day resets 00:00 UTC),
+  each a 15-minute no-pause run; your best attempt of the week counts; extra runs are unranked practice. Week closes
+  Sunday 00:00 UTC; ties go to the earlier submission. Top 3 get gold/silver/bronze medals, stored server-side against
+  the player (so they survive restores) and shown with a ceremony pop-up on next open. Medals live in Menu → Medals and
+  can be placed on any farm (private too) as a decoration; clicking one shows e.g. "Weekly Challenge champion · Week 42,
+  2026". Server: weekly_runs + medals tables; start_attempt, submit_weekly (with a max-points-per-minute sanity check),
+  weekly_board, my_medals. Pairs well with the player key below.
+- **Player key (pinned 2026-10-14, idea):** one no-signup code per player (like the backup code) that carries the locked
+  name, medals and every farm's cloud backup to a new device. Optional; no email or password.
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
