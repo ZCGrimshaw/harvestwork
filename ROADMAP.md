@@ -17,4 +17,10 @@ Not built yet; picked up when we choose to.
   (rabbits, birds landing, butterflies) can share work with the supporter pack's ambient life.
 - ~~Backup code copy button~~ (done in v0.32).
 - ~~Idle auto-pause~~ (done in v0.32).
+- **Daily quest mode (pinned 2026-10-13):** a fresh challenge every real-world day, the same for every player (seeded
+  by the date, like race head starts). Two shapes to choose between when we build it:
+  (a) Daily quests on your own farm: 3 small goals a day (e.g. "Bake 4 bread", "Sell 300g of goods", "Harvest 20
+  carrots"), rewards in gold/Discovery, a streak counter and a weekly bonus for 7 days in a row.
+  (b) Daily challenge: a solo race on that day's shared head start to a target score, with a "today's fastest
+  farmers" board; one ranked attempt per day, practice runs after. Reuses the race preset, race bar and leaderboard.
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
