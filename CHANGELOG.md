@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.36.1 — 2026-10-14
+- nameHTML(): the locked player name UI, now shown in every mode (Settings → Your player name) and on the weekly screen;
+  the weekly board refreshes after locking a name. Server: locked "Grimshaw" for the owner's player id and renamed
+  that player's week-2962 run.
+
 ## v0.36 — 2026-10-14
 - Weekly challenge: D.weeklyThemes (10 themes) picked in shuffled rounds from the week number (each theme once per
   round, never twice in a row); weeklyPreset seeds stations, plots, land, terrain and goods. Rules hook into gainScore

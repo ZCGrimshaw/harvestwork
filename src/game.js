@@ -207,15 +207,16 @@
   const setMyName = n => { NET.myName = n; try { n ? localStorage.setItem('harvestworks.lbname', n) : localStorage.removeItem('harvestworks.lbname'); } catch (e) { } };
   async function fetchMyName() { try { const r = await rpc('my_name', { p_player: PLAYER }); setMyName(r && r.name || null); dirty(); } catch (e) { } }
   async function claimName(name) {
-    UI.claim = { busy: true }; dirty();
+    UI.claim = { busy: true }; dirty(); if (UI.title) renderTitle();
     if (!NET.ok) await pullMarket();
-    if (!NET.ok) { UI.claim = { err: 'Locking a name needs the shared valley connection (web version).' }; dirty(); return; }
+    if (!NET.ok) { UI.claim = { err: 'Locking a name needs the shared valley connection (web version).' }; dirty(); if (UI.title) renderTitle(); return; }
     try { const r = await rpc('claim_name', { p_player: PLAYER, p_name: name });
-      if (r.ok) { setMyName(r.name); UI.claim = { done: r.name }; UI.lbDraft = null; UI.lbEdit = false; sendScore(); toast(`<b>Name locked in:</b> ${esc(r.name)} ✓`, 'goal'); }
+      if (r.ok) { setMyName(r.name); UI.claim = { done: r.name }; UI.lbDraft = null; UI.lbEdit = false; sendScore(); toast(`<b>Name locked in:</b> ${esc(r.name)} ✓`, 'goal');
+        if (UI.title === 'weekly') rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; if (UI.title === 'weekly') renderTitle(); }).catch(() => {}); }
       else if (r.taken) UI.claim = { taken: name, suggestion: r.suggestion };
       else UI.claim = { err: r.error || 'Couldn’t lock that name.' };
     } catch (e) { UI.claim = { err: 'Couldn’t reach the valley. Try again in a moment.' }; }
-    dirty(); }
+    dirty(); if (UI.title) renderTitle(); }
   /* cloud backup: the farm (as a compressed save code) is stored on the valley server under a secret 12-letter
      backup code. Typing the code on any device brings the farm back. Backs up on its own every ~10 minutes of play. */
   const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1579,6 +1580,14 @@
     else h = emptyPanel(i);
     setHTML('#panel', h);
   }
+  // Your player name: locked to this player (not a farm) and used on the leaderboard, the weekly challenge and medals.
+  function nameHTML() { const c = UI.claim || {};
+          if (NET.myName && !UI.lbEdit) return `<p class="state">Locked in as <b>${esc(NET.myName)}</b> ✓ No one else in the valley can use it.</p><button class="btn ghost sm" data-lb-edit>Change it</button>`;
+          let h = `<p class="hint small">Lock in a name so it’s yours alone across the valley. If it’s taken, you’ll get the next free number (Name1, Name2…).</p>
+            <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || S.name || ''))}" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
+          if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
+          if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
+          return h; }
   function renderDrawer() {
     const el = $('#drawer');
     if (!UI.drawer) { el.hidden = true; UI.html['#drawer'] = ''; return; }
@@ -1666,13 +1675,7 @@
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
         ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
         <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p>` : ''}</div>
-        ${online() ? `<span class="eyebrow">Leaderboard name</span><div class="opts">${(() => { const c = UI.claim || {};
-          if (NET.myName && !UI.lbEdit) return `<p class="state">Locked in as <b>${esc(NET.myName)}</b> ✓ No one else in the valley can use it.</p><button class="btn ghost sm" data-lb-edit>Change it</button>`;
-          let h = `<p class="hint small">Lock in a name so it’s yours alone across the valley. If it’s taken, you’ll get the next free number (Name1, Name2…).</p>
-            <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || S.name || ''))}" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
-          if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
-          if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
-          return h; })()}</div>` : ''}
+        <span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p></div>
         ${S.race ? '' : `<span class="eyebrow">This farm</span><div class="opts"><p class="state">${S.mode === 'private' ? '<b>Private farm.</b> No leaderboard and no shared prices. Private farms can’t join the Online Valley later.' : '<b>Online Valley farm.</b> Shared market prices, the valley ticker and the leaderboard.'}</p>
           ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}</div>`}
         <span class="eyebrow">Sound</span><div class="opts">
@@ -1866,8 +1869,8 @@
     else if (ds.kitview) { UI.kitView = ds.kitview; }
     else if ('lbClaim' in ds) { const v = (($('#lbname') || {}).value || '').trim(); claimName(v); return; }
     else if (ds.lbTake) { claimName(ds.lbTake); return; }
-    else if ('lbEdit' in ds) { UI.lbEdit = true; UI.claim = null; }
-    else if ('lbEditCancel' in ds) { UI.lbEdit = false; UI.claim = null; UI.lbDraft = null; }
+    else if ('lbEdit' in ds) { UI.lbEdit = true; UI.claim = null; if (UI.title) renderTitle(); }
+    else if ('lbEditCancel' in ds) { UI.lbEdit = false; UI.claim = null; UI.lbDraft = null; if (UI.title) renderTitle(); }
     else if ('repay' in ds) { if (S.loan && S.gold >= S.loan.owed) repayLoan(false); else toast(`You need ${S.loan ? S.loan.owed : 0}g to repay the loan.`, 'warn'); }
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
@@ -2153,6 +2156,7 @@
             <div class="tmenu">${live ? `<button class="btn pri big" data-t="wresume">Back to your run<small>${fmtTime(o.race.end - Date.now())} left</small></button>` : ''}
             ${W.used_today ? `<button class="btn ${live ? '' : 'pri'} big" data-t="wpractice" ${UI.wbusy ? 'disabled' : ''}>Practice run<small>Doesn’t count. Your next ranked run opens in ${fmtLeft(nextDay)}</small></button>`
               : `<button class="btn ${live ? '' : 'pri'} big" data-t="wstart" ${UI.wbusy ? 'disabled' : ''}>${UI.wbusy ? 'Starting…' : 'Start today’s ranked run'}<small>15 minutes on the clock after a 5-second countdown. Your own farms stay safe.</small></button>`}</div>`}
+        ${W.off || W.loading ? '' : `<span class="eyebrow">Playing as</span><div class="opts tname">${nameHTML()}</div>`}
         ${UI.werr ? `<p class="hint err">${esc(UI.werr)}</p>` : ''}
         <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
     else if (t === 'weeklygo') { const R = S.race || {}, th = weekTheme(R.week);
