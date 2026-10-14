@@ -105,6 +105,7 @@
     if (!S.log) S.log = [];
     if (!S.tick) S.tick = { open: true, spd: 'slow' };
     if (!S.wk) weekStart();
+    if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null;
   }
@@ -190,9 +191,13 @@
     try { const r = await fetch(NET.url + fn, { method: 'POST', signal: ctl.signal, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
       if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(tm); }
   }
+  /* Farm modes: 'online' (Online Valley: shared market prices, ticker, leaderboard) or 'private' (no connection to anyone).
+     Races are their own thing. A farm can go from online to private, never back. */
+  const online = () => S && S.mode !== 'private' && !S.race;
+  const MODES = { online: { name: 'Online Valley', blurb: 'Shared market prices, the valley ticker and the leaderboard' }, private: { name: 'Private farm', blurb: 'Just you, on your own time. No leaderboard, no shared prices' } };
   /* leaderboard: each farm reports its score and day once an in-game day; the board is read when opened */
   const LB_MIN_DAYS = 7;
-  function sendScore() { if (!NET.ok || !S.fid || S.race) return;
+  function sendScore() { if (!NET.ok || !S.fid || !online()) return;
     rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
   // A locked-in name belongs to this device's player and is unique across the valley.
   NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
@@ -367,13 +372,13 @@
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
   }
-  function reportTrade(item, qty, side) { if (S.race) return;
+  function reportTrade(item, qty, side) { if (!online()) return;
     if (!NET.ok || D.items[item].cat === 'kit') return;
     NET.trades.unshift({ item, qty, side, created_at: new Date(Date.now() - NET.skew).toISOString(), mine: true }); NET.trades.length = Math.min(NET.trades.length, 40);
     UI.tickDirty = true;
     rpc('record_trade', { p_player: PLAYER, p_item: item, p_qty: qty, p_side: side }).then(m => { if (typeof m === 'number') { NET.prices[item] = m; dirty(); } }).catch(() => {});
   }
-  const mult = id => (!S.race && NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1; // races use plain local prices
+  const mult = id => (online() && NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1; // races use plain local prices
   // Goods you've made at least once can be bought back from the market at a markup (above even the +50% demand sell price).
   const RESALE = 1.75;
   const buyPrice = id => (S && S.race && S.race.deal && S.race.deal.kit === id) ? S.race.deal.price : Math.max(1, Math.round((D.items[id].buy || (D.items[id].value || 1) * RESALE) * mult(id)));
@@ -767,7 +772,7 @@
   const saveKey = () => (S && S.race) ? RACE_KEY : SLOT_KEYS[SLOT];
   function save() { UI.saveIn = 8; try { localStorage.setItem(saveKey(), JSON.stringify(S)); UI.savedAt = Date.now(); } catch (e) { /* storage blocked: play continues */ } }
   function load(key = SLOT_KEYS[SLOT]) { try { const s = localStorage.getItem(key); if (!s) return null; const o = JSON.parse(s); return o && o.v === 1 && o.tiles ? o : null; } catch (e) { return null; } }
-  function slotInfo(k) { try { const s = localStorage.getItem(SLOT_KEYS[k]); if (!s) return null; const o = JSON.parse(s); return o && o.tiles ? { name: o.name || 'Farmer', day: o.day, gold: o.gold, score: Math.floor(o.score || 0) } : null; } catch (e) { return null; } }
+  function slotInfo(k) { try { const s = localStorage.getItem(SLOT_KEYS[k]); if (!s) return null; const o = JSON.parse(s); return o && o.tiles ? { name: o.name || 'Farmer', day: o.day, gold: o.gold, score: Math.floor(o.score || 0), mode: o.mode || 'online' } : null; } catch (e) { return null; } }
   const setSlot = k => { SLOT = k; try { localStorage.setItem('harvestworks.slot', k); } catch (e) { } };
 
   /* ================= camera & input ================= */
@@ -1294,7 +1299,8 @@
   function marketPanel(i) {
     const d = S.market.demand;
     let h = head('Open Market', 'Every trade sends your farmer to the stall.');
-    h += `<p class="netline ${NET.ok ? 'on' : ''}">${NET.ok ? `<b>Shared valley prices</b> · ${NET.active} trader${NET.active === 1 ? '' : 's'} this hour · prices settle back over ~${NET.recov >= 1.5 ? Math.round(NET.recov) + 'h' : Math.max(1, Math.round(NET.recov * 60)) + ' min'} · updated ${Math.max(0, Math.round((Date.now() - NET.at) / 1000))}s ago` : NET.tried ? 'Shared prices unavailable here, so this market uses local prices.' : 'Connecting to the valley market…'}</p>`;
+    if (!online()) h += `<p class="netline">${S.race ? 'Race prices: plain local prices, the same for every racer.' : 'Private farm: plain local prices, untouched by anyone else.'}</p>`;
+    else h += `<p class="netline ${NET.ok ? 'on' : ''}">${NET.ok ? `<b>Shared valley prices</b> · ${NET.active} trader${NET.active === 1 ? '' : 's'} this hour · prices settle back over ~${NET.recov >= 1.5 ? Math.round(NET.recov) + 'h' : Math.max(1, Math.round(NET.recov * 60)) + ' min'} · updated ${Math.max(0, Math.round((Date.now() - NET.at) / 1000))}s ago` : NET.tried ? 'Shared prices unavailable here, so this market uses local prices.' : 'Connecting to the valley market…'}</p>`;
     if (S.race && S.race.deal) { const dl = S.race.deal; h += `<div class="demand">${ico(dl.kit)}<span><b>Race-day bargain:</b> ${esc(D.buildings[D.items[dl.kit].building].name)} kit for just <b>${dl.price}g</b> (normally ${D.items[dl.kit].buy}g). Stations tab.</span></div>`; }
     if (d) h += `<div class="demand">${ico(d.item)}<span>Today: <b>${esc(D.items[d.item].name)}</b> sells for <b>+${d.pct}%</b></span></div>`;
     h += `<div class="tabs">${['buy', 'sell', 'stations'].map(t => `<button class="tab ${UI.mtab === t ? 'on' : ''}" data-mtab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
@@ -1509,15 +1515,17 @@
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
-        <button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
-        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p></div>
-        <span class="eyebrow">Leaderboard name</span><div class="opts">${(() => { const c = UI.claim || {};
+        ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
+        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p>` : ''}</div>
+        ${online() ? `<span class="eyebrow">Leaderboard name</span><div class="opts">${(() => { const c = UI.claim || {};
           if (NET.myName && !UI.lbEdit) return `<p class="state">Locked in as <b>${esc(NET.myName)}</b> ✓ No one else in the valley can use it.</p><button class="btn ghost sm" data-lb-edit>Change it</button>`;
           let h = `<p class="hint small">Lock in a name so it’s yours alone across the valley. If it’s taken, you’ll get the next free number (Name1, Name2…).</p>
             <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || S.name || ''))}" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
           if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
           if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
-          return h; })()}</div>
+          return h; })()}</div>` : ''}
+        ${S.race ? '' : `<span class="eyebrow">This farm</span><div class="opts"><p class="state">${S.mode === 'private' ? '<b>Private farm.</b> No leaderboard and no shared prices. Private farms can’t join the Online Valley later.' : '<b>Online Valley farm.</b> Shared market prices, the valley ticker and the leaderboard.'}</p>
+          ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}</div>`}
         <span class="eyebrow">Sound</span><div class="opts">
         <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
         ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
@@ -1527,7 +1535,7 @@
     } else if (UI.drawer === 'menu') {
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? 'Racing: the clock keeps running. ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button>${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button>${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -1601,6 +1609,7 @@
   }
   function renderTicker() {
     const T = S.tick || (S.tick = { open: true, spd: 'slow' }), el = $('#ticker');
+    el.hidden = !online(); if (!online()) { UI.tickShell = null; return; }
     const shell = `${T.open ? '' : 'closed'}|${T.spd}`;
     if (UI.tickShell !== shell) { UI.tickShell = shell; UI.tickText = null;
       el.className = T.open ? 'open' : 'closed';
@@ -1613,7 +1622,7 @@
     UI.tickText = txt; UI.tickDirty = false;
     el.querySelectorAll('.tkc').forEach(c => { c.innerHTML = txt + '<span class="sep">◆</span>'; });
   }
-  function tickTicker(dt) {
+  function tickTicker(dt) { if (!online()) return;
     const T = S.tick; if (!T || !T.open) return; const tr = document.querySelector('#ticker .tktrack'), c = tr && tr.firstElementChild; if (!c) return;
     const w = c.offsetWidth; if (!w) return;
     if (!mq('(prefers-reduced-motion: reduce)')) UI.tickX = ((UI.tickX || 0) + TICK_SPEED[T.spd] * dt) % w;
@@ -1691,6 +1700,8 @@
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
+    else if ('goPrivate' in ds) { if (!UI.goPrivate) { UI.goPrivate = true; clearTimeout(UI.goPrivT); UI.goPrivT = setTimeout(() => { UI.goPrivate = false; dirty(); }, 4000); }
+      else { UI.goPrivate = false; S.mode = 'private'; save(); toast('<b>This farm is now private.</b> No leaderboard, no shared prices.', 'info'); } }
     else if ('weekly' in ds) { S.weekly = S.weekly === false; save(); }
     else if ('lbshow' in ds) { S.lbShow = S.lbShow === false; save(); sendScore(); }
     else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
@@ -1923,10 +1934,13 @@
         <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
     else if (t === 'main') { const f = UI.tFile;
       h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvestworks</h1><div class="tmenu">
-        ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
-        <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="slots">${UI.hadSave ? 'Your farms' : 'New farm'}<small>${UI.hadSave ? 'Switch farms or start a new one (3 slots)' : 'Name your farmer and begin'}</small></button>
+        ${UI.hadSave && !S.race ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · ${MODES[S.mode || 'online'].name} · Day ${S.day} · ${S.gold}g</small></button>` : ''}
+        <div class="modegrid">
+          <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="mode" data-m="online">Online Valley<small>Shared prices and the leaderboard</small></button>
+          <button class="btn big" data-t="mode" data-m="private">Private farm<small>Just you, on your own time</small></button>
+          <button class="btn big" data-t="race">Race<small>Race friends to a target score</small></button></div>
         ${raceInfo() && load(RACE_KEY) ? `<button class="btn pri big" data-t="rresume">Back to your race<small>Race ${esc(raceInfo().code)} to ${raceInfo().target.toLocaleString()}</small></button>` : ''}
-        <button class="btn big" data-t="race">Race with friends<small>Host or join a race to a target score</small></button>
+        ${UI.hadSave ? '<button class="btn ghost big" data-t="slots">All your farms<small>Switch farms or start a new one (3 slots)</small></button>' : ''}
         <button class="btn big" data-t="restore">Restore from a backup code<small>The 12-letter code from Menu → Cloud backup</small></button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
         <button class="btn ghost big" data-t="support">Show your support</button></div>
@@ -1959,18 +1973,21 @@
         <ol class="rresults">${L.players.map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.finished_ms != null ? fmtTime(p.finished_ms) : p.score.toLocaleString() + ' pts, still racing'}</span></li>`).join('')}</ol>
         <div class="tmenu"><button class="btn pri big" data-t="rhome">Back to my farm</button><button class="btn big" data-t="continue">Keep playing this race farm</button></div></div>`; }
     else if (t === 'slots') {
-      h = `<div class="tcard"><h2>Your farms</h2><p class="sub">Three farms can live side by side in this browser. Each keeps its own land, progress, backups and leaderboard entry.</p><div class="slots">${
-        [0, 1, 2].map(k => { const f = k === SLOT && UI.hadSave && !S.race ? { name: S.name, day: S.day, gold: S.gold, score: Math.floor(S.score) } : slotInfo(k), cur = k === SLOT && UI.hadSave && !S.race;
-          return `<div class="slot ${cur ? 'cur' : ''}"><div class="grow1"><span class="eyebrow">Farm ${k + 1}${cur ? ' · playing now' : ''}</span>${f ? `<b>${esc(f.name)}’s farm</b><small>Day ${f.day} · ${f.gold}g · score ${f.score}</small>` : '<b class="muted">Empty</b>'}</div>
-            <div class="slotbtns">${f ? `${cur ? '' : `<button class="btn pri sm" data-t="slotplay" data-k="${k}">Play</button>`}<button class="btn ${UI.slotWipe === k ? 'danger' : 'ghost'} sm" data-t="slotnew" data-k="${k}">${UI.slotWipe === k ? 'Tap again to replace' : 'New farm here'}</button>`
-              : `<button class="btn pri sm" data-t="slotnew" data-k="${k}">Start a farm here</button>`}</div></div>`; }).join('')}</div>
+      const fm = UI.slotMode;
+      h = `<div class="tcard"><h2>${fm ? MODES[fm].name : 'Your farms'}</h2><p class="sub">${fm ? esc(MODES[fm].blurb) + '. Pick a farm to play, or start one in an empty slot.' : 'Three farms can live side by side in this browser. Each keeps its own land, progress and backups.'}</p><div class="slots">${
+        [0, 1, 2].map(k => { const f = k === SLOT && UI.hadSave && !S.race ? { name: S.name, day: S.day, gold: S.gold, score: Math.floor(S.score), mode: S.mode } : slotInfo(k), cur = k === SLOT && UI.hadSave && !S.race;
+          const other = f && fm && (f.mode || 'online') !== fm;
+          return `<div class="slot ${cur ? 'cur' : ''} ${other ? 'other' : ''}"><div class="grow1"><span class="eyebrow">Farm ${k + 1}${cur ? ' · playing now' : ''}</span>${f ? `<b>${esc(f.name)}’s farm <span class="mbadge ${f.mode || 'online'}">${(f.mode || 'online') === 'private' ? 'Private' : 'Online'}</span></b><small>Day ${f.day} · ${f.gold}g · score ${f.score}</small>` : '<b class="muted">Empty</b>'}</div>
+            <div class="slotbtns">${f ? `${cur ? (fm && !other ? `<button class="btn pri sm" data-t="continue">Keep playing</button>` : '') : `<button class="btn ${other ? 'ghost' : 'pri'} sm" data-t="slotplay" data-k="${k}">Play</button>`}<button class="btn ${UI.slotWipe === k ? 'danger' : 'ghost'} sm" data-t="slotnew" data-k="${k}">${UI.slotWipe === k ? 'Tap again to replace' : 'New farm here'}</button>`
+              : `<button class="btn pri sm" data-t="slotnew" data-k="${k}">${fm ? `Start ${fm === 'private' ? 'a private' : 'an Online Valley'} farm` : 'Start a farm here'}</button>`}</div></div>`; }).join('')}</div>
         <p class="hint small">Starting a new farm in a slot that has one replaces it. Download a save file or note its backup code first if you might want it back.</p>
         <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
     else if (t === 'confirm') h = `<div class="tcard"><h2>Start a new farm?</h2>
         <p class="sub">This replaces <b>${esc(S.name)}’s farm</b> (day ${S.day}, ${S.gold}g) in this browser. Download a save file first if you might want it back.</p>
         <div class="tmenu"><button class="btn big" data-t="dl">Download save file</button><button class="btn danger big" data-t="name">Replace it and start fresh</button>${back}</div></div>`;
     else if (t === 'name') h = `<div class="tcard"><h2>Name your farmer</h2>
-        <label class="field tname">Name <input id="tname" maxlength="14" placeholder="Farmer" autocomplete="off"></label>
+        <label class="field tname">Name <input id="tname" maxlength="14" placeholder="Farmer" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
+        <div class="modepick">${['online', 'private'].map(m => `<button class="modeopt ${(UI.newMode || 'online') === m ? 'on' : ''}" data-t="pickmode" data-m="${m}"><b>${MODES[m].name}</b><small>${MODES[m].blurb}</small></button>`).join('')}</div>
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
@@ -1990,7 +2007,7 @@
         <div class="wgrid">${stat('gold', sg(r.gold) + 'g')}${stat('score', sg(r.score))}${stat('Discovery earned', sg(Math.max(0, r.dp)))}${stat('sales', r.sold + 'g')}${stat('harvested', r.harvest)}${stat('orders filled', r.orders + r.ms)}</div>
         ${top ? `<span class="eyebrow">Made this week</span><div class="wmades">${top}</div>` : ''}
         <p class="sub">${[r.tiles > 0 ? `You claimed ${r.tiles} new tile${r.tiles === 1 ? '' : 's'}.` : '', r.built > 0 ? `You built ${r.built} new building${r.built === 1 ? '' : 's'}.` : '', r.ms > 0 ? `${r.ms} contract${r.ms === 1 ? '' : 's'} done.` : ''].filter(Boolean).join(' ') || 'A quiet week.'}${m ? ` Next contract: <b>${esc(m.name)}</b>.` : ''}</p>
-        <div class="tmenu"><button class="btn pri big" data-t="continue">Back to the farm</button><button class="btn big" data-lb-open>See the leaderboard</button></div>
+        <div class="tmenu"><button class="btn pri big" data-t="continue">Back to the farm</button>${online() ? '<button class="btn big" data-lb-open>See the leaderboard</button>' : ''}</div>
         <button class="linkish small" data-t="weekoff">Turn off weekly reports</button></div>`; }
     else if (t === 'loan') h = `<div class="tcard"><h2>Wow, you really did yourself in…</h2>
         <p class="sub">No gold for seeds, nothing to sell, and no work left that brings in goods. The valley bank is lending you <b>${LOAN.amount}g</b> to get going again.</p>
@@ -2004,8 +2021,9 @@
   }
   function startNewFarm(name, tut) {
     if (UI.newSlot != null) { if (!S.race) save(); setSlot(UI.newSlot); UI.newSlot = null; }
+    if (S.race) { S.race = null; try { localStorage.removeItem(RINFO); localStorage.removeItem(RACE_KEY); } catch (e) { } }
     try { localStorage.removeItem(saveKey()); } catch (e) { }
-    newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v;
+    newState(); S.mode = UI.newMode || 'online'; migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v; UI.tnameDraft = '';
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
     if (tut) startTut(); else toast(`<b>Welcome to Harvestworks, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
@@ -2024,10 +2042,12 @@
       try { navigator.clipboard.writeText(t).then(done, () => toast(`Invite link: ${esc(t)}`, 'info')); } catch (e) { toast(`Invite link: ${esc(t)}`, 'info'); } }
     else if (a === 'rhome') leaveRace();
     else if (a === 'rresume') { if (!resumeRace()) { try { localStorage.removeItem(RINFO); } catch (e) { } renderTitle(); } }
-    else if (a === 'slots') { UI.slotWipe = null; openTitle(UI.hadSave ? 'slots' : 'name'); }
+    else if (a === 'slots') { UI.slotWipe = null; UI.slotMode = null; openTitle(UI.hadSave ? 'slots' : 'name'); }
+    else if (a === 'mode') { UI.slotWipe = null; UI.slotMode = el.dataset.m; UI.newMode = el.dataset.m;
+      if (!UI.hadSave && ![0, 1, 2].some(k => slotInfo(k))) { openTitle('name'); return; } openTitle('slots'); }
     else if (a === 'slotplay') { const k = +el.dataset.k, o = load(SLOT_KEYS[k]); if (!o) return; if (!S.race) save(); setSlot(k); adoptState(o); UI.hadSave = true; closeTitle(); toast(`<b>Welcome back, ${esc(S.name)}.</b> Day ${S.day}, ${S.gold}g.`, 'goal'); }
     else if (a === 'slotnew') { const k = +el.dataset.k, f = slotInfo(k) || (k === SLOT && UI.hadSave);
-      if (f && UI.slotWipe !== k) { UI.slotWipe = k; renderTitle(); return; } UI.slotWipe = null; UI.newSlot = k; openTitle('name'); }
+      if (f && UI.slotWipe !== k) { UI.slotWipe = k; renderTitle(); return; } UI.slotWipe = null; UI.newSlot = k; UI.newMode = UI.slotMode || UI.newMode || 'online'; openTitle('name'); }
     else if (a === 'restore') { UI.rest = null; openTitle('restore'); }
     else if (a === 'restorefind') findBackup(($('#rcode') || {}).value);
     else if (a === 'restorego' && UI.rest && UI.rest.o) { const code = UI.rest.code; adoptState(UI.rest.o); S.cloud = Object.assign({}, S.cloud || {}, { code, at: Date.now(), auto: S.cloud ? S.cloud.auto : true }); save();
@@ -2042,6 +2062,7 @@
     else if (a === 'filecancel') { UI.tFile = null; renderTitle(); }
     else if (a === 'loadgo' && UI.tFile && UI.tFile.o) { const o = UI.tFile.o; adoptState(o); UI.hadSave = true; closeTitle();
       toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
+    else if (a === 'pickmode') { UI.tnameDraft = ($('#tname') || {}).value || ''; UI.newMode = el.dataset.m; renderTitle(); }
     else if (a === 'go' || a === 'go-tut') { const n = ($('#tname') || {}).value; startNewFarm((n || '').trim(), a === 'go-tut'); }
   });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rjoin') { e.preventDefault(); joinRace(e.target.value); } });

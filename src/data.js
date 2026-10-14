@@ -484,6 +484,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.35', at: '2026-10-13 23:20', notes: ['Three ways to play from the main menu: Online Valley (shared market prices, the ticker and the leaderboard), Private farm (just you, on your own time) and Race.', 'Your existing farms are Online Valley farms. Settings → This farm can make a farm private (one way only).'] },
   { v: '0.34.1', at: '2026-10-13 23:10', notes: ['Buying land (and surveying new areas) now lists everything it costs, not just the gold, with how much of each you have and how many more you need.'] },
   { v: '0.34', at: '2026-10-13 23:00', notes: ['Open Market → Stations now shows only what you can build. Stations you’ve reached your limit on have their own “At your limit” list.', 'New Farmhands menu (Menu, the Jobs button on the farmhand bar, or the Homestead): pause, set speed, and reorder, remove or clear jobs in one place.'] },
   { v: '0.33.1', at: '2026-10-13 22:40', notes: ['Every race now starts differently: gold, land, stations, plots, seeds and even spare Discovery are shuffled, but everyone in the same race gets the identical head start, and it’s always winnable.', 'Watch out for greed traps: a race-day bargain on a station you can’t actually use, and a rich-looking special request that pays gold but hardly any points.'] },

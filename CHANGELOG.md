@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.35 — 2026-10-13
+- Farm modes: S.mode 'online' | 'private' (old saves migrate to 'online'); online() gates mult(), reportTrade, sendScore,
+  the ticker, leaderboard buttons and the leaderboard settings.
+- Main menu: Online Valley / Private farm / Race buttons; the slots screen filters by mode and shows a mode badge per farm;
+  the name screen has a mode picker. Settings → This farm: one-way "Make this farm private" (two taps).
+
 ## v0.34.1 — 2026-10-13
 - costList(): per-ingredient checklist (have / need N more) shown above Buy this tile and Survey buttons.
 
