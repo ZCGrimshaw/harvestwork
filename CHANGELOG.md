@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.32.1 — 2026-10-13
+- Idle pause options now in seconds: Never/5/10/15/30 s/2 min (S.idleSec; default 120 s). Older S.idlePause minutes
+  map to 2 min (or Never if it was 0).
+
 ## v0.32 — 2026-10-13
 - Idle pause: S.idlePause minutes (default 10; Never/2/5/10/30 in Settings → Pausing). Any pointerdown/keydown/wheel/
   touch resets the timer; when it runs out the game pauses (paused() includes UI.idle), saves, and shows a centred

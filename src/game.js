@@ -1357,8 +1357,8 @@
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p>
         <span class="optlabel">Pause when I haven’t done anything for</span>
-        <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleMins() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleMins() === m}">${m ? m + ' min' : 'Never'}</button>`).join('')}</div>
-        <p class="hint small">${idleMins() ? `If you don’t tap, click or press a key for ${idleMins()} minutes, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
+        <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
+        <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
@@ -1539,7 +1539,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
-    else if (ds.idle !== undefined) { S.idlePause = +ds.idle; save(); }
+    else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
     else if ('weekly' in ds) { S.weekly = S.weekly === false; save(); }
     else if ('lbshow' in ds) { S.lbShow = S.lbShow === false; save(); sendScore(); }
     else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
@@ -1621,11 +1621,14 @@
   /* ================= loop ================= */
   // The menu pauses the world (crops, stations, farmer, farmhand, clock) unless the player turns that off.
   // Idle pause: no tap, click, scroll or key for the chosen number of minutes.
-  const IDLE_OPTS = [0, 2, 5, 10, 30], idleMins = () => S.idlePause === undefined ? 10 : S.idlePause;
+  // seconds; older saves stored minutes in S.idlePause (anything longer than 2 min becomes 2 min)
+  const IDLE_OPTS = [0, 5, 10, 15, 30, 120];
+  const idleSecs = () => S.idleSec !== undefined ? S.idleSec : S.idlePause !== undefined ? (S.idlePause ? 120 : 0) : 120;
+  const idleLabel = n => !n ? 'Never' : n < 60 ? n + ' sec' : (n / 60) + ' min';
   UI.lastInput = performance.now();
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { UI.lastInput = performance.now(); if (UI.idle) { UI.idle = false; $('#idlebar').hidden = true; dirty(); } }, { capture: true, passive: true }));
-  function checkIdle(now) { if (UI.idle || !idleMins() || UI.title || UI.catchup) return;
-    if (now - UI.lastInput > idleMins() * 60000) { UI.idle = true; save(); const el = $('#idlebar'); el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
+  function checkIdle(now) { if (UI.idle || !idleSecs() || UI.title || UI.catchup) return;
+    if (now - UI.lastInput > idleSecs() * 1000) { UI.idle = true; save(); const el = $('#idlebar'); el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
   const paused = () => !!UI.title || UI.idle || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
