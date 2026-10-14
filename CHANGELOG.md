@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.31.1 — 2026-10-13
+- Market Buy tab: red notice when storage is full, amber when 5 or fewer spaces remain.
+
 ## v0.31 — 2026-10-13
 - Cloud backup (database): cloud_saves (code_hash = sha256 of the 12-char backup code, data = HWZ1 save code, name,
   day); backup_save (validates code/size/prefix, one write per 15 s per code) and restore_save(code).
