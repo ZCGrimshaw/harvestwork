@@ -169,6 +169,15 @@ window.HW_ART = (function () {
         r('#bfe6f8', 16, 8); r('#8fd3ef', 16, 6);
       }
     }),
+    // a Weekly Challenge medal on a little wooden stand: 1 gold, 2 silver, 3 bronze
+    medal: place => mk(32, 32, (g, r) => {
+      const C = { 1: ['#f6d24a', '#c99a1e', '#fff3b0'], 2: ['#d8dde4', '#9aa2ae', '#ffffff'], 3: ['#d98a4a', '#9a5a2a', '#f4c08a'] }[place] || ['#f6d24a', '#c99a1e', '#fff3b0'];
+      shadow(r, 32, 9);
+      r('#7a4b28', 10, 25, 12, 3); r('#5e3519', 10, 27, 12, 1); r('#9a6a3c', 15, 13, 2, 12);
+      r('#3d6fb8', 12, 4, 3, 9); r('#c23a3a', 17, 4, 3, 9); r('#2c528a', 13, 4, 1, 9); r('#962a2a', 18, 4, 1, 9);
+      ell(r, C[1], 16, 15, 5, 5); ell(r, C[0], 16, 15, 4, 4); r(C[2], 14, 13, 2, 1); r(C[2], 13, 14, 1, 2);
+      r(C[1], 15, 14, 2, 3); r(C[1], 16, 13, 1, 1);
+    }),
     big_sprinkler: f => mk(32, 32, (g, r) => {
       shadow(r, 32, 7);
       r('#9a5a2e', 14, 15, 4, 12); r('#7a4a26', 16, 15, 2, 12); r('#d9824a', 11, 25, 10, 3);

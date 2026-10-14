@@ -212,6 +212,7 @@ window.HW_DATA = {
   buildings: {
     homestead: { name: 'Homestead', kind: 'home', desc: 'Your home and shared storage. Every station draws from and returns to it.' },
     farm:      { name: 'Farm Plot', kind: 'farm', desc: 'Till, plant, water, harvest.' },
+    medal:     { name: 'Medal', kind: 'decor', desc: 'A Weekly Challenge medal, on show.' },
     stove:     { name: 'Stove', kind: 'station', slots: 2, desc: 'Turns raw food into cooked dishes worth more than the ingredients.' },
     market:    { name: 'Open Market', kind: 'market', desc: 'Buy seeds and supplies, sell goods, and pick up station kits.' },
     board:     { name: 'Order Board', kind: 'board', desc: 'Delivery requests for gold, score and Discovery.' },
@@ -395,6 +396,46 @@ window.HW_DATA = {
     'ore>grass':     { cost: { gold: 40 }, back: { stone: 2 }, verb: 'Level the seam', note: 'Break up the rock and cover it over. You keep 2 stone.' }
   },
 
+  /* Weekly challenge themes. One theme per week (never the same two weeks running); the week number seeds
+     the dice for everything else, so every player gets the same farm that week.
+     rules.score multiplies points by tag (harvest, sell, order, chop, mine, fish, gather, craft) or by item id;
+     grow = crop growth speed, sell = sale price, craft = station speed, fish = how fast fish come back,
+     orders = how fast the Order Board refills.
+     start: gold/plots/land ranges, stations always placed, extra = random bonus stations, unl = discoveries,
+     give = goods in storage, terrain = extra tiles painted onto your land, sprout = chance of a crop already in. */
+  weeklyThemes: [
+    { id: 'bumper', name: 'Bumper Crop Week', blurb: 'Crops grow 40% faster and every harvest scores double.',
+      rules: { grow: 1.4, score: { harvest: 2 } },
+      start: { gold: [10, 20], plots: [5, 7], land: [3, 3], extra: [0, 1], unl: ['compost', 'wheat'], give: { carrot_seed: [10, 14], potato_seed: [6, 10], wheat_seed: [6, 10], fertilizer: [2, 4] }, sprout: .8 } },
+    { id: 'baker', name: 'Baker’s Week', blurb: 'Bread scores triple and flour half again. You start with a Flour Mill and sacks of wheat seed.',
+      rules: { score: { bread: 3, flour: 1.5 } },
+      start: { gold: [15, 25], plots: [3, 5], land: [2, 3], stations: ['mill', 'sawmill'], extra: [0, 0], unl: ['woodcutting', 'sawmill', 'wheat', 'mill', 'baking'], give: { wheat_seed: [12, 16], log: [4, 8] } } },
+    { id: 'fisher', name: 'Fisher’s Week', blurb: 'Extra ponds on your land, fish come back twice as fast, and fish and fish dishes score double.',
+      rules: { fish: 2, score: { fish: 2, cooked_fish: 2, smoked_fish: 2 } },
+      start: { gold: [12, 22], plots: [2, 3], land: [3, 3], extra: [1, 1], unl: ['fishing'], give: { carrot_seed: [6, 8] }, terrain: { water: [4, 6] } } },
+    { id: 'timber', name: 'Timber Week', blurb: 'A woodland start with a Sawmill and Workbench. Logs, planks, crates and fence kits score double.',
+      rules: { score: { log: 2, plank: 2, crate: 2, fence_kit: 2 } },
+      start: { gold: [10, 20], plots: [2, 3], land: [3, 3], stations: ['sawmill', 'workbench'], extra: [0, 0], unl: ['woodcutting', 'sawmill', 'stonecutting', 'workbench'], give: { stone: [4, 8] }, terrain: { forest: [5, 8] } } },
+    { id: 'pantry', name: 'Pantry Week', blurb: 'Jams and pickles score double and the Preserver works 30% faster. Berry seeds to start.',
+      rules: { craft: { preserver: 1.3 }, score: { jam: 2, pickled_carrots: 2 } },
+      start: { gold: [12, 20], plots: [4, 5], land: [2, 3], stations: ['preserver'], extra: [0, 1], unl: ['berries', 'preserver'], give: { berry_seed: [8, 12], carrot_seed: [8, 12] } } },
+    { id: 'market', name: 'Market Week', blurb: 'Everything sells for 25% more and every sale scores double. A fat purse to start.',
+      rules: { sell: 1.25, score: { sell: 2 } },
+      start: { gold: [30, 45], plots: [3, 4], land: [2, 3], extra: [2, 2] } },
+    { id: 'orders', name: 'Order Rush Week', blurb: 'Order Board requests pay double points and new ones arrive twice as fast.',
+      rules: { orders: 2, score: { order: 2 } },
+      start: { gold: [20, 30], plots: [3, 4], land: [2, 3], extra: [1, 2] } },
+    { id: 'quarry', name: 'Quarry Week', blurb: 'Boulders everywhere and a Brick Kiln ready. Stone, bricks and charcoal score double.',
+      rules: { score: { stone: 2, brick: 2, charcoal: 2 } },
+      start: { gold: [10, 20], plots: [2, 3], land: [3, 3], stations: ['kiln'], extra: [0, 1], unl: ['stonecutting', 'woodcutting', 'kiln'], terrain: { boulder: [4, 6], forest: [2, 3] } } },
+    { id: 'stew', name: 'Stew Week', blurb: 'Veggie Stew scores triple, but the Stove is your only station. Lots of plots and seed.',
+      rules: { score: { veggie_stew: 3 } },
+      start: { gold: [12, 18], plots: [5, 7], land: [3, 3], extra: [0, 0], give: { carrot_seed: [12, 16], potato_seed: [12, 16] }, sprout: .9 } },
+    { id: 'meadow', name: 'Meadow Week', blurb: 'Wildflowers and a Beehive on your land. Honey and flowers score double.',
+      rules: { score: { honey: 2, flowers: 2 } },
+      start: { gold: [12, 22], plots: [2, 4], land: [3, 3], stations: ['hive'], extra: [0, 1], unl: ['berries', 'beekeeping', 'wildflowers'], give: { berry_seed: [4, 6] }, terrain: { flowers: [4, 6] } } }
+  ],
+
   farmhand: { speeds: [1, 2, 3], hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
 
   // Milestone contracts, offered one at a time. They may ask for goods you can't make yet;
@@ -484,6 +525,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.36', at: '2026-10-14 01:30', notes: ['New: the Weekly Challenge (main menu). Everyone gets the same head start for the week, with a new theme each week: Bumper Crop, Baker’s, Fisher’s, Timber, Quarry and more, each with its own starting buildings, land and score bonus.', 'One ranked 15-minute run a day; your best run of the week counts. Extra runs are practice. The top three each week win a gold, silver or bronze medal.', 'Medals live in Menu → Medals and can be put on show on any of your farms. Select a medal on your farm to see when you won it.', 'New: a player key (Menu → Player key). One code that carries your locked name, your medals and your backed-up farms to another phone or computer. Restoring a farm now lets you pick which of your three slots it goes into.'] },
   { v: '0.35.1', at: '2026-10-13 23:40', notes: ['The game is now called Harvest Valley, with new title art. Your farms, saves and backup codes carry on as before.'] },
   { v: '0.35', at: '2026-10-13 23:20', notes: ['Three ways to play from the main menu: Online Valley (shared market prices, the ticker and the leaderboard), Private farm (just you, on your own time) and Race.', 'Your existing farms are Online Valley farms. Settings → This farm can make a farm private (one way only).'] },
   { v: '0.34.1', at: '2026-10-13 23:10', notes: ['Buying land (and surveying new areas) now lists everything it costs, not just the gold, with how much of each you have and how many more you need.'] },

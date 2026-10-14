@@ -531,7 +531,7 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .costlist li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 8px; border-radius: var(--r); background: var(--wood-lo); }
 .costlist li span:last-child { margin-left: auto; font-size: 12px; } .costlist li.ok span:last-child { color: var(--leaf); } .costlist li.short span:last-child { color: #ffb3a0; }
 .costlist li.short { box-shadow: inset 2px 0 0 var(--berry); } .costlist .ico { width: 18px; height: 18px; }
-.modegrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .modegrid .btn { margin: 2px 0; } .modegrid .btn small { font-size: 11.5px; }
+.modegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; } .modegrid .btn { margin: 2px 0; } .modegrid .btn small { font-size: 11.5px; }
 @media (max-width: 520px) { .modegrid { grid-template-columns: 1fr; } }
 .modepick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; text-align: left; }
 .modeopt { cursor: pointer; padding: 10px 12px; background: var(--wood-lo); color: var(--paper); border: 2px solid var(--wood-hi); border-radius: var(--r); display: flex; flex-direction: column; gap: 2px; }
@@ -539,6 +539,17 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .mbadge { font: 700 10.5px var(--f-display); letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; vertical-align: middle; margin-left: 4px; }
 .mbadge.online { background: var(--sky); color: #1e3a30; } .mbadge.private { background: var(--plum); color: #24160d; }
 .slot.other { opacity: .65; }
+/* weekly challenge + medals */
+.wboard li { padding: 4px 8px; } .wboard li span { font-variant-numeric: tabular-nums; }
+.wlast { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--paper-dim); }
+.wlast span { display: inline-flex; align-items: center; gap: 4px; } .wlast img { width: 24px; height: 24px; image-rendering: pixelated; }
+.medals { display: flex; flex-direction: column; gap: 6px; }
+.medalrow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--wood-lo); border-radius: var(--r); }
+.medalrow img { width: 48px; height: 48px; image-rendering: pixelated; flex: none; } .medalrow small { display: block; color: var(--paper-dim); font-size: 12px; }
+.medalbig { display: flex; gap: 10px; align-items: center; } .medalbig img { width: 64px; height: 64px; image-rendering: pixelated; flex: none; }
+.medalcard { text-align: center; } .medalhero { display: block; width: 128px; height: 128px; margin: 8px auto 0; image-rendering: pixelated; animation: medalpop .6s ease-out; }
+@keyframes medalpop { 0% { transform: scale(.3) rotate(-20deg); opacity: 0; } 70% { transform: scale(1.12) rotate(4deg); opacity: 1; } 100% { transform: none; } }
+#title .slots .btn.sm small { display: block; font-size: 11px; font-weight: 600; opacity: .8; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
@@ -584,9 +595,9 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261014-062652"></script>
-<script src="art.js?v=20261014-062652"></script>
-<script src="sound.js?v=20261014-062652"></script>
-<script src="game.js?v=20261014-062652"></script>
+<script src="data.js?v=20261014-072058"></script>
+<script src="art.js?v=20261014-072058"></script>
+<script src="sound.js?v=20261014-072058"></script>
+<script src="game.js?v=20261014-072058"></script>
 
 </body></html>

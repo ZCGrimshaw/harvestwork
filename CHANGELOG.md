@@ -3,6 +3,17 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.36 — 2026-10-14
+- Weekly challenge: D.weeklyThemes (10 themes) picked in shuffled rounds from the week number (each theme once per
+  round, never twice in a row); weeklyPreset seeds stations, plots, land, terrain and goods. Rules hook into gainScore
+  tags, crop growth, station speed, sell price, fish regen and order refill (wrule). Runs live in WEEK_KEY; 15 minutes,
+  no pause; catch-up capped at the run end.
+- Server: weekly_runs, weekly_closed, medals, player_keys, player_farms; weekly_start (one ranked run per UTC day,
+  5-second countdown), weekly_score (pace and time checks), weekly_board, my_medals, hw_close_weeks (top 3 on close),
+  player_key_set, link_farm, player_key_use.
+- Medals: ceremony screen, Menu → Medals, 'medal' decor building placed from empty grass, medal panel, art (OBJ.medal).
+- Player key in Menu; Restore accepts a backup code or a player key; restore picks a slot.
+
 ## v0.35.1 — 2026-10-13
 - Public name is now Harvest Valley: page title, title art (title-art.webp), title/menu headings, welcome toast, support
   and save-file wording, update banner, README heading. Internal names (repo, storage keys, save formats, Supabase) unchanged.
