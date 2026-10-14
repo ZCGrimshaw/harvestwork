@@ -521,6 +521,12 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .rtrack { height: 8px; background: var(--wood-lo); border-radius: 4px; overflow: hidden; } .rtrack i { display: block; height: 100%; background: var(--leaf); }
 .rrow.me .rtrack i { background: var(--sun); } .rsc { text-align: right; font-weight: 800; }
 @media (max-width: 760px) { #racebar { top: calc(88px + env(safe-area-inset-top, 0px)); left: 8px; right: 8px; width: auto; transform: none; } }
+.trade.capped { opacity: .8; } .chipf:disabled { opacity: .45; cursor: default; }
+.handcard { margin-top: 12px; padding: 10px 12px; background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: var(--r); }
+.handhead { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; } .handhead b { font-family: var(--f-display); font-size: 16px; }
+.handctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0 2px; } .handctl .chips { margin: 0; }
+.routine.jobs li { display: flex; align-items: center; gap: 6px; } .routine.jobs .linkish { flex: 1; text-align: left; }
+.jobbtns { display: flex; gap: 3px; } .x.mv:disabled { opacity: .3; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
@@ -566,9 +572,9 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261014-050950"></script>
-<script src="art.js?v=20261014-050950"></script>
-<script src="sound.js?v=20261014-050950"></script>
-<script src="game.js?v=20261014-050950"></script>
+<script src="data.js?v=20261014-054810"></script>
+<script src="art.js?v=20261014-054810"></script>
+<script src="sound.js?v=20261014-054810"></script>
+<script src="game.js?v=20261014-054810"></script>
 
 </body></html>

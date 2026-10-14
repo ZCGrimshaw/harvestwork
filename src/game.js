@@ -1131,7 +1131,7 @@
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
     const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${!F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
       <button class="fhb" data-fh-toggle aria-label="${F.on ? 'Pause farmhand' : 'Start farmhand'}" title="${F.on ? 'Pause' : 'Start'}">${F.on ? '❚❚' : '▶'}</button>
-      <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button>${F.steps.length ? `<button class="fhb clr ${UI.fhClear ? 'arm' : ''}" data-fh-clear aria-label="${UI.fhClear ? 'Tap again to clear all farmhand jobs' : 'Clear all farmhand jobs'}" title="Clear all jobs">${UI.fhClear ? 'Clear all?' : 'Clear'}</button>` : ''}</div>` : '';
+      <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button><button class="fhb" data-drawer="hands" aria-label="Manage farmhand jobs" title="Manage jobs">Jobs</button>${F.steps.length ? `<button class="fhb clr ${UI.fhClear ? 'arm' : ''}" data-fh-clear aria-label="${UI.fhClear ? 'Tap again to clear all farmhand jobs' : 'Clear all farmhand jobs'}" title="Clear all jobs">${UI.fhClear ? 'Clear all?' : 'Clear'}</button>` : ''}</div>` : '';
     setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh);
   }
 
@@ -1204,8 +1204,8 @@
     const F = S.helper; if (!F) return '';
     const has = F.steps.some(st => st.i === i);
     let h = `<span class="eyebrow">Farmhand</span>`;
-    if (has) return h + `<p class="hint">Your farmhand works here. Edit the routine at the Homestead.</p>`;
-    if (F.steps.length >= fhMax()) return h + `<p class="hint">The routine is full (${fhMax()} jobs). Remove one at the Homestead.</p>`;
+    if (has) return h + `<p class="hint">Your farmhand works here. <button class="linkish" data-drawer="hands">Manage farmhand jobs</button></p>`;
+    if (F.steps.length >= fhMax()) return h + `<p class="hint">The routine is full (${fhMax()} jobs). <button class="linkish" data-drawer="hands">Remove one in Farmhands</button></p>`;
     if (kind === 'tend') { const crops = Object.keys(D.crops).filter(k => unlocked(D.items[D.crops[k].seed].requires));
       const b = T_(i).b, cur = crops.includes(UI.hcrop) ? UI.hcrop : (b.last && crops.includes(b.last) ? b.last : crops[0]);
       return h + `<div class="fhrow"><select id="hcrop" aria-label="Crop for the farmhand">${crops.map(k => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(D.crops[k].name)}</option>`).join('')}</select><button class="btn ghost sm" data-fh-add="tend" data-i="${i}">Add to farmhand</button></div><small class="why">They till, plant, water and harvest this plot. Seeds come from storage.</small>`; }
@@ -1282,10 +1282,7 @@
     if (!unlocked('farmhand')) h += `<p class="hint">Unlock “Farmhand” in Discovery (after Repeat Recipes) to hire help.</p>`;
     else if (!F) h += btn({ a: 'hire', i }, 'Hire a farmhand', { cls: 'pri', sub: `${costTxt(D.farmhand.hire)} · works a loop of up to ${fhMax()} jobs` });
     else {
-      h += `<button class="toggle ${F.on ? 'on' : ''}" data-fh-toggle aria-pressed="${F.on}"><i></i>${F.on ? 'Working' : 'Paused'}</button>`;
-      h += F.steps.length ? `<ol class="routine">${F.steps.map((st, k) => `<li class="${F.cur && F.cur.si === k ? 'now' : ''}"><button class="linkish" data-goto="${st.i}">${esc(stepLabel(st))}</button><button class="x" data-fh-del="${k}" aria-label="Remove job">×</button></li>`).join('')}</ol>`
-        : `<p class="hint">No jobs yet. Select a farm plot, station, tree, pond or boulder field and choose “Add to farmhand”.</p>`;
-      if (F.steps.length) h += `<button class="btn ${UI.fhClear ? 'danger' : 'ghost'}" data-fh-clear>${UI.fhClear ? 'Tap again to clear all ' + F.steps.length + ' jobs' : 'Clear all jobs'}</button>`;
+      h += `<p class="state">${F.on ? 'Working' : 'Paused'} · ${F.steps.length}/${fhMax()} jobs</p><button class="btn" data-drawer="hands">Manage farmhands<small>Reorder, remove or clear jobs; pause; speed</small></button>`;
       h += `<small class="why">They walk a little slower than you, skip jobs that have nothing to do, and never take a job you’ve queued yourself.</small>`;
     }
     return h;
@@ -1318,9 +1315,17 @@
     } else {
       const list = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires); });
       h += `<p class="hint">You can build <b>one of each station per area</b> you own (two Storage Barns per area). You have ${areas()} area${areas() === 1 ? '' : 's'}${unlocked('surveying') ? '; survey new land for more' : ''}. Place a kit on empty grass you own.</p>`;
+      // stations you've already built your allowance of go in their own list, so the main one only shows what you can buy
+      const atCap = id => { const bt = D.items[id].building; return builtCount(bt) + count(id) >= capFor(bt); };
+      const open = list.filter(id => !atCap(id)), full = list.filter(atCap), view = UI.kitView === 'full' && full.length ? 'full' : 'open';
+      if (list.length) h += `<div class="chips"><button class="chipf ${view === 'open' ? 'on' : ''}" data-kitview="open">Can build<span>${open.length}</span></button><button class="chipf ${view === 'full' ? 'on' : ''}" data-kitview="full" ${full.length ? '' : 'disabled'}>At your limit<span>${full.length}</span></button></div>`;
       const kitRow = id => { const it = D.items[id], B = D.buildings[it.building], n = builtCount(it.building), c = capFor(it.building);
-        return `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>Built ${n} of ${c}${count(id) ? ` · ${count(id)} kit waiting` : ''} · ${esc(B.desc)} Placing needs: ${costTxt(B.place)}.</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, `${it.buy}g`, { cls: 'sm' })}</div>`; };
-      if (list.length) h += grouped(list, null, kitRow);
+        return `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>Built ${n} of ${c}${count(id) ? ` · ${count(id)} kit waiting` : ''} · ${esc(B.desc)} Placing needs: ${costTxt(B.place)}.</small></div>${btn({ a: 'buy', i, p: id, n: 1 }, `${buyPrice(id)}g`, { cls: 'sm' })}</div>`; };
+      const fullRow = id => { const it = D.items[id], B = D.buildings[it.building], n = builtCount(it.building), c = capFor(it.building);
+        return `<div class="trade capped">${ico(id)}<div class="grow1"><b>${esc(B.name)}</b><small>${count(id) ? `Kit waiting to be placed · ` : ''}Built ${n} of ${c}. ${unlocked('surveying') ? 'Survey a new area to build another.' : 'Unlock Land Surveying, then survey a new area to build another.'}</small></div></div>`; };
+      if (view === 'full') h += `<p class="hint">You’ve built as many of these as your ${areas()} area${areas() === 1 ? '' : 's'} allow${areas() === 1 ? 's' : ''}. Each new area you survey lets you build one more of each (two more Storage Barns).</p>` + grouped(full, null, fullRow);
+      else if (open.length) h += grouped(open, null, kitRow);
+      else if (list.length) h += `<p class="hint">You’ve built everything you can for now. See <b>At your limit</b>, and survey new land to build more.</p>`;
       if (!list.length) h += `<p class="hint">No station kits yet. Unlock Sawmill (after Woodcutting) in Discovery.</p>`;
     }
     return h;
@@ -1457,6 +1462,23 @@
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
     } else if (UI.drawer === 'support') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
+    } else if (UI.drawer === 'hands') {
+      const hands = S.helper ? [S.helper] : [], hi = homeIdx();
+      h = `<div class="phead"><div><h2>Farmhands</h2><p class="sub">Each farmhand loops through their jobs in order, skipping any with nothing to do. Add jobs from any farm plot, station, tree, pond, boulder field or resource tile.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      if (!unlocked('farmhand')) h += `<p class="hint">Unlock <b>Farmhand</b> in Discovery (after Repeat Recipes) to hire help.</p>`;
+      else if (!hands.length) h += btn({ a: 'hire', i: hi }, 'Hire a farmhand', { cls: 'pri', sub: `${costTxt(D.farmhand.hire)} · works a loop of up to ${fhMax()} jobs` });
+      hands.forEach((F, n) => {
+        const status = !F.on ? 'Paused' : !F.steps.length ? 'No jobs yet' : F.cur ? `Working: ${esc(TASKS[F.cur.a].label(F.cur))}` : 'Waiting for work';
+        h += `<div class="handcard"><div class="handhead"><b>Farmhand ${n + 1}</b><span class="muted">${status}</span></div>
+          <div class="handctl"><button class="toggle ${F.on ? 'on' : ''}" data-fh-toggle aria-pressed="${F.on}"><i></i>${F.on ? 'Working' : 'Paused'}</button>
+          <div class="chips">${D.farmhand.speeds.map(sp => `<button class="chipf ${(F.spd || 1) === sp ? 'on' : ''}" data-fh-setspd="${sp}">${sp}×</button>`).join('')}</div></div>
+          <span class="eyebrow">Jobs ${F.steps.length}/${fhMax()}</span>`;
+        h += F.steps.length ? `<ol class="routine jobs">${F.steps.map((st, k) => `<li class="${F.cur && F.cur.si === k ? 'now' : ''}"><button class="linkish" data-goto="${st.i}" title="Show on the map">${esc(stepLabel(st))}</button>
+            <span class="jobbtns"><button class="x mv" data-fh-up="${k}" ${k ? '' : 'disabled'} aria-label="Move up">↑</button><button class="x mv" data-fh-down="${k}" ${k < F.steps.length - 1 ? '' : 'disabled'} aria-label="Move down">↓</button><button class="x" data-fh-del="${k}" aria-label="Remove job">×</button></span></li>`).join('')}</ol>`
+          : `<p class="hint">No jobs yet. Select a farm plot, station or resource tile and choose “Add to farmhand”.</p>`;
+        if (F.steps.length) h += `<button class="btn ${UI.fhClear ? 'danger' : 'ghost'} sm" data-fh-clear>${UI.fhClear ? 'Tap again to clear all ' + F.steps.length + ' jobs' : 'Clear all jobs'}</button>`;
+        h += `</div>`; });
+      if (hands.length) h += `<p class="hint small">${unlocked('crew') ? 'Seasoned farmhand: 8 jobs, full speed.' : 'Unlock Seasoned Farmhand in Discovery for 8 jobs and full walking speed.'} Only one farmhand for now.</p>`;
     } else if (UI.drawer === 'lb') {
       const L = UI.lb || {}, tab = UI.lbTab || 'top', fmt = n => Number(n).toLocaleString();
       h = `<div class="phead"><div><h2>Leaderboard</h2><p class="sub">Every farm in the valley. <b>Top score</b> is total score; <b>Best pace</b> is score per day played, for farms at least ${LB_MIN_DAYS} days old.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -1501,7 +1523,7 @@
     } else if (UI.drawer === 'menu') {
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? 'Racing: the clock keeps running. ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button>${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -1648,6 +1670,9 @@
       if (st.s === 'tend') st.p = ($('#hcrop') || {}).value; if (st.s === 'station') st.p = ($('#hrec') || {}).value;
       if (S.helper && S.helper.steps.length < fhMax() && (st.p || !['tend', 'station'].includes(st.s))) { S.helper.steps.push(st); toast(`Farmhand job added: ${esc(stepLabel(st))}.`, 'info'); } }
     else if (ds.fhDel !== undefined) { S.helper.steps.splice(+ds.fhDel, 1); S.helper.cur = null; S.helper.k = 0; }
+    else if (ds.fhUp !== undefined || ds.fhDown !== undefined) { const st = S.helper.steps, a = +(ds.fhUp !== undefined ? ds.fhUp : ds.fhDown), b = ds.fhUp !== undefined ? a - 1 : a + 1;
+      if (b >= 0 && b < st.length) { [st[a], st[b]] = [st[b], st[a]]; S.helper.cur = null; S.helper.k = 0; } }
+    else if (ds.fhSetspd) { S.helper.spd = +ds.fhSetspd; }
     else if ('fhClear' in ds) {
       if (!UI.fhClear) { UI.fhClear = true; clearTimeout(UI.fhClearT); UI.fhClearT = setTimeout(() => { UI.fhClear = false; dirty(); }, 3000); }
       else { UI.fhClear = false; clearTimeout(UI.fhClearT); S.helper.steps = []; S.helper.cur = null; S.helper.k = 0; S.helper.path = []; toast('Farmhand jobs cleared. Add new ones from any plot, station or resource tile.', 'info'); save(); } }
@@ -1667,6 +1692,7 @@
     else if ('lbOpen' in ds) { closeTitle(); openBoard(); return; }
     else if ('lbRefresh' in ds) { openBoard(); return; }
     else if (ds.lbtab) { UI.lbTab = ds.lbtab; }
+    else if (ds.kitview) { UI.kitView = ds.kitview; }
     else if ('lbClaim' in ds) { const v = (($('#lbname') || {}).value || '').trim(); claimName(v); return; }
     else if (ds.lbTake) { claimName(ds.lbTake); return; }
     else if ('lbEdit' in ds) { UI.lbEdit = true; UI.claim = null; }

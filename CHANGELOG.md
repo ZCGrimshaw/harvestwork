@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.34 — 2026-10-13
+- Market → Stations: "Can build" / "At your limit" chips; capped kits (built + waiting kits ≥ area allowance) move to
+  the second list with a note on how to raise the limit; kit prices use buyPrice (race bargains show correctly).
+- Farmhands drawer (Menu, Jobs button on the farmhand bar, Homestead → Manage farmhands, links from full-routine
+  hints): per farmhand card with Working/Paused, speed chips, jobs list with ↑/↓ reorder, × remove, go-to, two-tap
+  Clear all; built to list several farmhands later. Homestead now shows a summary instead of the full list.
+
 ## v0.33.1 — 2026-10-13
 - Race head starts are random per race and identical within it (seeded from the race code): gold 150–400, 5×5 or 7×7
   land, 1–3 stations from a pool (with the discoveries and starter goods they need, sometimes speed-tuned), 2–5 tilled
