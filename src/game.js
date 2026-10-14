@@ -532,6 +532,8 @@
     const pct = Math.round((m - 1) * 100); return `<span class="mv ${pct > 0 ? 'up' : 'dn'}" title="Shared valley price">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`; }
 
   const SELLABLE = ['crop', 'gathered', 'good', 'component'];          // what orders and market demand use
+  // what the Open Market will sell you: supplies once unlocked, plus any good you've made at least once
+  const canBuyItem = id => D.items[id].cat !== 'kit' && (D.items[id].buy ? unlocked(D.items[id].requires) : S.disc.includes(id) && SELLABLE.includes(D.items[id].cat));
   const MARKET_BUYS = SELLABLE.concat(['seed', 'supply']);               // what the market will buy from you
   // A short "how do I use this?" line for items that aren't obvious.
   function useHint(id) { const it = D.items[id];
@@ -868,8 +870,52 @@
     if (st.s === 'gather') return (D.gather[T_(st.i).t] || {}).verb || 'Gather';
     return { forest: 'Chop and replant a tree', fish: 'Fish the pond', mine: 'Break stone' }[st.s];
   }
+  /* Errands: the farmhand walks to the Open Market, buys what a recipe is missing, walks back and loads the station.
+     It takes priority over the routine and then picks the routine back up. */
+  const marketIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'market');
+  function errandPlan(i, rid, n) { const R = D.recipes[rid], rows = Object.keys(R.in).map(k => { const need = R.in[k] * n, have = count(k), miss = Math.max(0, need - have);
+      return { k, need, have, miss, price: canBuyItem(k) ? buyPrice(k) : null }; });
+    const cost = rows.reduce((g, r) => g + (r.price || 0) * r.miss, 0), qty = rows.reduce((q, r) => q + r.miss, 0);
+    return { rows, cost, qty, missing: rows.filter(r => r.miss), unbuyable: rows.filter(r => r.miss && r.price == null) }; }
+  function errandErr(i, rid, n, P) { const b = T_(i).b;
+    if (!unlocked('errands')) return 'Unlock Errands in Discovery (after Farmhand)';
+    if (!S.helper) return 'Hire a farmhand at the Homestead first';
+    if (S.helper.errand) return 'Your farmhand is already out on an errand';
+    if (!P.missing.length) return 'You already have everything: just press Load';
+    if (P.unbuyable.length) return `${D.items[P.unbuyable[0].k].name} isn’t sold at the market${D.items[P.unbuyable[0].k].buy ? '' : ' until you’ve made it once'}`;
+    if (S.gold < P.cost) return `Needs ${P.cost}g`;
+    if (room() < P.qty) return FULL;
+    if (stationSlots(b) - b.q.length < n) return 'Not enough free batch slots';
+    if (marketIdx() < 0) return 'No Open Market';
+    return null; }
+  function sendErrand(i, rid, n) { const P = errandPlan(i, rid, n), e = errandErr(i, rid, n, P); if (e) { toast(esc(e), 'warn'); return; }
+    const F = S.helper; F.errand = { st: i, r: rid, n, ph: 'go', t: 0, set: false }; F.cur = null; F.path = [];
+    toast(`<b>Farmhand is off to the market</b> for ${esc(nmList(P.missing.map(r => `${r.miss} ${D.items[r.k].name}`)))} (about ${P.cost}g), then loads ${n > 1 ? n + '× ' : ''}${esc(D.items[Object.keys(D.recipes[rid].out)[0]].name)}.`, 'info'); dirty(); }
+  function errandFail(msg) { const F = S.helper; F.errand = null; F.path = []; toast(`<b>Farmhand errand stopped:</b> ${esc(msg)}`, 'warn'); dirty(); }
+  function updateErrand(F, dt) { const E = F.errand, spd = F.spd || 1, b = T_(E.st).b;
+    if (!b || !b.q) return errandFail('the station is gone.');
+    if (E.ph === 'go' || E.ph === 'back') { const tgt = E.ph === 'go' ? marketIdx() : E.st;
+      if (!E.set) { const p = findPath(idx(Math.round(F.x), Math.round(F.y)), standGoals(tgt)); if (!p) return errandFail(`they can’t reach the ${E.ph === 'go' ? 'market' : 'station'}.`); F.path = p; E.set = true; }
+      if (moveActor(F, dt * spd, unlocked('crew') ? C.walkSpeed : D.farmhand.walkSpeed)) { E.set = false; E.t = 0; E.ph = E.ph === 'go' ? 'shop' : 'load';
+        const dx = tx(tgt) - F.x, dy = ty(tgt) - F.y; if (Math.abs(dx) + Math.abs(dy) > .01) F.dir = [dx, dy]; dirty(); }
+      return; }
+    E.t += dt * spd; if (E.t < 1.4) return;
+    const out = D.items[Object.keys(D.recipes[E.r].out)[0]].name;
+    if (E.ph === 'shop') { const P = errandPlan(E.st, E.r, E.n);
+      if (P.unbuyable.length) return errandFail(`${D.items[P.unbuyable[0].k].name} isn’t sold at the market.`);
+      if (S.gold < P.cost) return errandFail(`not enough gold (needs ${P.cost}g).`);
+      if (room() < P.qty) return errandFail('storage is full.');
+      P.missing.forEach(r => { const c = r.price * r.miss; S.gold -= c; wk().spent += c; addItem(r.k, r.miss, 0, true); reportTrade(r.k, r.miss, 'buy'); });
+      const mi = marketIdx(); if (P.cost) float(mi, `-${P.cost}g`, '#ffb3a0'); SND.play('buy', .55);
+      logAct(`Errand: bought ${P.missing.map(r => `${r.miss} ${D.items[r.k].name}`).join(', ')} for ${out} · −${P.cost}g`, 'hand');
+      E.ph = 'back'; E.t = 0; dirty(); return; }
+    let n = 0; for (let k = 0; k < E.n; k++) { if (loadErr(E.st, E.r)) break; doLoad(E.st, E.r); n++; }
+    if (n) { float(E.st, `Loaded ${n > 1 ? n + '× ' : ''}${out}`, '#b8f08a'); SND.play('load', .55); logAct(`Errand: loaded ${n > 1 ? n + '× ' : ''}${out}`, 'hand'); }
+    else toast(`<b>Farmhand is back</b> but couldn’t load ${esc(out)}: ${esc(loadErr(E.st, E.r) || 'no room')}.`, 'warn');
+    F.errand = null; F.path = []; F.idle = 0; dirty(); }
   function updateHelper(dt) {
-    const F = S.helper; if (!F || !F.on || !F.steps.length) { if (F) F.cur = null; return; }
+    const F = S.helper; if (F && F.errand) return updateErrand(F, dt);
+    if (!F || !F.on || !F.steps.length) { if (F) F.cur = null; return; }
     if (!F.cur) {
       if (F.idle > 0) { F.idle -= dt * (F.spd || 1); return; }
       const n = F.steps.length;
@@ -1332,7 +1378,7 @@
   }
   function renderQueue() {
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
-    const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${!F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
+    const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${F.errand ? `errand for ${esc(D.items[Object.keys(D.recipes[F.errand.r].out)[0]].name)} (${{ go: 'walking to the market', shop: 'shopping', back: 'heading back', load: 'loading' }[F.errand.ph]})` : !F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
       <button class="fhb" data-fh-toggle aria-label="${F.on ? 'Pause farmhand' : 'Start farmhand'}" title="${F.on ? 'Pause' : 'Start'}">${F.on ? '❚❚' : '▶'}</button>
       <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button><button class="fhb" data-drawer="hands" aria-label="Manage farmhand jobs" title="Manage jobs">Jobs</button>${F.steps.length ? `<button class="fhb clr ${UI.fhClear ? 'arm' : ''}" data-fh-clear aria-label="${UI.fhClear ? 'Tap again to clear all farmhand jobs' : 'Clear all farmhand jobs'}" title="Clear all jobs">${UI.fhClear ? 'Clear all?' : 'Clear'}</button>` : ''}</div>` : '';
     setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh);
@@ -1437,6 +1483,15 @@
     }
     return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Right-click anything to see what it does. Drag the title bar to move this menu or an edge to resize it; double-click the title bar to put it back.'}</p>`;
   }
+  // Click a recipe to see each ingredient's price and stock, and send the farmhand shopping for what's missing.
+  function errandBox(i, rid) { const b = T_(i).b, free = Math.max(1, stationSlots(b) - b.q.length), n = Math.min(Math.max(1, UI.rexpN || 1), free), P = errandPlan(i, rid, n);
+    const rows = P.rows.map(r => `<div class="erow ${r.miss ? 'miss' : 'ok'}">${ico(r.k)}<span class="grow1">${esc(D.items[r.k].name)}<small>have ${r.have} · need ${r.need}</small></span>
+      <span class="eprice">${r.price != null ? `${r.price}g each` : '<span class="muted">not sold</span>'}${r.miss ? `<small>buy ${r.miss}${r.price != null ? ` = ${r.price * r.miss}g` : ''}</small>` : '<small>✓ in storage</small>'}</span></div>`).join('');
+    const e = errandErr(i, rid, n, P);
+    return `<div class="errand">${rows || '<p class="hint small">No ingredients needed.</p>'}
+      ${free > 1 ? `<div class="chips">${[1, free].filter((v, k, a) => a.indexOf(v) === k).map(v => `<button class="chipf ${n === v ? 'on' : ''}" data-rexp-n="${v}">${v === 1 ? '1 batch' : `Fill ${v} batches`}</button>`).join('')}</div>` : ''}
+      ${P.missing.length ? `<p class="hint small">Missing ingredients cost <b>${P.cost}g</b>${P.unbuyable.length ? ' (some aren’t sold at the market)' : ''}.</p>` : ''}
+      <button class="btn ${e ? '' : 'pri'}" data-errand="${i}:${rid}:${n}" ${e ? 'disabled' : ''}>Send farmhand shopping${P.missing.length && !P.unbuyable.length ? ` · ${P.cost}g` : ''}<small>${e ? esc(e) : `They buy what’s missing at the Open Market, bring it back and load ${n > 1 ? n + ' batches' : 'it'} here.`}</small></button></div>`; }
   function stationPanel(i, b) {
     const B = D.buildings[b.type], slots = stationSlots(b);
     let h = head(B.name, esc(B.desc));
@@ -1448,7 +1503,7 @@
       : `<p class="hint">Empty. Load a recipe below; ingredients come from storage.</p>`;
     if (b.q.some(j => j.done)) h += btn({ a: 'collect', i }, 'Collect finished goods', { cls: 'pri' });
     if (unlocked('autocollect')) h += `<button class="toggle ${b.auto ? 'on' : ''}" data-auto="${i}" aria-pressed="${!!b.auto}"><i></i>Auto-collect finished goods into storage</button>`;
-    h += `</div><span class="eyebrow">Recipes</span>`;
+    h += `</div><span class="eyebrow">Recipes</span><p class="hint small">Click a recipe to see what each ingredient costs at the market${unlocked('errands') ? ' and send your farmhand shopping for what’s missing' : ''}.</p>`;
     if (unlocked('repeat')) h += `<p class="hint">Repeat keeps one recipe loaded whenever a slot is free and the ingredients are in storage.</p>`;
     const recs = Object.entries(D.recipes).filter(([, R]) => R.station === b.type);
     h += recs.map(([id, R]) => {
@@ -1456,7 +1511,8 @@
       const ins = Object.entries(R.in).map(([k, n]) => `<span class="in ${count(k) >= n ? '' : 'short'}">${ico(k)}${n}<small>(${count(k)})</small></span>`).join('<span class="plus">+</span>');
       const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
       const le = checkTask({ a: 'load', i, p: id });
-      return `<div class="recipe" data-info="${Object.keys(R.out)[0]}"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)}</b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>`;
+      const ex = UI.rexp === i + ':' + id;
+      return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
     }).join('');
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
@@ -1503,7 +1559,7 @@
       const free = room();
       if (free <= 0) h += `<div class="fullbar"><b>Storage is full (${used()}/${cap()}).</b> Anything you buy needs room. Sell something, or expand storage at the Homestead or with a Storage Barn.</div>`;
       else if (free <= 5) h += `<div class="fullbar soft">Storage is nearly full: room for <b>${free}</b> more item${free === 1 ? '' : 's'}.</div>`;
-      const list = Object.keys(D.items).filter(id => D.items[id].cat !== 'kit' && (D.items[id].buy ? unlocked(D.items[id].requires) : S.disc.includes(id) && SELLABLE.includes(D.items[id].cat)));
+      const list = Object.keys(D.items).filter(canBuyItem);
       h += chips('buy', groupCounts(list));
       h += grouped(list, 'buy', id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
       h += `<p class="hint">Any good you've made at least once is sold here too, at about ${RESALE}× its normal value, always Normal quality. Every purchase nudges the price up for everyone; every sale nudges it down.</p>`;
@@ -1905,6 +1961,8 @@
   }
 
   // delegated UI events
+  $('#panel').addEventListener('click', e => { if (e.target.closest('button, input, label, .errand')) return; const r = e.target.closest('.recipe[data-rid]'); if (!r) return;
+    const k = r.dataset.st + ':' + r.dataset.rid; UI.rexp = UI.rexp === k ? null : k; UI.rexpN = 1; dirty(); });
   document.addEventListener('click', e => {
     const el = e.target.closest('button'); if (!el) return;
     const ds = el.dataset;
@@ -1986,6 +2044,8 @@
       try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); } return; }
     else if ('raceOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; UI.rerr = null; openTitle('race'); return; }
     else if ('qhelp' in ds) { UI.qhelp = !UI.qhelp; }
+    else if (ds.rexpN) { UI.rexpN = +ds.rexpN; }
+    else if (ds.errand) { const [i, rid, n] = ds.errand.split(':'); sendErrand(+i, rid, +n); }
     else if ('qhelpPanel' in ds) { UI.qhelpP = !UI.qhelpP; }
     else if ('raceLeave' in ds) { UI.drawer = null; leaveRace(); return; }
     else if ('weeklyOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; openWeekly(); return; }

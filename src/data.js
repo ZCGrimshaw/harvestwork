@@ -202,7 +202,7 @@ window.HW_DATA = {
     { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin'] },
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
-    { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'crew'] },
+    { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
     { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
@@ -344,6 +344,7 @@ window.HW_DATA = {
     { id: 'smokehouse', pic: ['grass:2', 'smokehouse', 'smoked_fish'], name: 'Smokehouse', cost: 3, req: ['fishing', 'kiln'], text: 'Smoke fish over charcoal for a much better price.', where: 'Open Market → Stations.' },
     { id: 'cellar', pic: ['grass:0', 'homestead', 'brick'], name: 'Root Cellar', cost: 3, req: ['kiln'], text: 'Two more storage upgrades, to 160 and then 220 items, built with bricks.', where: 'Select the Homestead → Expand storage.' },
     { id: 'smelter', pic: ['grass:0', 'smelter', 'copper_ingot'], name: 'Smelter', cost: 4, req: ['prospecting', 'kiln'], text: 'Melt copper ore with charcoal into copper ingots.', where: 'Open Market → Stations.' },
+    { id: 'errands', pic: ['grass:0', 'market', 'crate'], name: 'Errands', cost: 3, req: ['farmhand'], text: 'Your farmhand can run to the market for a recipe’s missing ingredients, pay for them, and load the station for you.', where: 'Click a recipe at any station → Send farmhand shopping.' },
     { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
     { id: 'tinkering', pic: ['grass:0', 'big_sprinkler:1', 'gear'], name: 'Tinkering', cost: 4, req: ['smelter', 'workbench'], text: 'Make gears, and Deluxe Sprinklers that water a 5×5 square.', where: 'Workbench → Gear, Deluxe Sprinkler.' },
     { id: 'warehouse', pic: ['grass:0', 'warehouse', 'crate'], name: 'Warehouses', cost: 3, req: ['cellar', 'tinkering'], text: 'Big brick warehouses that each add 120 storage.', where: 'Open Market → Stations. Needs 10 bricks and 2 gears to place.' },
@@ -525,6 +526,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.38', at: '2026-10-14 16:15', notes: ['Click any recipe at a station to see each ingredient: how many you have, how many you need, and what it costs at the market.', 'New Discovery: Errands (after Farmhand). From that recipe view, press Send farmhand shopping: your farmhand walks to the Open Market, buys what’s missing, brings it back and loads the station (one batch or fill every free slot), then goes back to their usual jobs.'] },
   { v: '0.37.2', at: '2026-10-14 15:50', notes: ['How quality works is now explained in the game: Storage → “How do I make Good and Excellent goods?”, a line on every farm plot and station (with “More about quality”), and on right-click item cards. Your first Basic harvest also gives a short tip.', 'In short: water a crop at both growth stages for Good, add fertilizer too for Excellent. Station goods are as good as their lowest ingredient, plus the station’s Quality upgrade.'] },
   { v: '0.37.1', at: '2026-10-14 15:10', notes: ['Right-click any item, recipe, kit or market row to see what it is: what it does, where it comes from, what it’s used to make and what it’s worth. Works in Storage, the market, stations and orders. On touch screens, press and hold.'] },
   { v: '0.37', at: '2026-10-14 14:05', notes: ['On a computer, the action menu now works like a window: drag its title bar to move it, drag any edge or corner to resize it, and it opens in that spot from then on. Double-click the title bar to send it back beside the tile you pick.', 'Weekly challenge runs are 10 minutes from next week (this week stays at 15 minutes, so everyone already on the board plays the same run).', 'The live count at the top right is now just the green dot and the number.'] },
