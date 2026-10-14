@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.35.1 — 2026-10-13
+- Public name is now Harvest Valley: page title, title art (title-art.webp), title/menu headings, welcome toast, support
+  and save-file wording, update banner, README heading. Internal names (repo, storage keys, save formats, Supabase) unchanged.
+
 ## v0.35 — 2026-10-13
 - Farm modes: S.mode 'online' | 'private' (old saves migrate to 'online'); online() gates mult(), reportTrade, sendScore,
   the ticker, leaderboard buttons and the leaderboard settings.

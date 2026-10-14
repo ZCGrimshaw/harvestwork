@@ -243,7 +243,7 @@
   async function shareSave() {
     save(); const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
     const file = new File([body], saveFileName(), { type: 'application/json' });
-    try { await navigator.share({ files: [file], title: 'Harvestworks save', text: `${S.name}’s farm, day ${S.day}` }); }
+    try { await navigator.share({ files: [file], title: 'Harvest Valley save', text: `${S.name}’s farm, day ${S.day}` }); }
     catch (e) { if (e && e.name !== 'AbortError') toast('Sharing didn’t work here. Try Cloud backup instead.', 'warn'); } }
   const canShareFile = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] })); } catch (e) { return false; } };
   /* ================= race mode =================
@@ -1533,7 +1533,7 @@
         </div>
         <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'menu') {
-      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? 'Racing: the clock keeps running. ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? 'Racing: the clock keeps running. ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
         <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button>${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
@@ -1556,7 +1556,7 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         <span class="eyebrow">Show your support</span>
-        <p class="sub">Harvestworks is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
+        <p class="sub">Harvest Valley is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
         <div class="menu"><button class="btn pri" data-drawer="support">Show your support</button></div>
         <div class="menu"><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>
         <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
@@ -1568,8 +1568,8 @@
   }
   // Show your support: a big QR code to scan with a phone, and a link that opens Ko-fi.
   const supportHTML = () => `<h2>Show your support</h2>
-    <p class="sub">Harvestworks is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
-    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="QR code for the Harvestworks Ko-fi page"><span>Scan with your phone’s camera</span></div>
+    <p class="sub">Harvest Valley is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
+    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="QR code for the Harvest Valley Ko-fi page"><span>Scan with your phone’s camera</span></div>
     <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open Ko-fi ↗</a>`;
   // Backend entries stay in the CHANGELOG only; players see the rest.
   const PUB = D.updates.filter(u => !u.backend);
@@ -1857,7 +1857,7 @@
       const out = await new Response(new Blob([unb64(code.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
       json = new TextDecoder().decode(out);
     } else if (code.startsWith('HW1:')) json = new TextDecoder().decode(unb64(code.slice(4)));
-    else throw new Error('That isn’t a Harvestworks save code. It should start with HWZ1: or HW1:.');
+    else throw new Error('That isn’t a Harvest Valley save code. It should start with HWZ1: or HW1:.');
     return validState(JSON.parse(json), 'The save code is damaged or incomplete. Copy it again in full.');
   }
   function validState(o, msg) {
@@ -1867,8 +1867,8 @@
   // A save file is plain JSON: { format, saved, state }. Older save codes pasted into a .txt file also load.
   async function parseSaveText(text) {
     text = (text || '').trim();
-    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Harvestworks save.'); }
-      return validState(/^(harvestworks|infinifarm)-save$/.test(o.format) ? o.state : o, 'That file isn’t a Harvestworks save, or it’s damaged.'); }
+    if (text.startsWith('{')) { let o; try { o = JSON.parse(text); } catch (e) { throw new Error('That file isn’t a readable Harvest Valley save.'); }
+      return validState(/^(harvestworks|infinifarm)-save$/.test(o.format) ? o.state : o, 'That file isn’t a Harvest Valley save, or it’s damaged.'); }
     return parseCode(text);
   }
   const saveFileName = () => `harvestworks-${(S.name || 'farm').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'farm'}-day${S.day}.json`;
@@ -1929,11 +1929,11 @@
   function renderTitle() {
     const t = UI.title; if (!t) return; let h = '';
     const back = `<button class="btn ghost" data-t="main">Back</button>`;
-    if (t === 'splash') h = `<div class="tcard splash"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Welcome to Harvestworks</h1>
+    if (t === 'splash') h = `<div class="tcard splash"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Welcome to Harvest Valley</h1>
         <p class="sub">Grow, craft and trade your way from one patch of dirt to a farm that never stops growing.</p>
         <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
     else if (t === 'main') { const f = UI.tFile;
-      h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvestworks</h1><div class="tmenu">
+      h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvest Valley</h1><div class="tmenu">
         ${UI.hadSave && !S.race ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · ${MODES[S.mode || 'online'].name} · Day ${S.day} · ${S.gold}g</small></button>` : ''}
         <div class="modegrid">
           <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="mode" data-m="online">Online Valley<small>Shared prices and the leaderboard</small></button>
@@ -2026,7 +2026,7 @@
     newState(); S.mode = UI.newMode || 'online'; migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v; UI.tnameDraft = '';
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
-    if (tut) startTut(); else toast(`<b>Welcome to Harvestworks, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
+    if (tut) startTut(); else toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
   }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
