@@ -553,6 +553,16 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 #panel .btn[data-task]:not(:disabled), #panel .btn.pri:not(:disabled) { border-color: var(--sun); box-shadow: 0 3px 0 var(--wood-lo), inset 0 0 0 1px rgba(245,197,66,.35); }
 #panel .btn[data-task]:not(:disabled):hover { border-color: #ffd65e; }
 #panel[data-fl] { transition: none; max-height: calc(100% - 150px); }
+/* right-click menu and move/resize frame for the action panel (computers) */
+#pctx { position: fixed; z-index: 30; min-width: 230px; padding: 4px; background: var(--wood); border: 2px solid var(--wood-lo); border-radius: var(--r); box-shadow: inset 0 0 0 2px var(--wood-hi), 0 6px 18px rgba(0,0,0,.45); }
+#pctx[hidden] { display: none; }
+#pctx button { display: block; width: 100%; text-align: left; padding: 7px 10px; background: none; border: 0; color: var(--paper); font: 700 13.5px var(--f-body, inherit); border-radius: 4px; cursor: pointer; }
+#pctx button:hover { background: var(--wood-hi); } #pctx small { display: block; font-weight: 500; font-size: 11.5px; color: var(--paper-dim); }
+#pedit { position: fixed; z-index: 9; border: 2px dashed var(--sun); border-radius: var(--r); background: rgba(245,197,66,.08); cursor: move; touch-action: none; }
+#pedit[hidden] { display: none; }
+#pedit .pebar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(36,22,13,.92); color: var(--paper); font-size: 12.5px; font-weight: 700; border-radius: 6px 6px 0 0; }
+#pedit .pebar span { flex: 1; } #pedit .pebar .btn { width: auto; margin: 0; padding: 4px 10px; }
+#pedit .grip { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--sun) 50%); border-radius: 0 0 var(--r) 0; }
 /* weekly challenge + medals */
 .wboard li { padding: 4px 8px; } .wboard li span { font-variant-numeric: tabular-nums; }
 .wlast { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--paper-dim); }
@@ -590,6 +600,8 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   </div>
   <div id="hud"><div id="goals"></div><div id="queue"></div></div>
   <aside id="panel" class="wood" hidden></aside>
+  <div id="pedit" hidden><div class="pebar"><span>Drag to move · drag the corner to resize</span><button class="btn pri sm" data-pedit="done">Done</button><button class="btn ghost sm" data-pedit="cancel">Cancel</button></div><div class="grip" title="Drag to resize"></div></div>
+  <div id="pctx" hidden></div>
   <div id="zoom">
     <button class="ibtn zin" data-zoom="in" aria-label="Zoom in">+</button>
     <button class="ibtn zin" data-zoom="out" aria-label="Zoom out">−</button>
@@ -610,9 +622,9 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261014-202435"></script>
-<script src="art.js?v=20261014-202435"></script>
-<script src="sound.js?v=20261014-202435"></script>
-<script src="game.js?v=20261014-202435"></script>
+<script src="data.js?v=20261014-202718"></script>
+<script src="art.js?v=20261014-202718"></script>
+<script src="sound.js?v=20261014-202718"></script>
+<script src="game.js?v=20261014-202718"></script>
 
 </body></html>

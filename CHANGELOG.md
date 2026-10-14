@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.36.5 — 2026-10-14
+- Pinned panel: right-click #panel → #pctx menu (Move and resize / Open beside the tile again). #pedit frame drags and
+  resizes UI.ppDraft; Done saves {x,y,w,h} to localStorage 'harvestworks.panelpos'; placePanel uses it (border-box, clamped).
+
 ## v0.36.4 — 2026-10-14
 - placePanel(): offset from the tile grows by 20% of the panel's width (mirrored when it opens on the left).
 

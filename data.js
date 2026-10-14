@@ -525,6 +525,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.36.5', at: '2026-10-14 13:45', notes: ['On a computer, right-click the action menu and choose Move and resize: drag it anywhere, drag the corner to resize, then Done. It opens in that spot from then on. Right-click it again to go back to opening beside the tile.'] },
   { v: '0.36.4', at: '2026-10-14 13:30', notes: ['The action panel now sits a little further from the tile you pick, so it covers less of the buildings around it.'] },
   { v: '0.36.3', at: '2026-10-14 13:40', notes: ['On computers and tablets, the action panel now opens beside the tile you pick and follows it as you move the view (phones keep the panel at the bottom).', 'Every action you can take now has a gold border, so no single option looks like the only one. Greyed-out actions still say what they need.'] },
   { v: '0.36.2', at: '2026-10-14 13:30', notes: ['A live count at the top right shows how many copies of Harvest Valley are open right now, updated every 30 seconds.'] },

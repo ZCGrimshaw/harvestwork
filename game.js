@@ -1387,7 +1387,7 @@
       if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
     }
-    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.</p>`;
+    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Right-click this menu to move or resize it.'}</p>`;
   }
   function stationPanel(i, b) {
     const B = D.buildings[b.type], slots = stationSlots(b);
@@ -1574,16 +1574,50 @@
     setHTML('#movebar', `<span><b>Moving the ${esc(D.buildings[b.type].name)}.</b> ${isTouch() ? 'Tap' : 'Click'} empty grass you own, then choose “Move here”.</span><button class="btn ghost sm" data-move-cancel>Cancel</button>`); }
   /* On larger screens the action panel floats beside the selected tile (right of it, or left if there's no room)
      and follows it as the view moves. Phones keep the bottom sheet. */
-  function placePanel() { const el = $('#panel');
-    if (el.hidden || UI.sel < 0 || isPhone()) { if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = ''; delete el.dataset.fl; } return; }
-    const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, w = el.offsetWidth, h = el.offsetHeight, gap = 44 * cam.z;
-    const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight;
-    const off = Math.max(34, gap) + w * .2; // 20% of the panel's width further out, so it clears the tile's neighbours
-    let left = sx + off; if (left + w > W - 10) left = sx - off - w;
-    left = Math.max(10, Math.min(W - w - 10, left));
-    const top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2));
+  /* Computers can also pin the panel: right-click it → Move and resize, drag it where you like, and it opens there
+     from then on (saved in this browser). "Open beside the tile again" goes back to floating. */
+  const PP_KEY = 'harvestworks.panelpos';
+  UI.pp = (() => { try { return JSON.parse(localStorage.getItem(PP_KEY)); } catch (e) { return null; } })();
+  function placePanel() { const el = $('#panel'), ed = $('#pedit');
+    if (el.hidden || UI.sel < 0 || isPhone()) { if (UI.pedit) endPanelEdit(true);
+      if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = el.style.width = el.style.height = el.style.maxHeight = el.style.boxSizing = ''; delete el.dataset.fl; } return; }
+    const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight, P = UI.ppDraft || UI.pp;
+    let left, top, w, h;
+    if (P) { w = Math.max(280, Math.min(W - 20, P.w)); h = Math.max(180, Math.min(H - topMin - 10, P.h));
+      left = Math.max(10, Math.min(W - w - 10, P.x)); top = Math.max(topMin, Math.min(H - h - 10, P.y));
+      const sw = Math.round(w) + 'px', sh = Math.round(h) + 'px';
+      if (el.style.width !== sw || el.style.height !== sh) { el.style.boxSizing = 'border-box'; el.style.width = sw; el.style.height = sh; el.style.maxHeight = 'none'; } }
+    else { if (el.style.width) { el.style.width = el.style.height = el.style.maxHeight = el.style.boxSizing = ''; }
+      const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, gap = 44 * cam.z; w = el.offsetWidth; h = el.offsetHeight;
+      const off = Math.max(34, gap) + w * .2; // 20% of the panel's width further out, so it clears the tile's neighbours
+      left = sx + off; if (left + w > W - 10) left = sx - off - w;
+      left = Math.max(10, Math.min(W - w - 10, left)); top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2)); }
     const L = Math.round(left) + 'px', T = Math.round(top) + 'px';
-    if (el.style.left !== L || el.style.top !== T) { el.style.left = L; el.style.top = T; el.style.right = 'auto'; el.dataset.fl = 1; } }
+    if (el.style.left !== L || el.style.top !== T) { el.style.left = L; el.style.top = T; el.style.right = 'auto'; el.dataset.fl = 1; }
+    if (UI.pedit) { const r = el.getBoundingClientRect(); Object.assign(ed.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); } }
+  function startPanelEdit() { const r = $('#panel').getBoundingClientRect(); UI.ppDraft = { x: r.left, y: r.top, w: r.width, h: Math.max(r.height, 320) };
+    UI.pedit = true; $('#pedit').hidden = false; }
+  function endPanelEdit(keep) { if (keep && UI.ppDraft) { UI.pp = UI.ppDraft; try { localStorage.setItem(PP_KEY, JSON.stringify(UI.pp)); } catch (e) { } }
+    UI.ppDraft = null; UI.pedit = false; $('#pedit').hidden = true; }
+  function hidePctx() { const m = $('#pctx'); if (m) m.hidden = true; }
+  $('#panel').addEventListener('contextmenu', e => { if (isPhone()) return; e.preventDefault(); const m = $('#pctx');
+    m.innerHTML = `<button data-pctx="edit">Move and resize this menu<small>It opens in that spot from then on</small></button>${UI.pp ? '<button data-pctx="reset">Open beside the tile again</button>' : ''}<button data-pctx="cancel">Cancel</button>`;
+    m.hidden = false; m.style.left = Math.min(e.clientX, innerWidth - m.offsetWidth - 8) + 'px'; m.style.top = Math.min(e.clientY, innerHeight - m.offsetHeight - 8) + 'px'; });
+  $('#pctx').addEventListener('click', e => { const b = e.target.closest('[data-pctx]'); if (!b) return; e.stopPropagation(); hidePctx();
+    const a = b.dataset.pctx; if (a === 'edit') startPanelEdit();
+    else if (a === 'reset') { UI.pp = null; try { localStorage.removeItem(PP_KEY); } catch (e) { } toast('The menu opens beside the tile you pick again.', 'info'); } });
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('#pctx')) hidePctx(); }, true);
+  // dragging the edit frame moves the panel; the corner grip resizes it
+  (() => { const ed = $('#pedit'); let drag = null;
+    ed.addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('button')) return; e.preventDefault();
+      drag = { mode: e.target.closest('.grip') ? 'size' : 'move', x: e.clientX, y: e.clientY, P: Object.assign({}, UI.ppDraft) }; ed.setPointerCapture(e.pointerId); });
+    ed.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y, P = drag.P;
+      UI.ppDraft = drag.mode === 'move' ? { x: P.x + dx, y: P.y + dy, w: P.w, h: P.h } : { x: P.x, y: P.y, w: Math.max(280, P.w + dx), h: Math.max(180, P.h + dy) }; });
+    ed.addEventListener('pointerup', () => { drag = null; });
+    ed.addEventListener('click', e => { const b = e.target.closest('[data-pedit]'); if (!b) return; e.stopPropagation();
+      if (b.dataset.pedit === 'done') { endPanelEdit(true); toast('<b>Menu spot saved.</b> It opens there from now on. Right-click it to change it again.', 'info'); }
+      else if (b.dataset.pedit === 'reset') { endPanelEdit(false); UI.pp = null; try { localStorage.removeItem(PP_KEY); } catch (e) { } }
+      else endPanelEdit(false); }); })();
   function renderPanel() {
     const i = UI.sel; const el = $('#panel');
     document.body.classList.toggle('sheet-open', i >= 0);
@@ -2010,7 +2044,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-202435';
+  const BUILD = '20261014-202718';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
