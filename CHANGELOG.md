@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.33.1 — 2026-10-13
+- Race head starts are random per race and identical within it (seeded from the race code): gold 150–400, 5×5 or 7×7
+  land, 1–3 stations from a pool (with the discoveries and starter goods they need, sometimes speed-tuned), 2–5 tilled
+  plots (sometimes a carrot crop already growing), carrot/potato seeds, odds and ends, 0–3 Discovery. Guaranteed:
+  Stove, ≥2 plots, ≥6 carrot seeds, ≥150g (checked across 400 random codes).
+- Greed traps (each ~80%): a 60%-off "race-day bargain" kit (Smelter/Loom/Cider Press/Oven) whose chain can't run
+  from the head start, and a "Collector's grand request" paying ~2.2× value in gold but only 10–25 points.
+  The countdown screen lists the head start.
+
 ## v0.33 — 2026-10-13
 - Save slots: SLOT_KEYS (slot 1 keeps 'harvestworks.save.v1'), active slot in 'harvestworks.slot'; Your farms screen
   (title + Menu) to play a slot or start/replace a farm in one (two-tap replace). Menu's "Start a new farm" now opens it.

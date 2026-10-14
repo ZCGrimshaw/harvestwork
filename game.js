@@ -267,23 +267,64 @@
       if (UI.rl && UI.rl.status === 'running') enterRace(); else { renderTitle(); pollLobby(); } }, 2500); }
   async function startRace() { try { UI.rl = await raceCall('start_race', { p_code: UI.rl.code, p_player: PLAYER }); if (UI.rl.status === 'running') enterRace(); } catch (e) { UI.rerr = e.message; renderTitle(); } }
   async function leaveLobby() { clearTimeout(UI.rpoll); if (UI.rl) rpc('leave_race', { p_code: UI.rl.code, p_player: PLAYER }).catch(() => {}); UI.rl = null; openTitle('race'); }
-  // The head start every racer gets: same land, buildings, seeds and discoveries.
-  function racePreset() {
-    S.gold = 300; S.home = 1; S.goal = D.goals.length; S.tut = null; S.seenUpdate = latest().v; S.weekly = false;
-    ['woodcutting', 'fishing', 'stonecutting', 'stew', 'sawmill', 'wheat', 'mill', 'baking'].forEach(id => S.unl.includes(id) || S.unl.push(id));
-    const give = (k, n) => addItem(k, n, 0, true); give('carrot_seed', 8); give('potato_seed', 6); give('wheat_seed', 6); give('log', 6); give('plank', 4);
-    const h = homeIdx(), hx = tx(h), hy = ty(h);
-    S.tiles.forEach((T, i) => { if (T.t !== 'void' && Math.max(Math.abs(tx(i) - hx), Math.abs(ty(i) - hy)) <= 2) T.o = true; });
+  /* The head start. It's random for every race but identical for everyone in it: the race code seeds the dice.
+     Always winnable: the Stove, at least two tilled plots, carrot seeds and gold for more seeds.
+     Greed traps: a bargain station kit you can't actually use, and a rich-looking request that pays gold, not points. */
+  const RACE_KITS = {
+    sawmill:   { unl: ['woodcutting', 'sawmill'], give: { log: 6 } },
+    mill:      { unl: ['wheat', 'mill', 'baking'], give: { wheat_seed: 6 } },
+    preserver: { unl: ['berries', 'preserver'], give: { berry_seed: 5 } },
+    workbench: { unl: ['stonecutting', 'workbench'], give: { plank: 6, stone: 4 } },
+    compost:   { unl: ['compost', 'compostbin'], give: { fertilizer: 3 } },
+    hive:      { unl: ['berries', 'beekeeping'], give: {} },
+    shed:      { unl: ['woodcutting', 'mushrooms'], give: { log: 4 } },
+    kiln:      { unl: ['stonecutting', 'woodcutting', 'kiln'], give: { stone: 6 } }
+  };
+  // bargain kits whose chain can't run in a race (their inputs need discoveries you don't start with)
+  const RACE_TRAP_KITS = [['smelter_kit', 'smelter', 'copper ore from Prospecting'], ['loom_kit', 'loom', 'flax'], ['press_kit', 'press', 'apple trees'], ['oven_kit', 'oven', 'bricks to place it']];
+  function raceRng(code) { let h = 2166136261; for (const ch of code) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return () => { h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ h >>> 15, 1 | h); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function racePreset(code) {
+    const R = raceRng(code), int = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
+    const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const kit = []; const unl = id => { if (!S.unl.includes(id)) S.unl.push(id); };
+    S.home = 1; S.goal = D.goals.length; S.tut = null; S.seenUpdate = latest().v; S.weekly = false;
+    S.gold = int(15, 40) * 10; unl('stew'); ['woodcutting', 'fishing', 'stonecutting'].forEach(id => { if (R() < .5) unl(id); });
+    const give = (k, n) => { if (n > 0) addItem(k, n, 0, true); };
+    give('carrot_seed', int(6, 10) - count('carrot_seed')); give('potato_seed', int(2, 6) - count('potato_seed'));
+    // land: 5×5 or 7×7 around the house
+    const h = homeIdx(), hx = tx(h), hy = ty(h), rad = R() < .5 ? 2 : 3;
+    S.tiles.forEach((T, i) => { if (T.t !== 'void' && Math.max(Math.abs(tx(i) - hx), Math.abs(ty(i) - hy)) <= rad) T.o = true; });
     const free = S.tiles.map((T, i) => i).filter(i => isEmptyGrass(i)).sort((a, b) => (Math.abs(tx(a) - hx) + Math.abs(ty(a) - hy)) - (Math.abs(tx(b) - hx) + Math.abs(ty(b) - hy)) || a - b);
-    ['sawmill', 'mill'].forEach(bt => { const i = free.shift(); if (i !== undefined) { S.tiles[i].b = makeB(bt); S.built++; } });
-    for (let k = 0; k < 3; k++) { const i = free.shift(); if (i !== undefined) S.tiles[i].b = { type: 'farm', st: 'tilled' }; }
+    // one to three stations, ready to run
+    const bts = shuffle(Object.keys(RACE_KITS)).slice(0, int(1, 3));
+    bts.forEach(bt => { const i = free.shift(); if (i === undefined) return; S.tiles[i].b = makeB(bt); S.built++; RACE_KITS[bt].unl.forEach(unl);
+      for (const k in RACE_KITS[bt].give) give(k, RACE_KITS[bt].give[k]);
+      if (R() < .35) S.tiles[i].b.lv.speed = 1; kit.push(D.buildings[bt].name + (S.tiles[i].b.lv.speed ? ' (tuned)' : '')); });
+    // two to five tilled plots (at least two), sometimes one already sprouting
     S.tiles.forEach(T => { if (T.b && T.b.type === 'farm' && T.b.st === 'raw') T.b.st = 'tilled'; });
+    const plots = int(1, 4); for (let k = 0; k < plots; k++) { const i = free.shift(); if (i !== undefined) S.tiles[i].b = { type: 'farm', st: 'tilled' }; }
+    if (R() < .5) { const f = S.tiles.find(T => T.b && T.b.type === 'farm' && T.b.st === 'tilled'); if (f) { f.b = { type: 'farm', st: 'growing', crop: 'carrot', last: 'carrot', g: int(4, 12), wet: false, w: [0, 0], half: false, fert: false }; kit.push('a carrot crop already growing'); } }
+    const nPlots = S.tiles.filter(T => T.b && T.b.type === 'farm').length;
+    // a few odds and ends, and sometimes Discovery to spend
+    const extras = shuffle([['stone', int(2, 6)], ['log', int(2, 6)], ['fertilizer', int(1, 3)], ['plank', int(2, 5)], ['fish', int(1, 3)]]).slice(0, int(0, 2));
+    extras.forEach(([k, n]) => give(k, n)); S.dp = int(0, 3);
+    // greed traps
+    const traps = [];
+    const tk = shuffle(RACE_TRAP_KITS.filter(([id, bt]) => !S.unl.includes(D.items[id].requires)))[0];
+    if (tk && R() < .8) { const [id, bt, need] = tk; unl(D.items[id].requires); S.race.deal = { kit: id, price: Math.round(D.items[id].buy * .4 / 5) * 5, need };
+      traps.push('deal'); }
+    if (R() < .8) { const pool = ['glazed_carrots', 'baked_potato', 'veggie_stew'].concat(S.unl.includes('baking') ? ['bread'] : []).concat(S.unl.includes('preserver') ? ['jam', 'pickled_carrots'] : []);
+      const it = pick(pool), n = int(4, 7);
+      S.orders.unshift({ id: S.uid++, kind: 'trap', name: 'Collector’s grand request', need: [[it, n, 0]], gold: Math.round(D.items[it].value * n * 2.2 / 10) * 10, score: int(2, 5) * 5 }); traps.push('order'); }
+    S.race.kit = [`${S.gold}g`, `${nPlots} farm plot${nPlots === 1 ? '' : 's'}`, ...kit].concat(S.dp ? [`${S.dp} Discovery to spend`] : []);
+    S.race.traps = traps;
   }
   function enterRace() { clearTimeout(UI.rpoll); const L = UI.rl;
     if (!S.race) save();
     const name = (L.players.find(p => p.me) || {}).name || S.name;
-    newState(); migrate(); S.name = name; racePreset();
-    S.race = { code: L.code, target: L.target, start: Date.parse(L.started_at), seen: {} };
+    newState(); migrate(); S.name = name;
+    S.race = { code: L.code, target: L.target, start: Date.parse(L.started_at), seen: {} }; racePreset(L.code);
     try { localStorage.setItem(RINFO, JSON.stringify({ code: L.code, target: L.target })); } catch (e) { }
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null; UI.hadSave = true;
     save(); UI.rtick = 0; openTitle('racego'); }
@@ -295,7 +336,8 @@
   // every frame during a race: countdown, score reports, everyone's progress, finishing
   function tickRace(dt) { const R = S.race; if (!R) return;
     if (UI.title === 'racego') { const left = R.start - raceNow(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
-      if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> First to ${R.target.toLocaleString()} points wins.`, 'goal'); } return; }
+      if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> First to ${R.target.toLocaleString()} points wins.`, 'goal');
+        if (R.deal) setTimeout(() => toast(`<b>Market bargain:</b> ${esc(D.buildings[D.items[R.deal.kit].building].name)} kit only ${R.deal.price}g today!`, 'info'), 2500); } return; }
     if (raceNow() < R.start) return;
     UI.rtick = (UI.rtick || 0) - dt; const reached = S.score >= R.target && !R.done;
     if (UI.rtick <= 0 || reached) { UI.rtick = 4;
@@ -330,7 +372,7 @@
   const mult = id => (!S.race && NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1; // races use plain local prices
   // Goods you've made at least once can be bought back from the market at a markup (above even the +50% demand sell price).
   const RESALE = 1.75;
-  const buyPrice = id => Math.max(1, Math.round((D.items[id].buy || (D.items[id].value || 1) * RESALE) * mult(id)));
+  const buyPrice = id => (S && S.race && S.race.deal && S.race.deal.kit === id) ? S.race.deal.price : Math.max(1, Math.round((D.items[id].buy || (D.items[id].value || 1) * RESALE) * mult(id)));
   function moveTag(id) { const m = mult(id); if (Math.abs(m - 1) < .005) return '';
     const pct = Math.round((m - 1) * 100); return `<span class="mv ${pct > 0 ? 'up' : 'dn'}" title="Shared valley price">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`; }
 
@@ -1252,6 +1294,7 @@
     const d = S.market.demand;
     let h = head('Open Market', 'Every trade sends your farmer to the stall.');
     h += `<p class="netline ${NET.ok ? 'on' : ''}">${NET.ok ? `<b>Shared valley prices</b> · ${NET.active} trader${NET.active === 1 ? '' : 's'} this hour · prices settle back over ~${NET.recov >= 1.5 ? Math.round(NET.recov) + 'h' : Math.max(1, Math.round(NET.recov * 60)) + ' min'} · updated ${Math.max(0, Math.round((Date.now() - NET.at) / 1000))}s ago` : NET.tried ? 'Shared prices unavailable here, so this market uses local prices.' : 'Connecting to the valley market…'}</p>`;
+    if (S.race && S.race.deal) { const dl = S.race.deal; h += `<div class="demand">${ico(dl.kit)}<span><b>Race-day bargain:</b> ${esc(D.buildings[D.items[dl.kit].building].name)} kit for just <b>${dl.price}g</b> (normally ${D.items[dl.kit].buy}g). Stations tab.</span></div>`; }
     if (d) h += `<div class="demand">${ico(d.item)}<span>Today: <b>${esc(D.items[d.item].name)}</b> sells for <b>+${d.pct}%</b></span></div>`;
     h += `<div class="tabs">${['buy', 'sell', 'stations'].map(t => `<button class="tab ${UI.mtab === t ? 'on' : ''}" data-mtab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
     if (UI.mtab === 'buy') {
@@ -1287,7 +1330,7 @@
     const m = D.milestones[S.ms];
     if (m) h += `<div class="order ms"><div class="otop"><span class="eyebrow">Contract</span><b>${esc(m.name)}</b></div>${needRow(m.need)}
       <p class="hint">${esc(m.hint)}</p>${isComplex(m.need) ? `<button class="btn ghost sm treebtn" data-tree="ms">See everything it takes</button>` : ''}<div class="oreward">+${m.gold}g · +${m.dp} Discovery</div>${btn({ a: 'deliver', i, p: 'ms' }, 'Deliver', { cls: 'pri' })}</div>`;
-    h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
+    h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'trap' ? 'Special request' : o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
       <div class="oreward">+${o.gold}g · +${o.score} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
     if (S.orders.length < C.orderSlots) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
     return h;
@@ -1737,7 +1780,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-045426';
+  const BUILD = '20261014-050950';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1879,7 +1922,8 @@
         <div class="tmenu"><button class="btn ghost" data-t="rleave">Leave</button></div></div>`; }
     else if (t === 'racego') { const R = S.race || {};
       h = `<div class="tcard"><span class="twel">Race ${esc(R.code || '')} · first to ${(R.target || 0).toLocaleString()}</span><h2>Get ready…</h2><div class="racecount" id="rcount">5</div>
-        <p class="sub">Same head start for everyone: 300g, a Sawmill and Flour Mill, tilled plots, seeds and the early discoveries. Score comes from harvests, crafting, sales, orders and contracts.</p></div>`; }
+        <span class="eyebrow">This race’s head start (the same for everyone)</span><p class="sub">${esc((R.kit || []).join(' · '))}</p>
+        <p class="hint small">Score comes from harvests, crafting, sales, orders and contracts. Not every offer is worth taking.</p></div>`; }
     else if (t === 'raceend') { const R = S.race || {}, L = UI.rl || { players: [] };
       h = `<div class="tcard"><span class="twel">Race ${esc(R.code || '')}</span><h2>You reached ${(R.target || 0).toLocaleString()} in ${fmtTime(R.time)}!</h2>
         <ol class="rresults">${L.players.map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.finished_ms != null ? fmtTime(p.finished_ms) : p.score.toLocaleString() + ' pts, still racing'}</span></li>`).join('')}</ol>
@@ -2011,7 +2055,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
