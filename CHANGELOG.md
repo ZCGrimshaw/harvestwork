@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.31 — 2026-10-13
+- Cloud backup (database): cloud_saves (code_hash = sha256 of the 12-char backup code, data = HWZ1 save code, name,
+  day); backup_save (validates code/size/prefix, one write per 15 s per code) and restore_save(code).
+- Game: S.cloud {code, at, day, auto}; code generated client-side from a 31-letter alphabet (~59 bits). Auto backup on
+  first connection and each new day if 10+ min since the last; Menu → Cloud backup (code chip copies, Back up now,
+  auto toggle); title + Menu → Restore from a backup code (preview, then load; keeps backing up to the same code).
+- Share save file (Web Share API with a File) shown where the browser supports sharing files (phones).
+
 ## v0.30.1 — 2026-10-13
 - Locked leaderboard names (database): player_names (player pk, name, unique lower-case key); claim_name(player, name)
   claims or switches this player's name, or returns the lowest free numbered suggestion (Zac → Zac1, Zac2…);

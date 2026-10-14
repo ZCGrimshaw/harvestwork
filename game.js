@@ -202,13 +202,46 @@
       else UI.claim = { err: r.error || 'Couldn’t lock that name.' };
     } catch (e) { UI.claim = { err: 'Couldn’t reach the valley. Try again in a moment.' }; }
     dirty(); }
+  /* cloud backup: the farm (as a compressed save code) is stored on the valley server under a secret 12-letter
+     backup code. Typing the code on any device brings the farm back. Backs up on its own every ~10 minutes of play. */
+  const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const newCode = () => { const a = new Uint32Array(12); crypto.getRandomValues(a); return Array.from(a, n => CODE_ABC[n % CODE_ABC.length]).join(''); };
+  const fmtCode = c => c ? c.match(/.{1,4}/g).join('-') : '';
+  const cleanCode = c => (c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  async function cloudBackup(manual) {
+    if (!S.cloud) S.cloud = { code: newCode(), at: 0, auto: true };
+    if (manual) { UI.cloudBusy = true; dirty(); }
+    if (!NET.ok) await pullMarket();
+    if (!NET.ok) { UI.cloudBusy = false; if (manual) toast('Cloud backup needs the shared valley connection. Use the web version.', 'warn'); dirty(); return; }
+    try { const data = await exportCode(); const ok = await rpc('backup_save', { p_code: S.cloud.code, p_data: data, p_name: S.name, p_day: S.day });
+      if (ok) { S.cloud.at = Date.now(); S.cloud.day = S.day; save(); if (manual) toast(`<b>Backed up.</b> Your code: ${fmtCode(S.cloud.code)}`, 'goal'); }
+      else if (manual) toast('Backed up a moment ago. Try again in a few seconds.', 'info');
+    } catch (e) { if (manual) toast('Couldn’t reach the valley. Try again in a moment.', 'warn'); }
+    UI.cloudBusy = false; dirty(); }
+  function autoBackup() { if (S.cloud && S.cloud.auto === false) return; if (!NET.ok) return; if (S.cloud && Date.now() - (S.cloud.at || 0) < 10 * 60000) return; cloudBackup(false); }
+  async function findBackup(code) {
+    code = cleanCode(code); UI.rest = { busy: true, code }; renderTitle();
+    if (code.length !== 12) { UI.rest = { err: 'Backup codes are 12 letters and numbers, like ABCD-EFGH-JKMN.', code }; renderTitle(); return; }
+    if (!NET.ok) await pullMarket();
+    if (!NET.ok) { UI.rest = { err: 'Restoring needs the shared valley connection. Open the web version: zcgrimshaw.github.io/harvestwork', code }; renderTitle(); return; }
+    try { const r = await rpc('restore_save', { p_code: code });
+      if (!r || !r.data) { UI.rest = { err: 'No backup found for that code. Check it and try again.', code }; renderTitle(); return; }
+      const o = await parseCode(r.data); UI.rest = { o, code, saved: r.saved }; }
+    catch (e) { UI.rest = { err: 'Couldn’t load that backup. Try again in a moment.', code }; }
+    renderTitle(); }
+  async function shareSave() {
+    save(); const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
+    const file = new File([body], saveFileName(), { type: 'application/json' });
+    try { await navigator.share({ files: [file], title: 'Harvestworks save', text: `${S.name}’s farm, day ${S.day}` }); }
+    catch (e) { if (e && e.name !== 'AbortError') toast('Sharing didn’t work here. Try Cloud backup instead.', 'warn'); } }
+  const canShareFile = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] })); } catch (e) { return false; } };
   async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
     if (!NET.ok) { await pullMarket(); }
     if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }
     try { sendScore(); await new Promise(r => setTimeout(r, 400)); UI.lb = await rpc('get_leaderboard', { p_farm: S.fid }); } catch (e) { UI.lb = { off: true }; } dirty(); }
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
-      if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); }
+      if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); setTimeout(autoBackup, 3000); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
@@ -294,7 +327,7 @@
     return { n: Math.ceil((S.day - 1) / 7), from: w.from, to: S.day - 1, gold: S.gold - w.gold, score: S.score - w.score, dp: S.dp - w.dp, tiles: tiles - w.tiles, ms: (S.ms || 0) - w.ms,
       built: (S.built || 0) - w.built, made, harvest: w.harvest, sold: w.sold, spent: w.spent, orders: w.orders }; }
   function newDay() {
-    sendScore();
+    sendScore(); autoBackup();
     if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false) UI.pendingWeek = weekReport(); weekStart(); }
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
@@ -1342,9 +1375,15 @@
       h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
+        <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
+        <p class="sub">Your backup code <button class="codechip" data-copy-cloud title="Copy">${fmtCode(S.cloud.code)}</button> brings this farm back on any phone or computer: Main menu → Restore from a backup code.</p>
+        <p class="hint small">Last backed up ${Math.max(1, Math.round((Date.now() - S.cloud.at) / 60000))} min ago (day ${S.cloud.day}). ${S.cloud.auto !== false ? 'It backs up again by itself every 10 minutes or so while you play.' : 'Automatic backups are off.'} Write the code down or take a screenshot. Anyone with the code can load a copy of your farm.</p>` : `
+        <p class="sub">Back up your farm to the valley and get a short code that brings it back on any phone or computer.</p>`}
+        <div class="menu"><button class="btn pri" data-cloud-backup ${UI.cloudBusy ? 'disabled' : ''}>${UI.cloudBusy ? 'Backing up…' : S.cloud && S.cloud.at ? 'Back up now' : 'Back up my farm'}</button><button class="btn ghost" data-restore-open>Restore from a backup code</button>
+        ${S.cloud && S.cloud.at ? `<button class="toggle ${S.cloud.auto !== false ? 'on' : ''}" data-cloud-auto aria-pressed="${S.cloud.auto !== false}"><i></i>Back up automatically</button>` : ''}</div>
         <span class="eyebrow">Move your farm</span>
-        <p class="sub">Download your farm as a save file, then load it on another device or on the web version. Loading replaces the farm on that page.</p>
-        <div class="menu"><button class="btn pri" data-download-save>Download save file</button><button class="btn ghost" data-load-file>Load a save file</button></div>
+        <p class="sub">Or save your farm as a file and load it on another device. Loading replaces the farm on that page.</p>
+        <div class="menu">${canShareFile() ? '<button class="btn" data-share-save>Share save file<small>Save to Files, AirDrop, email…</small></button>' : ''}<button class="btn ${canShareFile() ? 'ghost' : 'pri'}" data-download-save>Download save file</button><button class="btn ghost" data-load-file>Load a save file</button></div>
         <button class="linkish small" data-toggle-code>${UI.showCode ? 'Hide save codes' : 'Or copy and paste a save code instead'}</button>
         ${UI.showCode ? `<div class="menu"><button class="btn ghost" data-export>${UI.exportCode ? 'Refresh save code' : 'Export save code'}</button><button class="btn ghost" data-import-open>Paste a save code</button></div>` : ''}
         ${UI.showCode && UI.exportCode ? `<label class="eyebrow" for="expcode">Your save code · ${Math.ceil(UI.exportCode.length / 1024)} KB of text</label><textarea id="expcode" class="code" readonly rows="4">${esc(UI.exportCode)}</textarea>
@@ -1506,6 +1545,11 @@
     else if ('soundMute' in ds) { SND.unlock(); SND.set('mute', !SND.prefs.mute); }
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
+    else if ('shareSave' in ds) { shareSave(); return; }
+    else if ('cloudBackup' in ds) { cloudBackup(true); return; }
+    else if ('cloudAuto' in ds) { S.cloud.auto = S.cloud.auto === false; save(); }
+    else if ('copyCloud' in ds) { const t = fmtCode(S.cloud.code); try { navigator.clipboard.writeText(t).then(() => toast(`Copied ${t}`, 'info'), () => toast(`Your code: ${t}`, 'info')); } catch (e) { toast(`Your code: ${t}`, 'info'); } return; }
+    else if ('restoreOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.rest = null; openTitle('restore'); return; }
     else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
     else if ('toggleCode' in ds) { UI.showCode = !UI.showCode; }
     else if ('fileCancel' in ds) { UI.fileInfo = UI.fileErr = null; UI.importData = null; UI.confirmImport = false; }
@@ -1591,7 +1635,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261013-215650';
+  const BUILD = '20261014-042133';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1704,6 +1748,7 @@
       h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvestworks</h1><div class="tmenu">
         ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
         <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="new">New farm</button>
+        <button class="btn big" data-t="restore">Restore from a backup code<small>The 12-letter code from Menu → Cloud backup</small></button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
         <button class="btn ghost big" data-t="support">Show your support</button></div>
         ${f ? `<div class="tfile">${f.busy ? `<p class="hint">Reading ${esc(f.busy)}…</p>` : f.err ? `<p class="hint err">${esc(f.err)}</p>`
@@ -1718,6 +1763,14 @@
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
+    else if (t === 'restore') { const R = UI.rest || {};
+      h = `<div class="tcard"><h2>Restore from a backup code</h2>
+        <p class="sub">Type the 12-letter code from Menu → Cloud backup on the device you played on.</p>
+        <label class="field tname">Code <input id="rcode" maxlength="16" placeholder="ABCD-EFGH-JKMN" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(R.code ? fmtCode(R.code) : '')}"></label>
+        ${R.err ? `<p class="hint err">${esc(R.err)}</p>` : ''}
+        ${R.o ? `<p class="hint">Found <b>${esc(R.o.name || 'Farmer')}’s farm</b>: day ${R.o.day}, ${R.o.gold}g, score ${Math.floor(R.o.score)}.${UI.hadSave ? ` Loading it replaces ${esc(S.name)}’s farm in this browser.` : ''}</p>
+          <div class="tmenu"><button class="btn pri big" data-t="restorego">Load this farm</button></div>` : `<div class="tmenu"><button class="btn pri big" data-t="restorefind" ${R.busy ? 'disabled' : ''}>${R.busy ? 'Looking…' : 'Find my farm'}</button></div>`}
+        <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
     else if (t === 'week') { const r = UI.week, sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
       const stat = (label, val) => `<div class="wstat"><b>${val}</b><span>${label}</span></div>`;
       const top = r.made.slice(0, 4).map(([k, n]) => `<span class="wmade">${ico(k)} ${n} ${esc(D.items[k].name)}</span>`).join('');
@@ -1749,6 +1802,10 @@
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
     if (a === 'main') openTitle('main');
     else if (a === 'continue') closeTitle();
+    else if (a === 'restore') { UI.rest = null; openTitle('restore'); }
+    else if (a === 'restorefind') findBackup(($('#rcode') || {}).value);
+    else if (a === 'restorego' && UI.rest && UI.rest.o) { const code = UI.rest.code; adoptState(UI.rest.o); S.cloud = Object.assign({}, S.cloud || {}, { code, at: Date.now(), auto: S.cloud ? S.cloud.auto : true }); save();
+      UI.hadSave = true; UI.rest = null; closeTitle(); toast(`<b>Farm restored.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g. It keeps backing up to the same code.`, 'goal'); logAct('Restored this farm from a cloud backup', 'you'); }
     else if (a === 'weekoff') { S.weekly = false; save(); closeTitle(); toast('Weekly reports are off. Turn them back on in Menu → Settings.', 'info'); }
     else if (a === 'look') { closeTitle(); toast('Your farm is out of options. Start a new one any time from Menu → Start a new farm.', 'info'); }
     else if (a === 'new') openTitle(UI.hadSave ? 'confirm' : 'name');
@@ -1761,6 +1818,7 @@
       toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
     else if (a === 'go' || a === 'go-tut') { const n = ($('#tname') || {}).value; startNewFarm((n || '').trim(), a === 'go-tut'); }
   });
+  titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rcode') { e.preventDefault(); findBackup(e.target.value); } });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'tname') { e.preventDefault(); startNewFarm(e.target.value.trim(), true); } });
 
   /* ================= tutorial =================
