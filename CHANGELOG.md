@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.34.1 — 2026-10-13
+- costList(): per-ingredient checklist (have / need N more) shown above Buy this tile and Survey buttons.
+
 ## v0.34 — 2026-10-13
 - Market → Stations: "Can build" / "At your limit" chips; capped kits (built + waiting kits ≥ area allowance) move to
   the second list with a note on how to raise the limit; kit prices use buyPrice (race bargains show correctly).

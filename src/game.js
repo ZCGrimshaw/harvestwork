@@ -144,6 +144,10 @@
   }
   function canPay(cost) { for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) return `Needs ${cost.gold}g`; } else if (count(k) < cost[k]) return `Needs ${cost[k]} ${D.items[k].name}` + (k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : ''); } return null; }
   function pay(cost) { for (const k in cost) { if (k === 'gold') S.gold -= cost.gold; else take(k, cost[k]); } }
+  // every ingredient of a price, with what you have: ✓ when covered, the shortfall when not
+  function costList(cost) {
+    return `<ul class="costlist">${Object.entries(cost).map(([k, n]) => { const have = k === 'gold' ? S.gold : count(k), ok = have >= n;
+      return `<li class="${ok ? 'ok' : 'short'}">${k === 'gold' ? '<span class="coin"></span>' : ico(k)}<b>${n}${k === 'gold' ? 'g' : ' ' + esc(D.items[k].name)}</b><span>${ok ? '✓ have ' + have : `have ${have}, need ${n - have} more`}</span></li>`; }).join('')}</ul>`; }
   function costTxt(cost) { return Object.entries(cost).map(([k, n]) => k === 'gold' ? `${n}g` : `${n} ${D.items[k].name}`).join(' + ') || 'Free'; }
   // Seeds and supplies sell back for half their market price.
   const baseValue = id => D.items[id].value || Math.max(1, Math.floor((D.items[id].buy || 2) / 2));
@@ -1389,7 +1393,7 @@
     const finds = Object.keys(th.mix).filter(k => k !== 'grass').map(k => D.terrain[k].name);
     let h = head(`Unsurveyed: ${th.name}`, esc(th.desc));
     h += `<p class="state">A 6×6 area. Surveyors report: ${esc(finds.join(', '))}.</p>`;
-    h += btn({ a: 'survey', i: hi, p: r }, `Survey the ${esc(th.name)}`, { cls: 'pri', sub: costTxt(surveyCost()) });
+    h += `<span class="eyebrow">What it takes</span>${costList(surveyCost())}` + btn({ a: 'survey', i: hi, p: r }, `Survey the ${esc(th.name)}`, { cls: 'pri', sub: costTxt(surveyCost()) });
     h += `<p class="hint">Surveying opens the area; then buy its tiles one by one from the edge of your land, as usual. Each new area also lets you build one more of each station and two more Storage Barns (you have ${areas()} area${areas() === 1 ? '' : 's'} now). Every survey costs more than the last.</p>`;
     const res = Object.keys(th.mix).find(k => D.gather[k] && D.gather[k].action === 'gather');
     if (res) { const G = D.gather[res], d = D.discoveries.find(x => x.id === G.needs); if (!unlocked(G.needs)) h += `<p class="hint">Working its ${esc(D.terrain[res].name)} tiles needs <b>${esc(d.name)}</b> in Discovery.</p>`; }
@@ -1403,7 +1407,7 @@
   function lockedPanel(i, T) {
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
     let h = head(Tr.name, `${esc(Tr.desc)}`);
-    if (adj) { const c = expCost(i); h += `<p class="state">Unclaimed land at your border.</p>` + btn({ a: 'expand', i }, `Buy this tile`, { cls: 'pri', sub: costTxt(c) });
+    if (adj) { const c = expCost(i); h += `<p class="state">Unclaimed land at your border.</p><span class="eyebrow">What it takes</span>${costList(c)}` + btn({ a: 'expand', i }, `Buy this tile`, { cls: 'pri', sub: costTxt(c) });
       if (S.exp < C.expandStoneAt) h += `<p class="hint">From your ${C.expandStoneAt + 1}th tile, land also costs stone; from the ${C.expandFenceAt + 1}th, a fence kit. Boulder Fields only ever cost gold.</p>`; }
     else h += `<p class="hint">Too far away. Buy the land between here and your homestead first.</p>`;
     const G = D.gather[T.t]; if (G && !unlocked(G.needs)) h += `<p class="hint">Working it needs <b>${esc(D.discoveries.find(d => d.id === G.needs).name)}</b>.</p>`;

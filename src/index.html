@@ -525,6 +525,10 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .handctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0 2px; } .handctl .chips { margin: 0; }
 .routine.jobs li { display: flex; align-items: center; gap: 6px; } .routine.jobs .linkish { flex: 1; text-align: left; }
 .jobbtns { display: flex; gap: 3px; } .x.mv:disabled { opacity: .3; }
+.costlist { list-style: none; padding: 0; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.costlist li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 8px; border-radius: var(--r); background: var(--wood-lo); }
+.costlist li span:last-child { margin-left: auto; font-size: 12px; } .costlist li.ok span:last-child { color: var(--leaf); } .costlist li.short span:last-child { color: #ffb3a0; }
+.costlist li.short { box-shadow: inset 2px 0 0 var(--berry); } .costlist .ico { width: 18px; height: 18px; }
 /* ---------- tutorial coach ---------- */
 #coach { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; box-sizing: border-box; width: min(420px, calc(100% - 24px));
   padding: 10px 14px 8px; border-color: var(--sun); }
