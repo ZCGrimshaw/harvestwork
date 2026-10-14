@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.37 — 2026-10-14
+- Action panel, window style (non-phone): drag .phead to move, #pframe edge/corner handles to resize, double-click
+  .phead to reset; saved in 'harvestworks.panelpos' ({x,y,w,h}; h null when only moved). Removed #pctx / #pedit.
+- Weekly runs: runMins(w) = 15 for week 2962, 10 after; weekly_score limit per week (900 s / 600 s) on the server.
+- Live count chip: dot and number only.
+
 ## v0.36.5 — 2026-10-14
 - Pinned panel: right-click #panel → #pctx menu (Move and resize / Open beside the tile again). #pedit frame drags and
   resizes UI.ppDraft; Done saves {x,y,w,h} to localStorage 'harvestworks.panelpos'; placePanel uses it (border-box, clamped).

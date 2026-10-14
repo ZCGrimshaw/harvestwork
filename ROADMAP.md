@@ -22,15 +22,15 @@ Not built yet; picked up when we choose to.
   (a) Daily quests on your own farm: 3 small goals a day (e.g. "Bake 4 bread", "Sell 300g of goods", "Harvest 20
   carrots"), rewards in gold/Discovery, a streak counter and a weekly bonus for 7 days in a row.
   (b) ~~Daily challenge~~ folded into the Weekly challenge below; (a) stays as its own idea.
-- **Next build (pinned 2026-10-14):** the live "open now" chip at the top right shows just the green dot and the number;
+- ~~Next build: live count dot and number only~~ (done in v0.37). Was: the live "open now" chip at the top right shows just the green dot and the number;
   drop the word "playing" (renderOpen in game.js; keep the tooltip). Release note: visible, small visual change.
-- **Next build (pinned 2026-10-14): move and resize the action menu like a Windows 11 window (computers only).** Replaces
+- ~~Window-style action menu~~ (done in v0.37). Was: move and resize the action menu like a Windows 11 window (computers only). Replaces
   the right-click "Move and resize" menu (#pctx / #pedit). Click and hold the menu's title bar to drag it anywhere;
   resize from any edge or corner with the matching resize cursors (↔ ↕ ⤡). Position and size are remembered in this
   browser and it opens there from then on (same 'harvestworks.panelpos' store, clamped on screen). Until it's moved, it
   keeps opening beside the tile. Double-click the title bar to send it back to opening beside the tile. Buttons inside
   keep working normally; only the title bar drags. Update the tip line and release note to match.
-- **Weekly challenge: 10-minute runs from next week (pinned 2026-10-14):** starting with the week that opens Monday
+- ~~10-minute weekly runs~~ (done in v0.37). Was: starting with the week that opens Monday
   2026-10-19 00:00 UTC (week 2963; Sunday 5pm Pacific), ranked and practice runs last 10 minutes instead of 15. Change WEEK_RUN
   in game.js per week (keep 15 for week 2962 so this week's runs stay fair), the 900 s limit in weekly_score on the
   server (per week, same rule), and the "15 minutes" wording on the weekly screens and in the update notes.

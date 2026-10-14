@@ -525,6 +525,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.37', at: '2026-10-14 14:05', notes: ['On a computer, the action menu now works like a window: drag its title bar to move it, drag any edge or corner to resize it, and it opens in that spot from then on. Double-click the title bar to send it back beside the tile you pick.', 'Weekly challenge runs are 10 minutes from next week (this week stays at 15 minutes, so everyone already on the board plays the same run).', 'The live count at the top right is now just the green dot and the number.'] },
   { v: '0.36.5', at: '2026-10-14 13:45', notes: ['On a computer, right-click the action menu and choose Move and resize: drag it anywhere, drag the corner to resize, then Done. It opens in that spot from then on. Right-click it again to go back to opening beside the tile.'] },
   { v: '0.36.4', at: '2026-10-14 13:30', notes: ['The action panel now sits a little further from the tile you pick, so it covers less of the buildings around it.'] },
   { v: '0.36.3', at: '2026-10-14 13:40', notes: ['On computers and tablets, the action panel now opens beside the tile you pick and follows it as you move the view (phones keep the panel at the bottom).', 'Every action you can take now has a gold border, so no single option looks like the only one. Greyed-out actions still say what they need.'] },

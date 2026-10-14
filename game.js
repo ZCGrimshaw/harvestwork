@@ -389,10 +389,11 @@
   function resumeRace() { const o = load(RACE_KEY); if (!o || !o.race) return false; S.race = null; adoptState(o); UI.hadSave = true; closeTitle(); return true; }
   /* ================= weekly challenge =================
      Everyone gets the same head start for the week (a theme from data.js, never the same two weeks running, plus
-     dice seeded by the week number). One ranked 15-minute run a day, checked by the valley server; practice runs
+     dice seeded by the week number). One ranked timed run a day (15 minutes in week 2962, 10 minutes from then on), checked by the valley server; practice runs
      after that don't count. Best run of the week wins; the top three get medals when the week closes (Monday
      00:00 UTC). The run farm lives in its own save, like a race, so the player's real farms are never touched. */
-  const WEEK_KEY = 'harvestworks.weekly.v1', WEEK_RUN = 15 * 60000, WEEK0 = 2962;
+  const WEEK_KEY = 'harvestworks.weekly.v1', WEEK0 = 2962;
+  const runMins = w => w > 2962 ? 10 : 15, runMs = w => runMins(w) * 60000;
   const weekOf = t => Math.floor((t / 1000 - 345600) / 604800);
   const weekStartMs = w => (w * 604800 + 345600) * 1000;
   const srvNow = () => Date.now() - (NET.skew || 0);
@@ -455,7 +456,7 @@
     if (!S.race && UI.hadSave) save();
     const name = NET.myName || S.name || 'Farmer';
     newState(); migrate(); S.name = name; S.fid = null;
-    S.race = { weekly: true, code: 'W' + info.week, week: info.week, run: info.run || null, ranked: info.ranked, start: info.start, end: info.start + WEEK_RUN, target: 0, seen: {} };
+    S.race = { weekly: true, code: 'W' + info.week, week: info.week, run: info.run || null, ranked: info.ranked, start: info.start, end: info.start + runMs(info.week), target: 0, seen: {} };
     weeklyPreset(info.week);
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null; UI.hadSave = true;
     save(); UI.rtick = 0; openTitle('weeklygo'); }
@@ -470,15 +471,15 @@
     openTitle('weeklyend'); rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; if (UI.title === 'weeklyend') renderTitle(); }).catch(() => {}); }
   function tickWeekly(dt) { const R = S.race;
     if (UI.title === 'weeklygo') { const left = R.start - Date.now(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
-      if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> 15 minutes. ${esc(weekTheme(R.week).blurb)}`, 'goal'); } return; }
+      if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> ${runMins(R.week)} minutes. ${esc(weekTheme(R.week).blurb)}`, 'goal'); } return; }
     if (R.done || Date.now() < R.start) return;
     if (Date.now() >= R.end) { finishWeekly(); return; }
     UI.rtick = (UI.rtick || 0) - dt;
     if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score) }).catch(() => {}); }
   }
-  function renderWeekBar() { const R = S.race, th = weekTheme(R.week), left = R.done ? 0 : Math.min(WEEK_RUN, R.end - Date.now());
+  function renderWeekBar() { const R = S.race, th = weekTheme(R.week), left = R.done ? 0 : Math.min(runMs(R.week), R.end - Date.now());
     setHTML('#racebar', `<div class="rhead"><b>${esc(th.name)}</b><span>${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left</span></div>
-      <div class="rrow me"><span class="rname">Score</span><span class="rtrack"><i style="width:${(100 - left / WEEK_RUN * 100).toFixed(1)}%"></i></span><span class="rsc">${Math.floor(S.score).toLocaleString()}</span></div>`); }
+      <div class="rrow me"><span class="rname">Score</span><span class="rtrack"><i style="width:${(100 - left / runMs(R.week) * 100).toFixed(1)}%"></i></span><span class="rsc">${Math.floor(S.score).toLocaleString()}</span></div>`); }
   // every frame during a race: countdown, score reports, everyone's progress, finishing
   function tickRace(dt) { const R = S.race; if (!R) return; if (R.weekly) return tickWeekly(dt);
     if (UI.title === 'racego') { const left = R.start - raceNow(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
@@ -508,7 +509,7 @@
   const INST = crypto.randomUUID();
   async function pingPresence() { try { const n = await rpc('presence_ping', { p_inst: INST }); if (typeof n === 'number') { NET.open = Math.max(1, n); renderOpen(); } } catch (e) { } }
   function renderOpen() { const el = $('#online'); if (!el) return; el.hidden = !NET.open; if (!NET.open) return;
-    el.innerHTML = `<i></i><b>${NET.open}</b><span class="lg">&nbsp;playing</span>`; el.title = `${NET.open} cop${NET.open === 1 ? 'y' : 'ies'} of Harvest Valley open right now`; }
+    el.innerHTML = `<i></i><b>${NET.open}</b>`; el.title = `${NET.open} cop${NET.open === 1 ? 'y' : 'ies'} of Harvest Valley open right now`; }
   window.addEventListener('pagehide', () => { try { fetch(NET.url + 'presence_leave', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_inst: INST }) }); } catch (e) { } });
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
@@ -1387,7 +1388,7 @@
       if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
     }
-    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Right-click this menu to move or resize it.'}</p>`;
+    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Drag the title bar to move this menu or an edge to resize it; double-click the title bar to put it back.'}</p>`;
   }
   function stationPanel(i, b) {
     const B = D.buildings[b.type], slots = stationSlots(b);
@@ -1578,15 +1579,15 @@
      from then on (saved in this browser). "Open beside the tile again" goes back to floating. */
   const PP_KEY = 'harvestworks.panelpos';
   UI.pp = (() => { try { return JSON.parse(localStorage.getItem(PP_KEY)); } catch (e) { return null; } })();
-  function placePanel() { const el = $('#panel'), ed = $('#pedit');
-    if (el.hidden || UI.sel < 0 || isPhone()) { if (UI.pedit) endPanelEdit(true);
+  function placePanel() { const el = $('#panel'), fr = $('#pframe');
+    if (el.hidden || UI.sel < 0 || isPhone()) { fr.hidden = true;
       if (el.dataset.fl) { el.style.left = el.style.top = el.style.right = el.style.width = el.style.height = el.style.maxHeight = el.style.boxSizing = ''; delete el.dataset.fl; } return; }
-    const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight, P = UI.ppDraft || UI.pp;
+    const topMin = $('#top').getBoundingClientRect().bottom + 8, W = innerWidth, H = innerHeight, P = UI.pp;
     let left, top, w, h;
-    if (P) { w = Math.max(280, Math.min(W - 20, P.w)); h = Math.max(180, Math.min(H - topMin - 10, P.h));
-      left = Math.max(10, Math.min(W - w - 10, P.x)); top = Math.max(topMin, Math.min(H - h - 10, P.y));
-      const sw = Math.round(w) + 'px', sh = Math.round(h) + 'px';
-      if (el.style.width !== sw || el.style.height !== sh) { el.style.boxSizing = 'border-box'; el.style.width = sw; el.style.height = sh; el.style.maxHeight = 'none'; } }
+    if (P) { w = Math.max(280, Math.min(W - 20, P.w));
+      const sw = Math.round(w) + 'px', sh = P.h ? Math.round(Math.max(180, Math.min(H - topMin - 10, P.h))) + 'px' : '', mh = P.h ? 'none' : (H - topMin - 10) + 'px';
+      if (el.style.width !== sw || el.style.height !== sh || el.style.maxHeight !== mh) { el.style.boxSizing = 'border-box'; el.style.width = sw; el.style.height = sh; el.style.maxHeight = mh; }
+      h = el.offsetHeight; left = Math.max(10, Math.min(W - w - 10, P.x)); top = Math.max(topMin, Math.min(H - h - 10, P.y)); }
     else { if (el.style.width) { el.style.width = el.style.height = el.style.maxHeight = el.style.boxSizing = ''; }
       const [x, y] = toScreen(tx(UI.sel), ty(UI.sel)), sx = x / DPR, sy = y / DPR, gap = 44 * cam.z; w = el.offsetWidth; h = el.offsetHeight;
       const off = Math.max(34, gap) + w * .2; // 20% of the panel's width further out, so it clears the tile's neighbours
@@ -1594,30 +1595,29 @@
       left = Math.max(10, Math.min(W - w - 10, left)); top = Math.max(topMin, Math.min(H - h - 64, sy - h / 2)); }
     const L = Math.round(left) + 'px', T = Math.round(top) + 'px';
     if (el.style.left !== L || el.style.top !== T) { el.style.left = L; el.style.top = T; el.style.right = 'auto'; el.dataset.fl = 1; }
-    if (UI.pedit) { const r = el.getBoundingClientRect(); Object.assign(ed.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); } }
-  function startPanelEdit() { const r = $('#panel').getBoundingClientRect(); UI.ppDraft = { x: r.left, y: r.top, w: r.width, h: Math.max(r.height, 320) };
-    UI.pedit = true; $('#pedit').hidden = false; }
-  function endPanelEdit(keep) { if (keep && UI.ppDraft) { UI.pp = UI.ppDraft; try { localStorage.setItem(PP_KEY, JSON.stringify(UI.pp)); } catch (e) { } }
-    UI.ppDraft = null; UI.pedit = false; $('#pedit').hidden = true; }
-  function hidePctx() { const m = $('#pctx'); if (m) m.hidden = true; }
-  $('#panel').addEventListener('contextmenu', e => { if (isPhone()) return; e.preventDefault(); const m = $('#pctx');
-    m.innerHTML = `<button data-pctx="edit">Move and resize this menu<small>It opens in that spot from then on</small></button>${UI.pp ? '<button data-pctx="reset">Open beside the tile again</button>' : ''}<button data-pctx="cancel">Cancel</button>`;
-    m.hidden = false; m.style.left = Math.min(e.clientX, innerWidth - m.offsetWidth - 8) + 'px'; m.style.top = Math.min(e.clientY, innerHeight - m.offsetHeight - 8) + 'px'; });
-  $('#pctx').addEventListener('click', e => { const b = e.target.closest('[data-pctx]'); if (!b) return; e.stopPropagation(); hidePctx();
-    const a = b.dataset.pctx; if (a === 'edit') startPanelEdit();
-    else if (a === 'reset') { UI.pp = null; try { localStorage.removeItem(PP_KEY); } catch (e) { } toast('The menu opens beside the tile you pick again.', 'info'); } });
-  document.addEventListener('pointerdown', e => { if (!e.target.closest('#pctx')) hidePctx(); }, true);
-  // dragging the edit frame moves the panel; the corner grip resizes it
-  (() => { const ed = $('#pedit'); let drag = null;
-    ed.addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('button')) return; e.preventDefault();
-      drag = { mode: e.target.closest('.grip') ? 'size' : 'move', x: e.clientX, y: e.clientY, P: Object.assign({}, UI.ppDraft) }; ed.setPointerCapture(e.pointerId); });
-    ed.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y, P = drag.P;
-      UI.ppDraft = drag.mode === 'move' ? { x: P.x + dx, y: P.y + dy, w: P.w, h: P.h } : { x: P.x, y: P.y, w: Math.max(280, P.w + dx), h: Math.max(180, P.h + dy) }; });
-    ed.addEventListener('pointerup', () => { drag = null; });
-    ed.addEventListener('click', e => { const b = e.target.closest('[data-pedit]'); if (!b) return; e.stopPropagation();
-      if (b.dataset.pedit === 'done') { endPanelEdit(true); toast('<b>Menu spot saved.</b> It opens there from now on. Right-click it to change it again.', 'info'); }
-      else if (b.dataset.pedit === 'reset') { endPanelEdit(false); UI.pp = null; try { localStorage.removeItem(PP_KEY); } catch (e) { } }
-      else endPanelEdit(false); }); })();
+    fr.hidden = false; const r = el.getBoundingClientRect(); Object.assign(fr.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); }
+  /* Window-style handling on computers: drag the title bar to move the panel, drag an edge or corner to resize it
+     (handles live in #pframe, a frame that sits on the panel's border), double-click the title bar to send it back
+     beside the tile. Moved/resized panels open in the same spot from then on (saved in this browser). */
+  const savePP = () => { try { UI.pp ? localStorage.setItem(PP_KEY, JSON.stringify(UI.pp)) : localStorage.removeItem(PP_KEY); } catch (e) { } };
+  (() => { const pn = $('#panel'), fr = $('#pframe'); let drag = null;
+    const begin = (e, mode) => { const r = pn.getBoundingClientRect(); e.preventDefault();
+      drag = { mode, x: e.clientX, y: e.clientY, r: { x: r.left, y: r.top, w: r.width, h: r.height }, keepH: UI.pp && UI.pp.h };
+      (e.target).setPointerCapture(e.pointerId); document.body.classList.add('pdrag'); };
+    pn.addEventListener('pointerdown', e => { if (isPhone() || e.button !== 0 || !e.target.closest('.phead') || e.target.closest('button, a, input')) return; begin(e, 'move'); });
+    fr.addEventListener('pointerdown', e => { const h = e.target.closest('[data-rs]'); if (!h || e.button !== 0) return; begin(e, h.dataset.rs); });
+    const move = e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y, r = drag.r, m = drag.mode;
+      if (m === 'move') { UI.pp = { x: r.x + dx, y: r.y + dy, w: r.w, h: drag.keepH || null }; return; }
+      let { x, y, w, h } = r;
+      if (m.includes('e')) w = r.w + dx; if (m.includes('s')) h = r.h + dy;
+      if (m.includes('w')) { w = r.w - dx; x = r.x + dx; } if (m.includes('n')) { h = r.h - dy; y = r.y + dy; }
+      if (w < 280) { if (m.includes('w')) x -= 280 - w; w = 280; } if (h < 180) { if (m.includes('n')) y -= 180 - h; h = 180; }
+      UI.pp = { x, y, w, h }; };
+    const end = () => { if (!drag) return; drag = null; document.body.classList.remove('pdrag'); savePP(); };
+    pn.addEventListener('pointermove', move); fr.addEventListener('pointermove', move);
+    pn.addEventListener('pointerup', end); fr.addEventListener('pointerup', end); pn.addEventListener('pointercancel', end); fr.addEventListener('pointercancel', end);
+    pn.addEventListener('dblclick', e => { if (isPhone() || !e.target.closest('.phead') || e.target.closest('button')) return; UI.pp = null; savePP(); toast('The menu opens beside the tile you pick again.', 'info'); });
+  })();
   function renderPanel() {
     const i = UI.sel; const el = $('#panel');
     document.body.classList.toggle('sheet-open', i >= 0);
@@ -2044,7 +2044,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-202718';
+  const BUILD = '20261014-204936';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2202,21 +2202,21 @@
       const rows = (W.top || []).slice(0, 10).map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.score.toLocaleString()}</span></li>`).join('');
       const nextDay = (() => { const n = new Date(srvNow()); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - srvNow(); })();
       h = `<div class="tcard"><span class="twel">Weekly challenge · ${weekLabel(wk)}</span><h2>${esc(th.name)}</h2><p class="sub">${esc(th.blurb)}</p>
-        <p class="hint small">Everyone gets the same head start this week. One ranked 15-minute run a day, no pausing; your best run counts. The top three win medals when the week closes${W.ends_at ? `, in ${fmtLeft(Date.parse(W.ends_at) - Date.parse(W.now))}` : ''}.</p>
+        <p class="hint small">Everyone gets the same head start this week. One ranked ${runMins(wk)}-minute run a day, no pausing; your best run counts. The top three win medals when the week closes${W.ends_at ? `, in ${fmtLeft(Date.parse(W.ends_at) - Date.parse(W.now))}` : ''}.</p>
         ${W.loading ? '<p class="hint">Loading this week’s board…</p>' : W.off ? '<p class="hint err">The weekly challenge needs the shared valley connection. Play the web version: zcgrimshaw.github.io/harvestwork</p>'
           : `<span class="eyebrow">This week’s best${W.players ? ` · ${W.players} farmer${W.players === 1 ? '' : 's'}` : ''}</span>${rows ? `<ol class="rresults wboard">${rows}</ol>` : '<p class="hint">No ranked runs yet this week. Be the first!</p>'}
             ${W.mine && W.mine.rank > 10 ? `<p class="hint">You: #${W.mine.rank} with ${W.mine.score.toLocaleString()}.</p>` : ''}
             ${(W.last || []).length ? `<span class="eyebrow">Last week’s medals</span><div class="wlast">${W.last.map(m => `<span><img src="${medalImg(m.place)}" alt="">${esc(m.name)} · ${m.score.toLocaleString()}</span>`).join('')}</div>` : ''}
             <div class="tmenu">${live ? `<button class="btn pri big" data-t="wresume">Back to your run<small>${fmtTime(o.race.end - Date.now())} left</small></button>` : ''}
             ${W.used_today ? `<button class="btn ${live ? '' : 'pri'} big" data-t="wpractice" ${UI.wbusy ? 'disabled' : ''}>Practice run<small>Doesn’t count. Your next ranked run opens in ${fmtLeft(nextDay)}</small></button>`
-              : `<button class="btn ${live ? '' : 'pri'} big" data-t="wstart" ${UI.wbusy ? 'disabled' : ''}>${UI.wbusy ? 'Starting…' : 'Start today’s ranked run'}<small>15 minutes on the clock after a 5-second countdown. Your own farms stay safe.</small></button>`}</div>`}
+              : `<button class="btn ${live ? '' : 'pri'} big" data-t="wstart" ${UI.wbusy ? 'disabled' : ''}>${UI.wbusy ? 'Starting…' : 'Start today’s ranked run'}<small>${runMins(wk)} minutes on the clock after a 5-second countdown. Your own farms stay safe.</small></button>`}</div>`}
         ${W.off || W.loading ? '' : `<span class="eyebrow">Playing as</span><div class="opts tname">${nameHTML()}</div>`}
         ${UI.werr ? `<p class="hint err">${esc(UI.werr)}</p>` : ''}
         <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
     else if (t === 'weeklygo') { const R = S.race || {}, th = weekTheme(R.week);
       h = `<div class="tcard"><span class="twel">${R.ranked ? 'Ranked run' : 'Practice run'} · ${weekLabel(R.week)}</span><h2>${esc(th.name)}</h2><div class="racecount" id="rcount">5</div>
         <p class="sub">${esc(th.blurb)}</p><span class="eyebrow">This week’s head start (the same for everyone)</span><p class="sub">${esc((R.kit || []).join(' · '))}</p>
-        <p class="hint small">15 minutes. Score comes from harvests, crafting, sales, orders and contracts; this week’s bonus makes some worth much more.</p></div>`; }
+        <p class="hint small">${runMins(R.week)} minutes. Score comes from harvests, crafting, sales, orders and contracts; this week’s bonus makes some worth much more.</p></div>`; }
     else if (t === 'weeklyend') { const R = S.race || {}, W = UI.wk || {}, th = weekTheme(R.week);
       h = `<div class="tcard"><span class="twel">${esc(th.name)} · ${weekLabel(R.week)}</span><h2>Time! ${(R.final || 0).toLocaleString()} points</h2>
         <p class="sub">${R.ranked ? (W.mine ? `Your best this week is <b>${W.mine.score.toLocaleString()}</b>, #${W.mine.rank} of ${W.players}. ${W.mine.rank <= 3 ? 'Medal position! Hold on to it until the week closes.' : 'The top three win medals when the week closes.'}` : 'Your ranked score is in.') : 'Practice run: this one doesn’t count, but it’s the same farm everyone gets this week.'}</p>
