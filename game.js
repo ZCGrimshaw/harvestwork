@@ -4,7 +4,9 @@
   'use strict';
   const D = window.HW_DATA, C = D.config, ART = window.HW_ART, SND = window.HW_SOUND;
   const QN = C.qualityNames, QM = C.qualityMult;
-  const SAVE_KEY = 'harvestworks.save.v1';
+  // Three farm slots (slot 1 keeps the original key so existing farms stay put) and a separate slot for a race.
+  const SLOT_KEYS = ['harvestworks.save.v1', 'harvestworks.save.v1.s2', 'harvestworks.save.v1.s3'], RACE_KEY = 'harvestworks.race.v1';
+  let SLOT = (() => { try { return Math.max(0, Math.min(2, (+localStorage.getItem('harvestworks.slot')) || 0)); } catch (e) { return 0; } })();
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -186,7 +188,7 @@
   }
   /* leaderboard: each farm reports its score and day once an in-game day; the board is read when opened */
   const LB_MIN_DAYS = 7;
-  function sendScore() { if (!NET.ok || !S.fid) return;
+  function sendScore() { if (!NET.ok || !S.fid || S.race) return;
     rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
   // A locked-in name belongs to this device's player and is unique across the valley.
   NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
@@ -218,7 +220,7 @@
       else if (manual) toast('Backed up a moment ago. Try again in a few seconds.', 'info');
     } catch (e) { if (manual) toast('Couldn’t reach the valley. Try again in a moment.', 'warn'); }
     UI.cloudBusy = false; dirty(); }
-  function autoBackup() { if (S.cloud && S.cloud.auto === false) return; if (!NET.ok) return; if (S.cloud && Date.now() - (S.cloud.at || 0) < 10 * 60000) return; cloudBackup(false); }
+  function autoBackup() { if (S.race) return; if (S.cloud && S.cloud.auto === false) return; if (!NET.ok) return; if (S.cloud && Date.now() - (S.cloud.at || 0) < 10 * 60000) return; cloudBackup(false); }
   async function findBackup(code) {
     code = cleanCode(code); UI.rest = { busy: true, code }; renderTitle();
     if (code.length !== 12) { UI.rest = { err: 'Backup codes are 12 letters and numbers, like ABCD-EFGH-JKMN.', code }; renderTitle(); return; }
@@ -235,6 +237,79 @@
     try { await navigator.share({ files: [file], title: 'Harvestworks save', text: `${S.name}’s farm, day ${S.day}` }); }
     catch (e) { if (e && e.name !== 'AbortError') toast('Sharing didn’t work here. Try Cloud backup instead.', 'warn'); } }
   const canShareFile = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] })); } catch (e) { return false; } };
+  /* ================= race mode =================
+     Friends race to a target score from the same head start. Each farm runs on its own device; the valley server only
+     keeps the lobby, the start time and everyone's score. The race farm lives in its own save slot, so the player's
+     real farm is never touched, and races don't affect market prices, the leaderboard or backups. Pausing is off. */
+  const RACE_TARGETS = [[500, 'Sprint'], [1000, 'Standard'], [2500, 'Long'], [5000, 'Marathon']];
+  const RINFO = 'harvestworks.raceinfo';
+  const raceInfo = () => { try { return JSON.parse(localStorage.getItem(RINFO)); } catch (e) { return null; } };
+  const raceNow = () => Date.now() - (UI.rskew || 0);
+  const fmtTime = ms => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const inviteLink = code => `${location.origin}${location.pathname}?race=${code}`;
+  async function raceCall(fn, body) {
+    if (!NET.ok) await pullMarket();
+    if (!NET.ok) throw new Error('Races need the shared valley connection. Play the web version: zcgrimshaw.github.io/harvestwork');
+    const r = await rpc(fn, body); if (!r) throw new Error('No race with that code.'); if (r.error) throw new Error(r.error);
+    if (r.now) UI.rskew = Date.now() - Date.parse(r.now); return r; }
+  async function hostRace(target) { UI.rerr = null; UI.rbusy = true; renderTitle();
+    try { UI.rl = await raceCall('create_race', { p_player: PLAYER, p_name: S.name, p_target: target }); openTitle('racelobby'); pollLobby(); }
+    catch (e) { UI.rerr = e.message; } UI.rbusy = false; renderTitle(); }
+  async function joinRace(code) { code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); UI.rerr = null; UI.rjoin = code;
+    if (code.length !== 5) { UI.rerr = 'Race codes are 5 letters, like K7QPM.'; renderTitle(); return; }
+    UI.rbusy = true; renderTitle();
+    try { UI.rl = await raceCall('join_race', { p_code: code, p_player: PLAYER, p_name: S.name });
+      if (UI.rl.status === 'running') enterRace(); else { openTitle('racelobby'); pollLobby(); } }
+    catch (e) { UI.rerr = e.message; } UI.rbusy = false; renderTitle(); }
+  function pollLobby() { clearTimeout(UI.rpoll);
+    UI.rpoll = setTimeout(async () => { if (UI.title !== 'racelobby' || !UI.rl) return;
+      try { UI.rl = await raceCall('race_state', { p_code: UI.rl.code, p_player: PLAYER }); } catch (e) { }
+      if (UI.rl && UI.rl.status === 'running') enterRace(); else { renderTitle(); pollLobby(); } }, 2500); }
+  async function startRace() { try { UI.rl = await raceCall('start_race', { p_code: UI.rl.code, p_player: PLAYER }); if (UI.rl.status === 'running') enterRace(); } catch (e) { UI.rerr = e.message; renderTitle(); } }
+  async function leaveLobby() { clearTimeout(UI.rpoll); if (UI.rl) rpc('leave_race', { p_code: UI.rl.code, p_player: PLAYER }).catch(() => {}); UI.rl = null; openTitle('race'); }
+  // The head start every racer gets: same land, buildings, seeds and discoveries.
+  function racePreset() {
+    S.gold = 300; S.home = 1; S.goal = D.goals.length; S.tut = null; S.seenUpdate = latest().v; S.weekly = false;
+    ['woodcutting', 'fishing', 'stonecutting', 'stew', 'sawmill', 'wheat', 'mill', 'baking'].forEach(id => S.unl.includes(id) || S.unl.push(id));
+    const give = (k, n) => addItem(k, n, 0, true); give('carrot_seed', 8); give('potato_seed', 6); give('wheat_seed', 6); give('log', 6); give('plank', 4);
+    const h = homeIdx(), hx = tx(h), hy = ty(h);
+    S.tiles.forEach((T, i) => { if (T.t !== 'void' && Math.max(Math.abs(tx(i) - hx), Math.abs(ty(i) - hy)) <= 2) T.o = true; });
+    const free = S.tiles.map((T, i) => i).filter(i => isEmptyGrass(i)).sort((a, b) => (Math.abs(tx(a) - hx) + Math.abs(ty(a) - hy)) - (Math.abs(tx(b) - hx) + Math.abs(ty(b) - hy)) || a - b);
+    ['sawmill', 'mill'].forEach(bt => { const i = free.shift(); if (i !== undefined) { S.tiles[i].b = makeB(bt); S.built++; } });
+    for (let k = 0; k < 3; k++) { const i = free.shift(); if (i !== undefined) S.tiles[i].b = { type: 'farm', st: 'tilled' }; }
+    S.tiles.forEach(T => { if (T.b && T.b.type === 'farm' && T.b.st === 'raw') T.b.st = 'tilled'; });
+  }
+  function enterRace() { clearTimeout(UI.rpoll); const L = UI.rl;
+    if (!S.race) save();
+    const name = (L.players.find(p => p.me) || {}).name || S.name;
+    newState(); migrate(); S.name = name; racePreset();
+    S.race = { code: L.code, target: L.target, start: Date.parse(L.started_at), seen: {} };
+    try { localStorage.setItem(RINFO, JSON.stringify({ code: L.code, target: L.target })); } catch (e) { }
+    UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null; UI.hadSave = true;
+    save(); UI.rtick = 0; openTitle('racego'); }
+  function leaveRace() { clearTimeout(UI.rpoll); try { localStorage.removeItem(RINFO); localStorage.removeItem(RACE_KEY); } catch (e) { }
+    const o = load(SLOT_KEYS[SLOT]); UI.rl = null;
+    if (o) { S.race = null; adoptState(o); closeTitle(); toast(`<b>Back on your farm.</b> Welcome back, ${esc(S.name)}.`, 'goal'); }
+    else { newState(); migrate(); UI.hadSave = false; openTitle('main'); } }
+  function resumeRace() { const o = load(RACE_KEY); if (!o || !o.race) return false; S.race = null; adoptState(o); UI.hadSave = true; closeTitle(); return true; }
+  // every frame during a race: countdown, score reports, everyone's progress, finishing
+  function tickRace(dt) { const R = S.race; if (!R) return;
+    if (UI.title === 'racego') { const left = R.start - raceNow(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
+      if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> First to ${R.target.toLocaleString()} points wins.`, 'goal'); } return; }
+    if (raceNow() < R.start) return;
+    UI.rtick = (UI.rtick || 0) - dt; const reached = S.score >= R.target && !R.done;
+    if (UI.rtick <= 0 || reached) { UI.rtick = 4;
+      rpc('race_score', { p_code: R.code, p_player: PLAYER, p_score: Math.floor(S.score) }).then(st => { if (!st) return; UI.rl = st; if (st.now) UI.rskew = Date.now() - Date.parse(st.now);
+        st.players.forEach(p => { if (p.finished_ms != null && !p.me && !R.seen[p.name]) { R.seen[p.name] = 1; toast(`<b>${esc(p.name)}</b> reached ${R.target.toLocaleString()} in ${fmtTime(p.finished_ms)}!`, 'disc'); } });
+        const me = st.players.find(p => p.me); if (me && me.finished_ms != null && !R.done) { R.done = true; R.time = me.finished_ms; save(); SND.play('contract'); openTitle('raceend'); }
+        renderRaceBar(); if (UI.title === 'raceend') renderTitle(); }).catch(() => {}); }
+  }
+  function renderRaceBar() { const el = $('#racebar'), R = S.race;
+    if (!R || UI.title === 'racego') { el.hidden = true; return; } el.hidden = false;
+    const ps = (UI.rl && UI.rl.players) || [{ name: S.name, score: Math.floor(S.score), me: true }], t = R.target;
+    const rows = ps.map(p => { const sc = p.me ? Math.max(p.score, Math.floor(S.score)) : p.score;
+      return `<div class="rrow ${p.me ? 'me' : ''}"><span class="rname">${esc(p.name)}</span><span class="rtrack"><i style="width:${Math.min(100, sc / t * 100).toFixed(1)}%"></i></span><span class="rsc">${p.finished_ms != null ? '✓ ' + fmtTime(p.finished_ms) : sc.toLocaleString()}</span></div>`; }).join('');
+    setHTML('#racebar', `<div class="rhead"><b>Race ${esc(R.code)}</b><span>to ${t.toLocaleString()} · ${R.done ? 'finished in ' + fmtTime(R.time) : fmtTime(raceNow() - R.start)}</span></div>${rows}`); }
   async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
     if (!NET.ok) { await pullMarket(); }
     if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }
@@ -246,13 +321,13 @@
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
   }
-  function reportTrade(item, qty, side) {
+  function reportTrade(item, qty, side) { if (S.race) return;
     if (!NET.ok || D.items[item].cat === 'kit') return;
     NET.trades.unshift({ item, qty, side, created_at: new Date(Date.now() - NET.skew).toISOString(), mine: true }); NET.trades.length = Math.min(NET.trades.length, 40);
     UI.tickDirty = true;
     rpc('record_trade', { p_player: PLAYER, p_item: item, p_qty: qty, p_side: side }).then(m => { if (typeof m === 'number') { NET.prices[item] = m; dirty(); } }).catch(() => {});
   }
-  const mult = id => (NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1;
+  const mult = id => (!S.race && NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1; // races use plain local prices
   // Goods you've made at least once can be bought back from the market at a markup (above even the +50% demand sell price).
   const RESALE = 1.75;
   const buyPrice = id => Math.max(1, Math.round((D.items[id].buy || (D.items[id].value || 1) * RESALE) * mult(id)));
@@ -307,7 +382,7 @@
     if (S.helper && S.helper.cur) return false;
     return true;
   }
-  function checkBroke(dt) {
+  function checkBroke(dt) { if (S.race) return;
     if (S.loan && S.gold >= LOAN.auto) repayLoan(true);
     if (S.over || UI.title) return;
     UI.brokeT = (UI.brokeT || 0) + dt; if (UI.brokeT < 1) return; const waited = UI.brokeT; UI.brokeT = 0;
@@ -328,7 +403,7 @@
       built: (S.built || 0) - w.built, made, harvest: w.harvest, sold: w.sold, spent: w.spent, orders: w.orders }; }
   function newDay() {
     sendScore(); autoBackup();
-    if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false) UI.pendingWeek = weekReport(); weekStart(); }
+    if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false && !S.race) UI.pendingWeek = weekReport(); weekStart(); }
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
     toast(`<b>Day ${S.day}.</b> ${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
@@ -643,8 +718,11 @@
   }
 
   /* ================= save / load ================= */
-  function save() { UI.saveIn = 8; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); UI.savedAt = Date.now(); } catch (e) { /* storage blocked: play continues */ } }
-  function load() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 1 && o.tiles ? o : null; } catch (e) { return null; } }
+  const saveKey = () => (S && S.race) ? RACE_KEY : SLOT_KEYS[SLOT];
+  function save() { UI.saveIn = 8; try { localStorage.setItem(saveKey(), JSON.stringify(S)); UI.savedAt = Date.now(); } catch (e) { /* storage blocked: play continues */ } }
+  function load(key = SLOT_KEYS[SLOT]) { try { const s = localStorage.getItem(key); if (!s) return null; const o = JSON.parse(s); return o && o.v === 1 && o.tiles ? o : null; } catch (e) { return null; } }
+  function slotInfo(k) { try { const s = localStorage.getItem(SLOT_KEYS[k]); if (!s) return null; const o = JSON.parse(s); return o && o.tiles ? { name: o.name || 'Farmer', day: o.day, gold: o.gold, score: Math.floor(o.score || 0) } : null; } catch (e) { return null; } }
+  const setSlot = k => { SLOT = k; try { localStorage.setItem('harvestworks.slot', k); } catch (e) { } };
 
   /* ================= camera & input ================= */
   const P = () => 2 * cam.z * DPR;
@@ -1378,9 +1456,10 @@
         </div>
         <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'menu') {
-      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
-        <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ${UI.confirmReset ? 'danger' : 'ghost'}" data-reset>${UI.confirmReset ? 'Click again to erase this farm' : 'Start a new farm'}</button></div>
+      h = `<div class="phead"><div><h2>Harvestworks</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? 'Racing: the clock keeps running. ' : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        ${S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button></div>
+        <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
         <p class="sub">This code brings your farm back on any phone or computer: Main menu → Restore from a backup code.</p>
@@ -1473,7 +1552,7 @@
   }
   function renderUI() {
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar();
+    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar();
   }
   function progress(key) {
     const [k, a, b] = key.split(':');
@@ -1560,6 +1639,9 @@
       const fallback = () => { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
         let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } ta.remove(); ok ? done() : toast(`Couldn’t copy automatically. Your code: <b>${t}</b>`, 'info'); };
       try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); } return; }
+    else if ('raceOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; UI.rerr = null; openTitle('race'); return; }
+    else if ('raceLeave' in ds) { UI.drawer = null; leaveRace(); return; }
+    else if ('farmsOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.slotWipe = null; openTitle('slots'); return; }
     else if ('restoreOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.rest = null; openTitle('restore'); return; }
     else if ('loadFile' in ds) { fileIn.value = ''; fileIn.click(); return; }
     else if ('toggleCode' in ds) { UI.showCode = !UI.showCode; }
@@ -1574,7 +1656,7 @@
       if (!UI.confirmImport) { UI.confirmImport = true; dirty(); return; }
       adoptState(UI.importData); UI.importOpen = false; UI.importData = UI.importText = UI.importInfo = UI.fileInfo = UI.fileErr = null; UI.confirmImport = false; UI.exportCode = null;
       toast(`<b>Farm imported.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Imported this farm from a save code', 'you'); }
-    else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
+    else if ('reset' in ds) { if (!UI.confirmReset) UI.confirmReset = true; else { try { localStorage.removeItem(saveKey()); } catch (e) { } newState(); migrate(); UI.yaw = 0; UI.yawTo = null; centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.confirmReset = false; toast('A fresh homestead. Good luck!', 'goal'); } }
     else if ('labels' in ds) toggleLabels();
     else if (ds.rot) rotateView(+ds.rot);
     else if (ds.zoom) { ds.zoom === 'home' ? (setView(UI.yaw, 1), centerOn(homeIdx())) : zoomAt(ds.zoom === 'in' ? 1.25 : .8, W / 2, H / 2); }
@@ -1627,9 +1709,9 @@
   const idleLabel = n => !n ? 'Never' : n < 60 ? n + ' sec' : (n / 60) + ' min';
   UI.lastInput = performance.now();
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { UI.lastInput = performance.now(); if (UI.idle) { UI.idle = false; $('#idlebar').hidden = true; dirty(); } }, { capture: true, passive: true }));
-  function checkIdle(now) { if (UI.idle || !idleSecs() || UI.title || UI.catchup) return;
+  function checkIdle(now) { if (S.race || UI.idle || !idleSecs() || UI.title || UI.catchup) return;
     if (now - UI.lastInput > idleSecs() * 1000) { UI.idle = true; save(); const el = $('#idlebar'); el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
-  const paused = () => !!UI.title || UI.idle || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -1641,7 +1723,7 @@
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    tickCatchUp(); SND.setHour(hour()); checkIdle(now);
+    tickCatchUp(); SND.setHour(hour()); checkIdle(now); tickRace(dt);
     if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
@@ -1655,7 +1737,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-043823';
+  const BUILD = '20261014-045426';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -1742,7 +1824,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { save(); UI.awayAt = Date.now(); return; }
       // Browsers stop the game in a background tab. With "keep running" on, make up the missed time on return.
-      if (UI.awayAt && S.bgPause === false && !UI.title) { const sec = Math.min(CATCHUP_MAX, (Date.now() - UI.awayAt) / 1000); if (sec > 2) startCatchUp(sec); }
+      if (UI.awayAt && (S.bgPause === false || S.race) && !UI.title) { const sec = Math.min(CATCHUP_MAX, (Date.now() - UI.awayAt) / 1000); if (sec > 2) startCatchUp(sec); }
       UI.awayAt = null; });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
@@ -1750,6 +1832,8 @@
     let skip = false; try { skip = sessionStorage.getItem('infinifarm.skipTitle') === '1'; sessionStorage.removeItem('infinifarm.skipTitle'); } catch (e) { }
     if (!(snap && snap.tiles) && !skip) { let seen = false; try { seen = localStorage.getItem('infinifarm.seen') === '1'; } catch (e) { } openTitle(seen || UI.hadSave ? 'main' : 'splash'); }
     if (S.tut) startTut(S.tut.n);
+    const rq = new URLSearchParams(location.search).get('race');
+    if (rq) { try { history.replaceState(null, '', location.pathname); } catch (e) { } UI.rjoin = rq.toUpperCase(); UI.rerr = null; openTitle('race'); }
   }
   /* ================= title screen & main menu =================
      First visit: a welcome splash, then the main menu. Later visits open on the main menu with Continue on top.
@@ -1767,7 +1851,9 @@
     else if (t === 'main') { const f = UI.tFile;
       h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvestworks</h1><div class="tmenu">
         ${UI.hadSave ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · Day ${S.day} · ${S.gold}g</small></button>` : ''}
-        <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="new">New farm</button>
+        <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="slots">${UI.hadSave ? 'Your farms' : 'New farm'}<small>${UI.hadSave ? 'Switch farms or start a new one (3 slots)' : 'Name your farmer and begin'}</small></button>
+        ${raceInfo() && load(RACE_KEY) ? `<button class="btn pri big" data-t="rresume">Back to your race<small>Race ${esc(raceInfo().code)} to ${raceInfo().target.toLocaleString()}</small></button>` : ''}
+        <button class="btn big" data-t="race">Race with friends<small>Host or join a race to a target score</small></button>
         <button class="btn big" data-t="restore">Restore from a backup code<small>The 12-letter code from Menu → Cloud backup</small></button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
         <button class="btn ghost big" data-t="support">Show your support</button></div>
@@ -1775,6 +1861,37 @@
           : `<p class="hint"><b>${esc(f.name)}</b>: ${esc(f.o.name || 'Farmer')}’s farm, day ${f.o.day}, ${f.o.gold}g.${UI.hadSave ? ` This replaces ${esc(S.name)}’s farm in this browser.` : ''}</p>
              <div class="menu"><button class="btn pri" data-t="loadgo">Load this farm</button><button class="btn ghost" data-t="filecancel">Cancel</button></div>`}</div>` : ''}
         <p class="tver">v${esc(D.updates[0].v)}</p></div>`; }
+    else if (t === 'race') { const busy = UI.rbusy, sel = UI.rtarget || 1000;
+      h = `<div class="tcard"><h2>Race with friends</h2><p class="sub">Everyone starts the same head-start farm. First to the target score wins. Your own farm stays safe while you race.</p>
+        <span class="eyebrow">Host a race</span><div class="chips">${RACE_TARGETS.map(([n, l]) => `<button class="chipf ${sel === n ? 'on' : ''}" data-t="rtarget" data-n="${n}">${l} · ${n.toLocaleString()}</button>`).join('')}</div>
+        <div class="tmenu"><button class="btn pri big" data-t="rhost" ${busy ? 'disabled' : ''}>Host a race to ${sel.toLocaleString()} points</button></div>
+        <span class="eyebrow">Join a race</span>
+        <div class="fhrow"><input id="rjoin" maxlength="7" placeholder="Race code" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(UI.rjoin || '')}"><button class="btn sm" data-t="rjoin" ${busy ? 'disabled' : ''}>Join</button></div>
+        ${UI.rerr ? `<p class="hint err">${esc(UI.rerr)}</p>` : busy ? '<p class="hint">Connecting…</p>' : ''}
+        <p class="hint small">No pausing during a race, and races don’t change valley market prices or the leaderboard. Up to 8 farmers.</p>
+        <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
+    else if (t === 'racelobby') { const L = UI.rl || { players: [] };
+      h = `<div class="tcard"><span class="twel">Race to ${(L.target || 0).toLocaleString()} points</span><h2>Race code</h2><div class="racecode">${esc(L.code || '')}</div>
+        <div class="tmenu"><button class="btn" data-t="rinvite">${UI.rcopied ? 'Invite link copied ✓' : 'Copy invite link'}</button></div>
+        <span class="eyebrow">Farmers here (${L.players.length}/8)</span><ul class="rlist">${L.players.map(p => `<li>${esc(p.name)}${p.me ? ' <span class="you">you</span>' : ''}</li>`).join('')}</ul>
+        ${L.host ? `<div class="tmenu"><button class="btn pri big" data-t="rstart">Start the race</button></div><p class="hint small">Everyone gets a 5-second countdown when you start.</p>` : '<p class="hint">Waiting for the host to start the race…</p>'}
+        ${UI.rerr ? `<p class="hint err">${esc(UI.rerr)}</p>` : ''}
+        <div class="tmenu"><button class="btn ghost" data-t="rleave">Leave</button></div></div>`; }
+    else if (t === 'racego') { const R = S.race || {};
+      h = `<div class="tcard"><span class="twel">Race ${esc(R.code || '')} · first to ${(R.target || 0).toLocaleString()}</span><h2>Get ready…</h2><div class="racecount" id="rcount">5</div>
+        <p class="sub">Same head start for everyone: 300g, a Sawmill and Flour Mill, tilled plots, seeds and the early discoveries. Score comes from harvests, crafting, sales, orders and contracts.</p></div>`; }
+    else if (t === 'raceend') { const R = S.race || {}, L = UI.rl || { players: [] };
+      h = `<div class="tcard"><span class="twel">Race ${esc(R.code || '')}</span><h2>You reached ${(R.target || 0).toLocaleString()} in ${fmtTime(R.time)}!</h2>
+        <ol class="rresults">${L.players.map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.finished_ms != null ? fmtTime(p.finished_ms) : p.score.toLocaleString() + ' pts, still racing'}</span></li>`).join('')}</ol>
+        <div class="tmenu"><button class="btn pri big" data-t="rhome">Back to my farm</button><button class="btn big" data-t="continue">Keep playing this race farm</button></div></div>`; }
+    else if (t === 'slots') {
+      h = `<div class="tcard"><h2>Your farms</h2><p class="sub">Three farms can live side by side in this browser. Each keeps its own land, progress, backups and leaderboard entry.</p><div class="slots">${
+        [0, 1, 2].map(k => { const f = k === SLOT && UI.hadSave && !S.race ? { name: S.name, day: S.day, gold: S.gold, score: Math.floor(S.score) } : slotInfo(k), cur = k === SLOT && UI.hadSave && !S.race;
+          return `<div class="slot ${cur ? 'cur' : ''}"><div class="grow1"><span class="eyebrow">Farm ${k + 1}${cur ? ' · playing now' : ''}</span>${f ? `<b>${esc(f.name)}’s farm</b><small>Day ${f.day} · ${f.gold}g · score ${f.score}</small>` : '<b class="muted">Empty</b>'}</div>
+            <div class="slotbtns">${f ? `${cur ? '' : `<button class="btn pri sm" data-t="slotplay" data-k="${k}">Play</button>`}<button class="btn ${UI.slotWipe === k ? 'danger' : 'ghost'} sm" data-t="slotnew" data-k="${k}">${UI.slotWipe === k ? 'Tap again to replace' : 'New farm here'}</button>`
+              : `<button class="btn pri sm" data-t="slotnew" data-k="${k}">Start a farm here</button>`}</div></div>`; }).join('')}</div>
+        <p class="hint small">Starting a new farm in a slot that has one replaces it. Download a save file or note its backup code first if you might want it back.</p>
+        <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }
     else if (t === 'confirm') h = `<div class="tcard"><h2>Start a new farm?</h2>
         <p class="sub">This replaces <b>${esc(S.name)}’s farm</b> (day ${S.day}, ${S.gold}g) in this browser. Download a save file first if you might want it back.</p>
         <div class="tmenu"><button class="btn big" data-t="dl">Download save file</button><button class="btn danger big" data-t="name">Replace it and start fresh</button>${back}</div></div>`;
@@ -1812,7 +1929,8 @@
     const inp = $('#tname'); if (inp) inp.focus();
   }
   function startNewFarm(name, tut) {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+    if (UI.newSlot != null) { if (!S.race) save(); setSlot(UI.newSlot); UI.newSlot = null; }
+    try { localStorage.removeItem(saveKey()); } catch (e) { }
     newState(); migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v;
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
@@ -1820,8 +1938,22 @@
   }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
-    if (a === 'main') openTitle('main');
+    if (a === 'main') { UI.newSlot = null; openTitle('main'); }
     else if (a === 'continue') closeTitle();
+    else if (a === 'race') { UI.rerr = null; openTitle('race'); }
+    else if (a === 'rtarget') { UI.rtarget = +el.dataset.n; renderTitle(); }
+    else if (a === 'rhost') hostRace(UI.rtarget || 1000);
+    else if (a === 'rjoin') joinRace(($('#rjoin') || {}).value);
+    else if (a === 'rstart') startRace();
+    else if (a === 'rleave') leaveLobby();
+    else if (a === 'rinvite') { const t = inviteLink(UI.rl.code), done = () => { UI.rcopied = true; renderTitle(); setTimeout(() => { UI.rcopied = false; if (UI.title === 'racelobby') renderTitle(); }, 2500); };
+      try { navigator.clipboard.writeText(t).then(done, () => toast(`Invite link: ${esc(t)}`, 'info')); } catch (e) { toast(`Invite link: ${esc(t)}`, 'info'); } }
+    else if (a === 'rhome') leaveRace();
+    else if (a === 'rresume') { if (!resumeRace()) { try { localStorage.removeItem(RINFO); } catch (e) { } renderTitle(); } }
+    else if (a === 'slots') { UI.slotWipe = null; openTitle(UI.hadSave ? 'slots' : 'name'); }
+    else if (a === 'slotplay') { const k = +el.dataset.k, o = load(SLOT_KEYS[k]); if (!o) return; if (!S.race) save(); setSlot(k); adoptState(o); UI.hadSave = true; closeTitle(); toast(`<b>Welcome back, ${esc(S.name)}.</b> Day ${S.day}, ${S.gold}g.`, 'goal'); }
+    else if (a === 'slotnew') { const k = +el.dataset.k, f = slotInfo(k) || (k === SLOT && UI.hadSave);
+      if (f && UI.slotWipe !== k) { UI.slotWipe = k; renderTitle(); return; } UI.slotWipe = null; UI.newSlot = k; openTitle('name'); }
     else if (a === 'restore') { UI.rest = null; openTitle('restore'); }
     else if (a === 'restorefind') findBackup(($('#rcode') || {}).value);
     else if (a === 'restorego' && UI.rest && UI.rest.o) { const code = UI.rest.code; adoptState(UI.rest.o); S.cloud = Object.assign({}, S.cloud || {}, { code, at: Date.now(), auto: S.cloud ? S.cloud.auto : true }); save();
@@ -1838,6 +1970,7 @@
       toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
     else if (a === 'go' || a === 'go-tut') { const n = ($('#tname') || {}).value; startNewFarm((n || '').trim(), a === 'go-tut'); }
   });
+  titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rjoin') { e.preventDefault(); joinRace(e.target.value); } });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rcode') { e.preventDefault(); findBackup(e.target.value); } });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'tname') { e.preventDefault(); startNewFarm(e.target.value.trim(), true); } });
 

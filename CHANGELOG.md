@@ -3,6 +3,17 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.33 — 2026-10-13
+- Save slots: SLOT_KEYS (slot 1 keeps 'harvestworks.save.v1'), active slot in 'harvestworks.slot'; Your farms screen
+  (title + Menu) to play a slot or start/replace a farm in one (two-tap replace). Menu's "Start a new farm" now opens it.
+- Race mode (database): races + race_players; create_race (5-letter code, ≤10/hour per host), join_race (lobby only,
+  ≤8), start_race (host; starts 6 s later), leave_race, race_state, race_score (records finish time on reaching the
+  target; ignores impossible pace > 400 pts/s); hw_display_name prefers a locked leaderboard name.
+- Race mode (game): host/join screens, ?race=CODE invite links, lobby polling, countdown, identical head-start farm
+  (300g, Homestead L1, 5×5 owned, Sawmill + Flour Mill, tilled plots, seeds/logs/planks, early discoveries) saved in
+  its own RACE_KEY slot; live race bar; results screen; Leave race / Back to your race. During a race: no pausing
+  (menu/idle/tab), local prices only, no trades reported, no leaderboard, backups, weekly report or loan.
+
 ## v0.32.1 — 2026-10-13
 - Idle pause options now in seconds: Never/5/10/15/30 s/2 min (S.idleSec; default 120 s). Older S.idlePause minutes
   map to 2 min (or Never if it was 0).
