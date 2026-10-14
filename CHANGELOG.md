@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.37.1 — 2026-10-14
+- Info cards (#info): contextmenu in #panel/#drawer/#queue/#goals → infoTarget() finds the item (data-info on every ico()
+  and on recipe rows, task buttons load/buy/sell/place/plant, single-icon rows); infoHTML() builds the card from data.js
+  (building desc, sprinkler coverage, station recipes, crop/seed, gathering, recipes, uses, prices, needed discovery).
+
 ## v0.37 — 2026-10-14
 - Action panel, window style (non-phone): drag .phead to move, #pframe edge/corner handles to resize, double-click
   .phead to reset; saved in 'harvestworks.panelpos' ({x,y,w,h}; h null when only moved). Removed #pctx / #pedit.

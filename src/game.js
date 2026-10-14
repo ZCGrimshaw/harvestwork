@@ -1239,7 +1239,45 @@
     const box = $('#toasts'); box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 3200 : 5200);
   }
-  const ico = (id, cls = '') => `<img class="ico ${cls}" src="${ART.icon(id, D.items)}" alt="">`;
+  const ico = (id, cls = '') => `<img class="ico ${cls}" src="${ART.icon(id, D.items)}" alt="" data-info="${id}">`;
+  /* Info cards: right-click (or long-press) anything that names an item (an icon, a recipe, a market row, a kit)
+     to see what it is, where it comes from, what it's used for and what it's worth. All generated from data.js. */
+  const nmList = a => a.length <= 2 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const inTxt = o => Object.entries(o).map(([k, n]) => `${n} ${esc(D.items[k].name)}`).join(' + ');
+  function infoHTML(id) { const it = D.items[id]; if (!it) return '';
+    const P = [], B = it.building && D.buildings[it.building], disc = it.requires && D.discoveries.find(d => d.id === it.requires);
+    const cats = { seed: 'Seed', supply: 'Farm supply', crop: 'Crop', gathered: 'Gathered resource', good: 'Finished good', component: 'Component', kit: 'Building kit' };
+    if (B) { P.push(esc(B.desc));
+      if (B.kind === 'sprinkler') P.push(`That’s the ${(B.radius * 2 + 1) ** 2 - 1} tiles around it, so no more watering by hand there. Plots it waters still earn Good quality.`);
+      if (B.kind === 'station') { const rs = Object.values(D.recipes).filter(r => r.station === it.building).map(r => D.items[Object.keys(r.out)[0]].name); if (rs.length) P.push(`Makes ${esc(nmList(rs))}.`); }
+      if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
+      P.push(`Place the kit on empty grass you own${B.place && Object.keys(B.place).length ? ` (placing also takes ${costTxt(B.place)})` : ''}.`); }
+    const crop = Object.values(D.crops).find(c => c.item === id), seedOf = Object.values(D.crops).find(c => c.seed === id);
+    if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
+    if (crop) P.push(`Grown on a Farm Plot from ${esc(D.items[crop.seed].name)}.`);
+    const g = Object.entries(D.gather).filter(([t, G]) => G.out[id]).map(([t]) => D.terrain[t].name); if (g.length) P.push(`Gathered from ${esc(nmList(g))} tiles.`);
+    Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
+    const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
+    if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
+    const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
+    return `<div class="ihead">${ico(id)}<div><b>${esc(it.name)}</b><small>${cats[it.cat] || ''}${price ? ' · ' + price : ''}</small></div></div>
+      ${P.map(t => `<p>${t}</p>`).join('')}${disc && !unlocked(disc.id) ? `<p class="need">Needs <b>${esc(disc.name)}</b> in Discovery.</p>` : ''}`; }
+  function infoTarget(t) { for (let n = t, k = 0; n && k < 5 && n !== document.body; n = n.parentElement, k++) {
+      if (n.dataset && n.dataset.info && D.items[n.dataset.info]) return n.dataset.info;
+      if (n.dataset && 'task' in n.dataset) { const a = n.dataset.a, p = n.dataset.p;
+        if (a === 'load' && D.recipes[p]) return Object.keys(D.recipes[p].out)[0];
+        if (['buy', 'sell', 'place'].includes(a) && D.items[p]) return p;
+        if (a === 'plant' && D.crops[p]) return D.crops[p].item; }
+      if (n.querySelector && n !== t && /^(BUTTON|LI|DIV|LABEL|TR)$/.test(n.tagName)) { const im = n.querySelectorAll('img[data-info]'); if (im.length === 1) return im[0].dataset.info; }
+      if (n.id === 'panel' || n.id === 'drawer' || (n.classList && n.classList.contains('dbox'))) break; }
+    return null; }
+  function showInfo(id, x, y) { const el = $('#info'); el.innerHTML = infoHTML(id); el.hidden = false;
+    const w = el.offsetWidth, h = el.offsetHeight; el.style.left = Math.max(8, Math.min(innerWidth - w - 8, x + 12)) + 'px'; el.style.top = Math.max(8, Math.min(innerHeight - h - 8, y + 12)) + 'px'; }
+  const hideInfo = () => { const el = $('#info'); if (el && !el.hidden) el.hidden = true; };
+  document.addEventListener('contextmenu', e => { if (!e.target.closest('#panel, #drawer, #queue, #goals')) return; const id = infoTarget(e.target); if (!id) return; e.preventDefault(); showInfo(id, e.clientX, e.clientY); });
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('#info')) hideInfo(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideInfo(); });
+  document.addEventListener('wheel', hideInfo, { passive: true });
   const qtag = q => q ? `<span class="q q${q}">${QN[q]}</span>` : '';
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
@@ -1388,7 +1426,7 @@
       if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
     }
-    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Drag the title bar to move this menu or an edge to resize it; double-click the title bar to put it back.'}</p>`;
+    return h + fhControl(i, 'tend') + `<p class="tip">Tip: click a selected tile again to repeat its main action.${isPhone() ? '' : ' Right-click anything to see what it does. Drag the title bar to move this menu or an edge to resize it; double-click the title bar to put it back.'}</p>`;
   }
   function stationPanel(i, b) {
     const B = D.buildings[b.type], slots = stationSlots(b);
@@ -1405,11 +1443,11 @@
     if (unlocked('repeat')) h += `<p class="hint">Repeat keeps one recipe loaded whenever a slot is free and the ingredients are in storage.</p>`;
     const recs = Object.entries(D.recipes).filter(([, R]) => R.station === b.type);
     h += recs.map(([id, R]) => {
-      if (!unlocked(R.requires)) { const d = D.discoveries.find(d => d.id === R.requires); return `<div class="recipe locked"><span>${ico(Object.keys(R.out)[0], 'dim')} ${esc(D.items[Object.keys(R.out)[0]].name)}</span><small>Unlock “${esc(d.name)}” in Discovery</small></div>`; }
+      if (!unlocked(R.requires)) { const d = D.discoveries.find(d => d.id === R.requires); return `<div class="recipe locked" data-info="${Object.keys(R.out)[0]}"><span>${ico(Object.keys(R.out)[0], 'dim')} ${esc(D.items[Object.keys(R.out)[0]].name)}</span><small>Unlock “${esc(d.name)}” in Discovery</small></div>`; }
       const ins = Object.entries(R.in).map(([k, n]) => `<span class="in ${count(k) >= n ? '' : 'short'}">${ico(k)}${n}<small>(${count(k)})</small></span>`).join('<span class="plus">+</span>');
       const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
       const le = checkTask({ a: 'load', i, p: id });
-      return `<div class="recipe"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)}</b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>`;
+      return `<div class="recipe" data-info="${Object.keys(R.out)[0]}"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)}</b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>`;
     }).join('');
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
@@ -2375,7 +2413,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { info: id => infoHTML(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

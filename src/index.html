@@ -551,6 +551,12 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 #panel .btn[data-task]:not(:disabled), #panel .btn.pri:not(:disabled) { border-color: var(--sun); box-shadow: 0 3px 0 var(--wood-lo), inset 0 0 0 1px rgba(245,197,66,.35); }
 #panel .btn[data-task]:not(:disabled):hover { border-color: #ffd65e; }
 #panel[data-fl] { transition: none; max-height: calc(100% - 150px); }
+/* info card (right-click an item) */
+#info { position: fixed; z-index: 40; width: 300px; max-width: calc(100vw - 16px); padding: 10px 12px; background: #2a1a10; color: var(--paper); border: 2px solid var(--sun); border-radius: var(--r); box-shadow: 0 8px 22px rgba(0,0,0,.5); font-size: 13px; line-height: 1.4; pointer-events: auto; }
+#info[hidden] { display: none; }
+#info .ihead { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; } #info .ihead .ico { width: 32px; height: 32px; }
+#info .ihead b { display: block; font-size: 15px; } #info .ihead small { color: var(--paper-dim); font-size: 12px; }
+#info p { margin: 4px 0; } #info .need { color: #f6c27a; }
 /* window-style action panel (computers): title bar moves it, edges and corners resize it */
 #pframe { position: fixed; z-index: 6; pointer-events: none; }
 #pframe[hidden] { display: none; }
@@ -599,6 +605,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   </div>
   <div id="hud"><div id="goals"></div><div id="queue"></div></div>
   <aside id="panel" class="wood" hidden></aside>
+  <div id="info" hidden role="tooltip"></div>
   <div id="pframe" hidden><i data-rs="n" class="rs-n"></i><i data-rs="s" class="rs-s"></i><i data-rs="e" class="rs-e"></i><i data-rs="w" class="rs-w"></i><i data-rs="ne" class="rs-ne"></i><i data-rs="nw" class="rs-nw"></i><i data-rs="se" class="rs-se"></i><i data-rs="sw" class="rs-sw"></i></div>
   <div id="zoom">
     <button class="ibtn zin" data-zoom="in" aria-label="Zoom in">+</button>
