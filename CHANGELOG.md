@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.37.2 — 2026-10-14
+- QUALITY_HELP explainer (crops: water both stages +1, fertilizer +1; goods: lowest ingredient + station Quality upgrade;
+  gathered always Basic; sell multipliers). Shown from Storage (data-qhelp), farm plot and station panels
+  (data-qhelp-panel), a quality line on info cards, and a one-time toast after the first Basic harvest (S.qTip).
+
 ## v0.37.1 — 2026-10-14
 - Info cards (#info): contextmenu in #panel/#drawer/#queue/#goals → infoTarget() finds the item (data-info on every ico()
   and on recipe rows, task buttons load/buy/sell/place/plant, single-icon rows); infoHTML() builds the card from data.js

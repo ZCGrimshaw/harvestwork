@@ -689,7 +689,8 @@
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
         addItem(cr.item, cr.yield, q); wk().harvest += cr.yield; float(t.i, `+${cr.yield} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff');
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
-        gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item); first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
+        gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
+        if (!q && !S.qTip) { S.qTip = 1; setTimeout(() => toast(`<b>Tip:</b> that harvest was ${QN[0]}. Water a crop at both growth stages for ${QN[1]}, and add fertilizer too for ${QN[2]}. They sell for more. Storage → “How do I make ${QN[1]} and ${QN[2]} goods?” explains it all.`, 'goal'), 1200); } first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
         emit('harvest', { item: cr.item }); } },
     chop: { label: () => 'Chop tree', check: t => { const T = T_(t.i); if (!unlocked('woodcutting')) return 'Unlock Woodcutting first'; if (T.r.st !== 'tree') return 'No grown tree'; return outRoom(gatherOut('forest', 'chop')) ? null : FULL; },
       run: t => { const o = gatherOut('forest', 'chop'); for (const k in o) addItem(k, o[k]); T_(t.i).r.st = 'stump';
@@ -1244,6 +1245,12 @@
      to see what it is, where it comes from, what it's used for and what it's worth. All generated from data.js. */
   const nmList = a => a.length <= 2 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
   const inTxt = o => Object.entries(o).map(([k, n]) => `${n} ${esc(D.items[k].name)}`).join(' + ');
+  // How quality works, in one place (Storage, stations, the farm plot and info cards all point here)
+  const QUALITY_HELP = `<div class="qhelp"><b>Quality: ${QN[0]} → ${QN[1]} → ${QN[2]}</b>
+    <p><b>Crops</b> earn +1 tier for being <b>watered at both stages</b> (once after planting, again when the soil dries halfway through) and +1 tier for <b>fertilizer</b> (tick “Use fertilizer” when planting, or Add fertilizer while it grows). Both together give ${QN[2]}. Sprinklers count as watering.</p>
+    <p><b>Goods from stations</b> come out as good as their <b>lowest-quality ingredient</b> (stations use your best stock first). A station’s <b>Quality</b> upgrade (Station Tuning in Discovery) adds +1 or +2 tiers on top, up to ${QN[2]}. Things made from nothing, like honey, need that upgrade to rise above ${QN[0]}.</p>
+    <p><b>Gathered</b> logs, stone, fish and the like are always ${QN[0]}.</p>
+    <p>${QN[1]} sells for ${C.qualityMult[1]}×, ${QN[2]} for ${C.qualityMult[2]}×, and some orders and contracts ask for them.</p></div>`;
   function infoHTML(id) { const it = D.items[id]; if (!it) return '';
     const P = [], B = it.building && D.buildings[it.building], disc = it.requires && D.discoveries.find(d => d.id === it.requires);
     const cats = { seed: 'Seed', supply: 'Farm supply', crop: 'Crop', gathered: 'Gathered resource', good: 'Finished good', component: 'Component', kit: 'Building kit' };
@@ -1259,6 +1266,8 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
+    if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
+    else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient, plus the station’s Quality upgrade.`);
     const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
     return `<div class="ihead">${ico(id)}<div><b>${esc(it.name)}</b><small>${cats[it.cat] || ''}${price ? ' · ' + price : ''}</small></div></div>
       ${P.map(t => `<p>${t}</p>`).join('')}${disc && !unlocked(disc.id) ? `<p class="need">Needs <b>${esc(disc.name)}</b> in Discovery.</p>` : ''}`; }
@@ -1412,7 +1421,7 @@
     let h = head('Farm Plot', 'Till → plant → water → harvest. Re-till after each harvest.');
     if (b.st === 'raw') h += `<p class="state">Untilled soil.</p>` + btn({ a: 'till', i }, 'Till soil', { cls: 'pri' }) + btn({ a: 'clearplot', i }, 'Clear plot', { cls: 'ghost', sub: 'Turns it back into grass you can build on. No refund.' });
     else if (b.st === 'tilled') {
-      h += `<p class="state">Tilled and ready for seeds.</p>`;
+      h += `<p class="state">Tilled and ready for seeds.</p><p class="hint small">For ${QN[1]} crops, water at both growth stages. Add fertilizer too for ${QN[2]}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
       if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
       const seeds = Object.keys(D.crops).filter(k => count(D.crops[k].seed) > 0);
       h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s` })).join('')}</div>`
@@ -1421,7 +1430,7 @@
       const cr = D.crops[b.crop];
       h += `<div class="row">${ico(cr.item)}<div class="grow1"><b>${esc(cr.name)}</b> ${b.st === 'ready' ? '· ready' : `· ${b.wet ? 'soil is wet' : '<span class="warn">needs water</span>'}`}${b.st === 'growing' ? pbar('f:' + i) : ''}</div></div>`;
       const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
-      h += `<p class="hint">Quality: watered early ${b.w[0] ? '✓' : '—'} · watered late ${b.w[1] ? '✓' : '—'}${b.fert ? ' · fertilized ✓' : ''} → <b>${b.st === 'ready' ? QN[q] : 'aiming ' + QN[Math.min(2, (b.w[0] && (b.w[1] || !b.half) ? 1 : 0) + (b.fert ? 1 : 0))]}</b></p>`;
+      h += `<p class="hint">Quality: <button class="linkish small" data-qhelp-panel>?</button> watered early ${b.w[0] ? '✓' : '—'} · watered late ${b.w[1] ? '✓' : '—'}${b.fert ? ' · fertilized ✓' : ''} → <b>${b.st === 'ready' ? QN[q] : 'aiming ' + QN[Math.min(2, (b.w[0] && (b.w[1] || !b.half) ? 1 : 0) + (b.fert ? 1 : 0))]}</b></p>`;
       if (b.st === 'growing') h += btn({ a: 'water', i }, 'Water', { cls: 'pri', sub: b.half ? 'Second watering: Good quality' : 'Wet soil grows 2× faster' });
       if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
       else h += btn({ a: 'harvest', i }, `Harvest ${cr.yield} ${esc(D.items[cr.item].name)}`, { cls: 'pri' });
@@ -1454,6 +1463,7 @@
     else h += Object.entries(D.upgrades).map(([ax, U]) => { const l = b.lv[ax], max = l >= U.cost.length;
       const e = max ? null : checkTask({ a: 'upgrade', i, p: ax });
       return `<div class="recipe"><div class="grow1"><b class="rname">${U.name} <span class="muted">· now ${U.label(l)}</span></b>${max ? '<small class="why">Fully upgraded</small>' : `<small class="cost">Next: ${U.label(l + 1)} · Cost: ${costTxt(U.cost[l])}</small>${e ? `<small class="why short">${esc(e)}</small>` : ''}`}</div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { err: e })}</div>`; }).join('');
+    h += `<p class="hint small">Quality: goods come out as good as their lowest-quality ingredient${b.lv && b.lv.quality ? `, +${b.lv.quality} from this station’s upgrade` : ''}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
     return h + fhControl(i, 'station') + moveSection(i);
   }
   function homePanel(i) {
@@ -1698,7 +1708,8 @@
         const ds = D.discoveries.filter(d => branchOf(d) === b.id).sort((x, y) => rank(x) - rank(y));
         return `<div class="grp"><span class="eyebrow">${esc(b.name)} · ${ds.filter(d => unlocked(d.id)).length}/${ds.length}</span><div class="cards">${ds.map(card).join('')}</div></div>`; }).join('');
     } else if (UI.drawer === 'inv') {
-      h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items. Stations draw from here; station kits don’t count.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items. Stations draw from here; station kits don’t count.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <button class="linkish small" data-qhelp>${UI.qhelp ? 'Hide' : 'How do I make'} ${QN[1]} and ${QN[2]} goods?</button>${UI.qhelp ? QUALITY_HELP : ''}`;
       const ids = Object.keys(S.inv).filter(id => count(id) > 0);
       if (ids.length) h += chips('inv', groupCounts(ids, count));
       const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
@@ -1974,6 +1985,8 @@
         let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } ta.remove(); ok ? done() : toast(`Couldn’t copy automatically. Your code: <b>${t}</b>`, 'info'); };
       try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); } return; }
     else if ('raceOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; UI.rerr = null; openTitle('race'); return; }
+    else if ('qhelp' in ds) { UI.qhelp = !UI.qhelp; }
+    else if ('qhelpPanel' in ds) { UI.qhelpP = !UI.qhelpP; }
     else if ('raceLeave' in ds) { UI.drawer = null; leaveRace(); return; }
     else if ('weeklyOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; openWeekly(); return; }
     else if ('weekEnd' in ds) { UI.drawer = null; finishWeekly(); return; }
