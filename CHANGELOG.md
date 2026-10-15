@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.39.3 — 2026-10-15
+- Quality upgrade capped at +1 tier over the ingredients (effect [0, 1, 1]); level 2 (Master Crafting) gives a bonus
+  first-output item every 3rd batch (b.qn counter, job.bonus). Closes the buy-Basic / sell-Excellent loop. Help text,
+  info card, station hint and production-tree note updated.
+
 ## v0.39.2 — 2026-10-15
 - Repeat count: select (REP_OPTS, 0 = forever) beside the Repeat toggle; b.repN / b.repDone; turns off when done.
   setHTML leaves a focused <select> alone.

@@ -272,7 +272,7 @@ window.HW_DATA = {
                        { gold: 360, crate: 4, brick: 6 }, { gold: 480, crate: 4, brick: 8, gear: 1 }, { gold: 620, crate: 5, brick: 10, gear: 2 },
                        { gold: 800, crate: 6, brick: 12, gear: 3 }, { gold: 1000, crate: 7, brick: 14, gear: 4 }, { gold: 1250, crate: 8, brick: 16, gear: 5 }],
                 gate: [null, null, null, 'kiln', 'kiln', 'tinkering', 'tinkering', 'tinkering', 'tinkering', 'tinkering'] },
-    quality:  { name: 'Quality', effect: [0, 1, 2], label: l => ['No bonus', '+1 quality tier', '+2 quality tiers'][l],
+    quality:  { name: 'Quality', effect: [0, 1, 1], label: l => ['No bonus', '+1 quality tier (up to one above the ingredients)', '+1 tier · every 3rd batch makes 1 extra'][l],
                 cost: [{ gold: 150, plank: 4, stone: 4 }, { gold: 400, gear: 3 }], gate: [null, 'mastery'] }
   },
 
@@ -386,7 +386,7 @@ window.HW_DATA = {
     { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
     { id: 'tinkering', pic: ['grass:0', 'big_sprinkler:1', 'gear'], name: 'Tinkering', cost: 4, req: ['smelter', 'workbench'], text: 'Make gears, and Deluxe Sprinklers that water a 5×5 square.', where: 'Workbench → Gear, Deluxe Sprinkler.' },
     { id: 'warehouse', pic: ['grass:0', 'warehouse', 'crate'], name: 'Warehouses', cost: 3, req: ['cellar', 'tinkering'], text: 'Big brick warehouses that each add 120 storage.', where: 'Open Market → Stations. Needs 10 bricks and 2 gears to place.' },
-    { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: +2 quality tiers.', where: 'Select a station → Upgrades → Quality.' },
+    { id: 'mastery', pic: ['grass:2', 'workbench', ['star', '#f6e27a', '#c9902a']], name: 'Master Crafting', cost: 6, req: ['tinkering', 'tuning'], text: 'A second Quality upgrade for every station: every third batch makes one extra.', where: 'Select a station → Upgrades → Quality.' },
 
     // new lands: open areas beyond the starting map, each with its own resource
     { id: 'surveying', pic: ['flowers:0', 'board', 'fence_kit'], name: 'Land Surveying', cost: 3, req: ['workbench'], text: 'Open whole new areas beyond your map, each with its own terrain. Every area you own also lets you build one more of each station.', where: 'Select a dashed area past the edge of your map → Survey.' },
@@ -580,6 +580,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.39.3', at: '2026-10-15 13:20', notes: ['Balance: a station’s Quality upgrade now lifts goods one tier above their ingredients, never more. Basic logs make Good planks; Excellent goods need Good ingredients (well-watered or fertilized crops) plus the upgrade. Goods you already have keep their quality.', 'Master Crafting’s second Quality level now gives a bonus item on every third batch at that station instead.'] },
   { v: '0.39.2', at: '2026-10-15 08:20', notes: ['Repeat can now stop on its own: when Repeat is on, pick how many times (1 to 50, or Forever) from the box beside it. It shows how many are done and turns itself off at the end.', 'Four new Weekly Challenge themes join the rotation from next week: Barnyard Week (coop and dairy), Woolly Week (sheep and loom), Creamery Week (butter and cheese) and Helping Hands Week (a farmhand who runs errands). This week’s challenge is unchanged.'] },
   { v: '0.39.1', at: '2026-10-15 09:00', notes: ['Animal feed now always pays off: eggs, milk and wool are worth more than the crops they eat (milk is worth a little more, and carrot and vegetable feeds give more).', 'Orders no longer ask for Good-quality goods you can’t make yet (like Good logs or stone). They only ask for Good when your crops or a tuned station can make it.', 'You can now buy a Stove kit to build a second Stove once you have a second area.', 'Stations on Repeat now say when they use things up: Storage and the item card show “used automatically by …”, and the Activity log notes it once a day.'] },
   { v: '0.39', at: '2026-10-15 08:30', notes: ['Animals! Once you survey your first new area, a new Animals branch opens in Discovery: Chickens, Dairy Cows, Sheep and a Creamery. All peaceful.', 'Hens lay eggs and cows give milk when you feed them spare wheat or vegetables; sheep grow wool. Better feed makes better eggs, milk and wool.', 'New goods: omelettes and custard at the Stove, butter and cheese at the Creamery, Farmhouse Cake in the Oven, yarn and wool blankets at the Loom. Three new contracts to go with them.'] },

@@ -681,13 +681,16 @@
     let n = stationSlots(b) - b.q.length; for (const k in R.in) n = Math.min(n, Math.floor(count(k) / R.in[k])); return Math.max(0, n); }
   function doLoad(i, rid) { const b = T_(i).b, R = D.recipes[rid]; let q = Object.keys(R.in).length ? 2 : 0;
     for (const k in R.in) q = Math.min(q, take(k, R.in[k], 0, 'high'));
+    // The Quality upgrade lifts goods one tier above their ingredients, never more (so cheap Basic inputs can't become
+    // Excellent). Master Crafting's second level adds a bonus item to every third batch instead.
     q = Math.min(2, q + D.upgrades.quality.effect[b.lv.quality]);
-    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1), qual: q, done: false });
+    let bonus = false; if (b.lv.quality >= 2) { b.qn = (b.qn || 0) + 1; bonus = b.qn % 3 === 0; }
+    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1), qual: q, done: false, bonus });
     emit('load', { st: b.type }); }
   function collectErr(i) { const b = T_(i).b; const done = b && b.q ? b.q.filter(x => x.done) : [];
     if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k]; }); return room() >= n ? null : FULL; }
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
-    done.forEach(x => { const out = D.recipes[x.r].out; for (const k in out) {
+    done.forEach(x => { const out = Object.assign({}, D.recipes[x.r].out); if (x.bonus) { const k0 = Object.keys(out)[0]; if (D.items[k0].cat !== 'kit') out[k0]++; } for (const k in out) {
       addItem(k, out[k], x.qual); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i, 'craft', k);
@@ -1327,7 +1330,7 @@
   // How quality works, in one place (Storage, stations, the farm plot and info cards all point here)
   const QUALITY_HELP = `<div class="qhelp"><b>Quality: ${QN[0]} → ${QN[1]} → ${QN[2]}</b>
     <p><b>Crops</b> earn +1 tier for being <b>watered at both stages</b> (once after planting, again when the soil dries halfway through) and +1 tier for <b>fertilizer</b> (tick “Use fertilizer” when planting, or Add fertilizer while it grows). Both together give ${QN[2]}. Sprinklers count as watering.</p>
-    <p><b>Goods from stations</b> come out as good as their <b>lowest-quality ingredient</b> (stations use your best stock first). A station’s <b>Quality</b> upgrade (Station Tuning in Discovery) adds +1 or +2 tiers on top, up to ${QN[2]}. Things made from nothing, like honey, need that upgrade to rise above ${QN[0]}.</p>
+    <p><b>Goods from stations</b> come out as good as their <b>lowest-quality ingredient</b> (stations use your best stock first). A station’s <b>Quality</b> upgrade (Station Tuning in Discovery) adds +1 tier, never more than one above the ingredients, so ${QN[2]} goods need ${QN[1]} ingredients. Things made from nothing, like honey, can reach ${QN[1]} this way. Master Crafting’s second Quality level adds a bonus item to every third batch.</p>
     <p><b>Gathered</b> logs, stone, fish and the like are always ${QN[0]}.</p>
     <p>${QN[1]} sells for ${C.qualityMult[1]}×, ${QN[2]} for ${C.qualityMult[2]}×, and some orders and contracts ask for them.</p></div>`;
   function infoHTML(id) { const it = D.items[id]; if (!it) return '';
@@ -1347,7 +1350,7 @@
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
-    else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient, plus the station’s Quality upgrade.`);
+    else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient; a station Quality upgrade adds one tier on top.`);
     const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
     return `<div class="ihead">${ico(id)}<div><b>${esc(it.name)}</b><small>${cats[it.cat] || ''}${price ? ' · ' + price : ''}</small></div></div>
       ${P.map(t => `<p>${t}</p>`).join('')}${disc && !unlocked(disc.id) ? `<p class="need">Needs <b>${esc(disc.name)}</b> in Discovery.</p>` : ''}`; }
@@ -1445,7 +1448,7 @@
     // Quality: crops and made goods can carry it up; gathered goods are always Basic, so the station must add it.
     const canQ = k => D.items[k].cat !== 'gathered';
     const ins = Object.keys(R.in);
-    if (minQ && (!ins.length || ins.some(k => !canQ(k)))) node.qnote = `For ${QN[minQ]} quality, give the ${D.buildings[R.station].name} a Quality upgrade${ins.some(canQ) ? `, or use ${QN[minQ]} ingredients where you can` : ''}.`;
+    if (minQ && (!ins.length || ins.some(k => !canQ(k)))) node.qnote = minQ >= 2 ? `${QN[2]} needs ${QN[1]} ingredients plus a Quality upgrade on the ${D.buildings[R.station].name}; gathered ingredients only reach ${QN[1]}.` : `For ${QN[minQ]} quality, give the ${D.buildings[R.station].name} a Quality upgrade${ins.some(canQ) ? `, or use ${QN[minQ]} ingredients where you can` : ''}.`;
     for (const [k, per] of Object.entries(R.in)) node.kids.push(tree(k, per * node.batches, canQ(k) ? minQ : 0, seen.concat(id)));
     return node;
   }
@@ -1554,7 +1557,7 @@
     else h += Object.entries(D.upgrades).map(([ax, U]) => { const l = b.lv[ax], max = l >= U.cost.length;
       const e = max ? null : checkTask({ a: 'upgrade', i, p: ax });
       return `<div class="recipe"><div class="grow1"><b class="rname">${U.name} <span class="muted">· now ${U.label(l)}</span></b>${max ? '<small class="why">Fully upgraded</small>' : `<small class="cost">Next: ${U.label(l + 1)} · Cost: ${costTxt(U.cost[l])}</small>${e ? `<small class="why short">${esc(e)}</small>` : ''}`}</div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { err: e })}</div>`; }).join('');
-    h += `<p class="hint small">Quality: goods come out as good as their lowest-quality ingredient${b.lv && b.lv.quality ? `, +${b.lv.quality} from this station’s upgrade` : ''}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
+    h += `<p class="hint small">Quality: goods come out as good as their lowest-quality ingredient${b.lv && b.lv.quality ? `, +1 tier from this station’s upgrade${b.lv.quality >= 2 ? ', and every third batch makes one extra' : ''}` : ''}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
     return h + fhControl(i, 'station') + moveSection(i);
   }
   function homePanel(i) {
@@ -2192,7 +2195,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-150220';
+  const BUILD = '20261015-200400';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
