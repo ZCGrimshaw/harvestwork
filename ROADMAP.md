@@ -10,7 +10,8 @@ Not built yet; picked up when we choose to.
   (butterflies, birds, fireflies, lit windows, station smoke/steam). Later: more themes, placeable decorations,
   supporter building trim. Unlock via Menu → Supporter pack: start with one shared code shown in the Ko-fi thank-you
   message; move to per-supporter codes (Ko-fi webhook → Supabase) only if sharing becomes a problem. Unlock saved in S.
-- **Animals (pinned 2026-10-13, ideas approved; build later, "not too soon"):** peaceful only, never slaughter. Ideas: Chicken Coop (eggs → baking),
+- **Animals (pinned 2026-10-13; updated 2026-10-15: they arrive once a player surveys their first new area):** a new
+  "Animals" Discovery branch that opens after Land Surveying, so the early game stays simple and new land has a purpose. peaceful only, never slaughter. Ideas: Chicken Coop (eggs → baking),
   Dairy Barn with cows (milk → butter, cheese), sheep on a Pasture (wool → yarn at the Loom), ducks on ponds (feathers),
   goats; animals eat spare crops (a new use for surplus), happiness from feeding/brushing raises quality; animals wander
   their pen. Pets: a farm dog that follows the farmer and a cat that naps on the Homestead step. Wild life for ambience
@@ -44,4 +45,11 @@ Not built yet; picked up when we choose to.
   weekly_board, my_medals. Pairs well with the player key below.
 - ~~Player key~~ (done in v0.36). Original pin: one no-signup code per player (like the backup code) that carries the locked
   name, medals and every farm's cloud backup to a new device. Optional; no email or password.
+- **City growth (pinned 2026-10-15, wild idea, major update; later):** the farm grows into a village, town and city
+  with residential, commercial and industrial buildings, with the farm staying the heart of the economy.
+  Rough phases: (1) Village: houses bring villagers who want goods (food, cloth, tools); their steady demand
+  becomes the main source of orders, and villagers can be hired as farmhands. (2) Town: shops (bakery, tailor,
+  smithy) sell your goods for you for steady income; roads and a town square. (3) City: industry (bigger versions
+  of your stations, factories), districts, more residents wanting finer goods. Watch: scope, art volume, and
+  performance on the 36×36 map (may need a separate "town" map).
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
