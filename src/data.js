@@ -77,15 +77,42 @@ window.HW_DATA = {
     ore:     { action: 'gather', verb: 'Mine iron ore', what: 'Ore', sprite: 'orevein', needs: 'ironmining', out: { iron_ore: 1, stone: 1 }, stock: 3, regen: 45, deposit: 30 }
   },
 
+  // hardy crops shrug off frost and can be planted on snow days
   crops: {
-    carrot:  { name: 'Carrots', seed: 'carrot_seed', item: 'carrot', grow: 20, yield: 3 },
-    potato:  { name: 'Potatoes', seed: 'potato_seed', item: 'potato', grow: 28, yield: 2 },
-    wheat:   { name: 'Wheat', seed: 'wheat_seed', item: 'wheat', grow: 30, yield: 4 },
+    carrot:  { name: 'Carrots', seed: 'carrot_seed', item: 'carrot', grow: 20, yield: 3, hardy: true },
+    potato:  { name: 'Potatoes', seed: 'potato_seed', item: 'potato', grow: 28, yield: 2, hardy: true },
+    wheat:   { name: 'Wheat', seed: 'wheat_seed', item: 'wheat', grow: 30, yield: 4, hardy: true },
     berries: { name: 'Berries', seed: 'berry_seed', item: 'berries', grow: 40, yield: 3 },
     tomatoes: { name: 'Tomatoes', seed: 'tomato_seed', item: 'tomato', grow: 30, yield: 3 },
     pumpkins: { name: 'Pumpkins', seed: 'pumpkin_seed', item: 'pumpkin', grow: 50, yield: 2 },
-    apples:   { name: 'Apple Trees', seed: 'apple_seedling', item: 'apple', grow: 60, yield: 4 },
+    apples:   { name: 'Apple Trees', seed: 'apple_seedling', item: 'apple', grow: 60, yield: 4, hardy: true },
     flax:     { name: 'Flax', seed: 'flax_seed', item: 'flax', grow: 25, yield: 3 }
+  },
+
+  /* Seasons: a 28-day year of four 7-day seasons (day 1 is the first day of spring), lined up with the weekly report.
+     In-season crops grow faster; in-season crops and goods sell for more and are more often the market's pick of the day.
+     Weather is rolled per farm per day (the same roll every time you load), from each season's weights. Races and
+     weekly challenges have no seasons or weather, so every run stays fair. */
+  seasonRules: { len: 7, grow: 1.25, sell: 1.2, winterGrow: 0.8, sunGrow: 1.1, frostGrow: 0.5, frostEnds: 10, mistEnds: 10, heatDry: 12, demandPick: 0.6 },
+  seasons: [
+    { id: 'spring', name: 'Spring', blurb: 'Blossom, soft showers and morning mist.', crops: ['carrot', 'flax'],
+      goods: ['flowers', 'honey', 'honey_cake', 'egg', 'omelette'], wx: { clear: 30, sun: 20, rain: 32, mist: 18 } },
+    { id: 'summer', name: 'Summer', blurb: 'Long sunny days, with spells of heat that dry the soil.', crops: ['tomatoes', 'berries', 'wheat'],
+      goods: ['berry_juice', 'jam', 'berry_pie', 'tomato_sauce', 'cooked_fish'], wx: { clear: 25, sun: 32, heat: 28, rain: 15 } },
+    { id: 'autumn', name: 'Autumn', blurb: 'Golden leaves, harvest suppers, fog, and the first frosts late on.', crops: ['pumpkins', 'apples', 'potato'],
+      goods: ['pumpkin_soup', 'pumpkin_pie', 'apple_pie', 'cider', 'bread', 'mushrooms'], wx: { clear: 28, rain: 24, mist: 16, fog: 18, sun: 14 }, late: { frost: 30 } },
+    { id: 'winter', name: 'Winter', blurb: 'Snow days and frosty mornings. Tender crops grow slowly; hardy roots do fine.', crops: ['carrot', 'potato'],
+      goods: ['veggie_stew', 'baked_potato', 'smoked_fish', 'mead', 'cheese', 'cake', 'yarn', 'blanket'], wx: { clear: 26, snow: 36, frost: 22, fog: 16 } }
+  ],
+  weather: {
+    clear: { name: 'Fair', text: 'Fair weather. Nothing out of the ordinary.' },
+    sun:   { name: 'Sunny', text: 'Sunny spells: crops grow 10% faster.' },
+    rain:  { name: 'Rain', text: 'A rainy spell waters every growing crop while it falls. It counts as watering for quality.' },
+    heat:  { name: 'Heat', text: 'Hot and dry: watered soil dries out quickly, so crops need watering again sooner. Sprinklers keep up.' },
+    mist:  { name: 'Mist', text: 'Morning mist. Just pretty; it lifts by 10:00.' },
+    fog:   { name: 'Fog', text: 'A soft fog all day. Just pretty.' },
+    frost: { name: 'Frost', text: 'A frosty morning: tender crops grow at half speed until the frost melts at 10:00. Hardy crops don’t mind.' },
+    snow:  { name: 'Snow', text: 'Snow on the ground: only hardy crops (carrots, potatoes, wheat and apple trees) can be planted today. Crops already in the ground keep growing.' }
   },
 
   // cat: seed | supply | crop | gathered | good | component | kit
@@ -581,6 +608,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.41', at: '2026-10-15 15:40', notes: ['Seasons and weather! The year now runs through Spring, Summer, Autumn and Winter, seven days each, so every season lines up with a weekly report. The day in the top bar shows the season and today’s weather; tap it for the forecast, what’s in season and the year at a glance.', 'Each season favours its own crops: they grow 25% faster and sell for 20% more, along with seasonal goods like berry juice in summer, pumpkin pie in autumn and wool blankets in winter. The market’s pick of the day is often something in season.', 'Gentle weather, never storms: rain waters every growing crop while it falls (it counts for quality), sunny spells speed growth a little, summer heat dries soil out so crops need water sooner, mist and fog are just for looks, frosty mornings slow tender crops until 10:00, and on snow days only hardy crops (carrots, potatoes, wheat and apple trees) can be planted. In winter, tender crops grow a little slower.', 'The valley changes with the seasons: blossom in spring, deep greens in summer, golden leaves in autumn, frost and snow-capped roofs in winter, with rain, snowflakes, mist and drifting leaves. Each season has its own music, and the ambience brings rain, summer cicadas and quieter winter days.', 'Races and weekly challenges stay on a fair spring day with no weather, so every run is the same for everyone.'] },
   { v: '0.40', at: '2026-10-15 14:45', notes: ['Stone, clay and iron ore now run out. Each Boulder Field, Clay Bank and Iron Seam holds a deposit (about 60 stone, 60 clay or 30 ore); select one to see how much is left. Surface rocks still come back a few at a time until the deposit is used up.', 'Every tile you already own starts with a full deposit. When one is worked out you can change the land, buy from the market, survey new areas for fresh deposits, or unlock Deep Quarrying (after Prospecting) to reopen it.', 'Trees, ponds, flowers and reeds keep regrowing as before. Races and weekly challenges are unchanged.'] },
   { v: '0.39.3', at: '2026-10-15 13:20', notes: ['Balance: a station’s Quality upgrade now lifts goods one tier above their ingredients, never more. Basic logs make Good planks; Excellent goods need Good ingredients (well-watered or fertilized crops) plus the upgrade. Goods you already have keep their quality.', 'Master Crafting’s second Quality level now gives a bonus item on every third batch at that station instead.'] },
   { v: '0.39.2', at: '2026-10-15 08:20', notes: ['Repeat can now stop on its own: when Repeat is on, pick how many times (1 to 50, or Forever) from the box beside it. It shows how many are done and turns itself off at the end.', 'Four new Weekly Challenge themes join the rotation from next week: Barnyard Week (coop and dairy), Woolly Week (sheep and loom), Creamery Week (butter and cheese) and Helping Hands Week (a farmhand who runs errands). This week’s challenge is unchanged.'] },

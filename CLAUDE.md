@@ -23,8 +23,8 @@
   names, cloud backups, races, weekly challenge + medals, player keys, presence count. All RPCs are SECURITY DEFINER
   with RLS on and no policies (intentional). Test SQL inside `begin; … rollback;`.
 - Testing: Playwright with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, opening `src/index.html`
-  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest…).
+  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, drawer…).
   Mock the server with `ctx.route('**/rest/v1/rpc/*')`; seed saves with `add_init_script`. Write test screenshots to
   a scratch folder, never the repo.
-- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 1 Seasons and weather).
+- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41).
   History of every release is in `CHANGELOG.md`.

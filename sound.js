@@ -7,11 +7,13 @@ window.HW_SOUND = (function () {
   const prefs = Object.assign({ mute: false, sfx: 0.7, amb: 0.35, mus: 0.3 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (e) { } };
   let ctx = null, master, reverb, buses = {}, hour = 10, quiet = false, last = {}, timers = [];
+  let season = 'spring', wx = 'clear', wet = false, breeze = null, rainG = null; // set by the game every frame
 
   // C-major pentatonic, octaves 3–6
   const N = { C3: 130.81, G3: 196, A3: 220, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B3: 246.94,
     C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, D6: 1174.66, E6: 1318.51, G6: 1567.98, A6: 1760, F3: 174.61, D3: 146.83 };
   const PENTA = [N.C5, N.D5, N.E5, N.G5, N.A5, N.C6, N.D6, N.E6];
+  const hz = n => 440 * Math.pow(2, (n - 69) / 12); // MIDI note number → frequency
 
   function unlock() {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -92,28 +94,69 @@ window.HW_SOUND = (function () {
     const s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
     s.buffer = noise(); s.loop = true; lp.type = 'lowpass'; lp.frequency.value = 420; g.gain.value = 0.05;
     lfo.frequency.value = 0.06; lg.gain.value = 0.035; lfo.connect(lg); lg.connect(g.gain);
-    s.connect(lp); lp.connect(g); g.connect(buses.amb); s.start(); lfo.start();
-    const birds = () => { timers.push(setTimeout(birds, 4000 + Math.random() * 9000)); if (prefs.mute || quiet || hour >= 18.5 || ctx.state !== 'running') return;
+    s.connect(lp); lp.connect(g); g.connect(buses.amb); s.start(); lfo.start(); breeze = { lp, g };
+    // rain: a soft hiss that fades in while it falls
+    const rs = ctx.createBufferSource(), rhp = ctx.createBiquadFilter(), rlp = ctx.createBiquadFilter(); rainG = ctx.createGain();
+    rs.buffer = noise(); rs.loop = true; rhp.type = 'highpass'; rhp.frequency.value = 900; rlp.type = 'lowpass'; rlp.frequency.value = 5200; rainG.gain.value = 0;
+    rs.connect(rhp); rhp.connect(rlp); rlp.connect(rainG); rainG.connect(buses.amb); rs.start();
+    const drip = () => { timers.push(setTimeout(drip, 120 + Math.random() * 380)); if (!wet || prefs.mute || quiet || ctx.state !== 'running') return;
+      tone(1800 + Math.random() * 1800, 900 + Math.random() * 500, 0, 0.05, 0.008, 'sine', 'amb'); };
+    timers.push(setTimeout(drip, 500));
+    // summer heat: cicadas in the middle of the day
+    const cicadas = () => { timers.push(setTimeout(cicadas, 2500 + Math.random() * 4000)); if (prefs.mute || quiet || ctx.state !== 'running' || season !== 'summer' || hour < 11 || hour > 18 || wet) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), am = ctx.createOscillator(), ag = ctx.createGain(), g2 = ctx.createGain(), dur = 1.6 + Math.random() * 1.6;
+      o.type = 'sawtooth'; o.frequency.value = 5200 + Math.random() * 600; am.frequency.value = 38 + Math.random() * 10; ag.gain.value = 0.5; am.connect(ag); ag.connect(g2.gain);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 5600; bp.Q.value = 6; o.connect(bp); bp.connect(g2); g2.connect(buses.amb);
+      const v = wx === 'heat' ? 0.012 : 0.006; g2.gain.setValueAtTime(0.0001, t); g2.gain.linearRampToValueAtTime(v, t + 0.5); g2.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.start(t); am.start(t); o.stop(t + dur + 0.1); am.stop(t + dur + 0.1); };
+    timers.push(setTimeout(cicadas, 3000));
+    const birds = () => { timers.push(setTimeout(birds, (season === 'winter' ? 9000 : season === 'autumn' ? 6000 : 4000) + Math.random() * 9000)); if (prefs.mute || quiet || hour >= 18.5 || wet || ctx.state !== 'running') return;
+      if (season === 'winter' && Math.random() < .5) return;
       const base = 2400 + Math.random() * 1400, n = 2 + (Math.random() * 3 | 0);
       for (let k = 0; k < n; k++) { const at = k * (0.11 + Math.random() * 0.06); tone(base, base * (1.15 + Math.random() * 0.2), at, 0.07, 0.025, 'sine', 'amb'); } };
-    const crickets = () => { timers.push(setTimeout(crickets, 900 + Math.random() * 700)); if (prefs.mute || quiet || hour < 18.5 || ctx.state !== 'running') return;
+    const crickets = () => { timers.push(setTimeout(crickets, 900 + Math.random() * 700)); if (prefs.mute || quiet || hour < 18.5 || season === 'winter' || wet || ctx.state !== 'running') return;
+      if (season === 'autumn' && Math.random() < .5) return;
       for (let k = 0; k < 3; k++) tone(4400, 4300, k * 0.045, 0.03, 0.012, 'triangle', 'amb'); };
     timers.push(setTimeout(birds, 2500)); timers.push(setTimeout(crickets, 1500));
   }
 
-  /* ---------- music: slow pad chords and a sparse music-box melody, never the same twice ---------- */
-  const CHORDS = [[N.C4, N.E4, N.G4], [N.A3, N.C4, N.E4], [N.F3, N.A3, N.C4], [N.G3, N.B3, N.D4], [N.C4, N.E4, N.G4], [N.A3, N.D4, N.E4]];
-  function pad(freqs, dur) {
-    const t = ctx.currentTime, lp = ctx.createBiquadFilter(), g = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.value = 900;
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + 2.5); g.gain.setValueAtTime(0.05, t + dur - 2.5); g.gain.linearRampToValueAtTime(0.0001, t + dur + 1);
+  /* ---------- music: a different piece for each season, generated as it plays and never the same twice ----------
+     Each season has its own key, chords, tempo, melody voice and pad colour:
+     spring: bright C major, music-box bells over soft pads, birdlike grace notes.
+     summer: G major (a touch of Lydian), quicker, plucked melody with a walking bass.
+     autumn: A minor/Dorian, slower and warmer, a low wooden pluck and a darker pad.
+     winter: E minor, sparse high celesta notes, long airy pads with lots of space. */
+  const THEMES = {
+    spring: { bar: 9, lp: 900, padVol: 0.05, chords: [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62], [60, 64, 67], [57, 62, 64]], mel: [72, 74, 76, 79, 81, 84, 86, 88], gap: [0.9, 1.6], p: 0.7, voice: 'bell', grace: true },
+    summer: { bar: 7, lp: 1300, padVol: 0.045, chords: [[55, 59, 62], [60, 64, 67], [57, 61, 64], [55, 59, 62], [52, 55, 59], [60, 64, 69]], mel: [67, 69, 71, 73, 74, 76, 78, 79, 81], gap: [0.45, 0.8], p: 0.6, voice: 'pluck', bass: true },
+    autumn: { bar: 10, lp: 700, padVol: 0.055, chords: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62], [50, 53, 57], [52, 56, 59]], mel: [57, 60, 62, 64, 67, 69, 72], gap: [1.0, 1.8], p: 0.65, voice: 'wood' },
+    winter: { bar: 11, lp: 1100, padVol: 0.04, chords: [[52, 55, 59, 62], [48, 52, 55, 59], [55, 59, 62, 66], [50, 54, 57, 61]], mel: [83, 86, 88, 90, 91, 95, 98], gap: [1.6, 2.6], p: 0.55, voice: 'celesta' }
+  };
+  function pad(freqs, dur, T) {
+    const t = ctx.currentTime, lp = ctx.createBiquadFilter(), g = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.value = T.lp;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(T.padVol, t + 2.5); g.gain.setValueAtTime(T.padVol, t + dur - 2.5); g.gain.linearRampToValueAtTime(0.0001, t + dur + 1);
     lp.connect(g); g.connect(buses.mus);
-    freqs.forEach(f => [0, 4].forEach(det => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f; o.detune.value = det; o.connect(lp); o.start(t); o.stop(t + dur + 1.2); }));
+    freqs.forEach(f => [0, 4].forEach(det => { const o = ctx.createOscillator(); o.type = T.voice === 'celesta' ? 'sine' : 'triangle'; o.frequency.value = f; o.detune.value = det; o.connect(lp); o.start(t); o.stop(t + dur + 1.2); }));
+  }
+  function note(T, f, at) {
+    if (T.voice === 'bell') bell(f, at, 2.2, 0.04, 'mus');
+    else if (T.voice === 'pluck') pluck(f, at, 0.6, 0.06, 'mus');
+    else if (T.voice === 'wood') { pluck(f, at, 0.9, 0.07, 'mus'); pluck(f * 2, at + 0.01, 0.4, 0.015, 'mus'); }
+    else { bell(f, at, 3.2, 0.03, 'mus'); bell(f * 2, at + 0.02, 1.6, 0.008, 'mus'); }
   }
   function startMusic() {
-    let ci = 0;
-    const bar = () => { timers.push(setTimeout(bar, 9000)); if (prefs.mute || prefs.mus <= 0 || ctx.state !== 'running') return;
-      const ch = CHORDS[ci++ % CHORDS.length]; pad(ch, 9);
-      for (let at = 0.8; at < 8.5; at += 0.9 + Math.random() * 1.6) if (Math.random() < 0.7) bell(rnd(PENTA), at, 2.2, 0.04, 'mus'); };
+    let ci = 0, cur = null;
+    const bar = () => { const T = THEMES[season] || THEMES.spring; if (T !== cur) { cur = T; ci = 0; }
+      timers.push(setTimeout(bar, T.bar * 1000)); if (prefs.mute || prefs.mus <= 0 || ctx.state !== 'running') return;
+      const ch = T.chords[ci++ % T.chords.length]; pad(ch.map(hz), T.bar, T);
+      if (T.bass) [0, 2, 4, 6].forEach((b, k) => { if (k * (T.bar / 4) < T.bar - 0.5) pluck(hz(ch[0] - 12 + (k === 2 ? 7 : 0)), k * (T.bar / 4), 0.5, 0.05, 'mus'); });
+      let prev = (Math.random() * T.mel.length) | 0;
+      for (let at = 0.8; at < T.bar - 0.6; at += T.gap[0] + Math.random() * (T.gap[1] - T.gap[0])) {
+        if (Math.random() > T.p) continue;
+        prev = Math.max(0, Math.min(T.mel.length - 1, prev + ((Math.random() * 5) | 0) - 2)); // stepwise, so it sings rather than scatters
+        note(T, hz(T.mel[prev]), at);
+        if (T.grace && Math.random() < 0.15) note(T, hz(T.mel[Math.min(T.mel.length - 1, prev + 1)]), at - 0.08);
+      } };
     timers.push(setTimeout(bar, 1200));
   }
 
@@ -123,5 +166,9 @@ window.HW_SOUND = (function () {
     else if (buses[k]) buses[k].gain.setTargetAtTime(v, ctx.currentTime, 0.05); }
   document.addEventListener('visibilitychange', () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else ctx.resume(); });
 
-  return { unlock, play, set, prefs, setHour(h) { hour = h; }, set quiet(v) { quiet = v; }, get ready() { return !!ctx; } };
+  // the season picks the music for the next bar; weather shapes the ambience (rain hiss, muffled breeze in snow and fog)
+  function setScene(se, w, rain) { season = se; wx = w; wet = !!rain; if (!ctx || !breeze) return; const t = ctx.currentTime;
+    rainG.gain.setTargetAtTime(wet ? 0.07 : 0, t, 1.5);
+    breeze.lp.frequency.setTargetAtTime(w === 'snow' || w === 'fog' ? 260 : season === 'winter' ? 520 : season === 'autumn' ? 480 : 420, t, 2); }
+  return { unlock, play, set, prefs, setScene, setHour(h) { hour = h; }, set quiet(v) { quiet = v; }, get ready() { return !!ctx; } };
 })();

@@ -58,7 +58,7 @@ Not built yet; picked up when we choose to.
 
 Built in stages; each stage ships on its own.
 
-- **Stage 1: Seasons and weather.** A 28-day year of four 7-day seasons (lines up with the weekly report). Each
+- ~~**Stage 1: Seasons and weather.**~~ (done in v0.41). A 28-day year of four 7-day seasons (lines up with the weekly report). Each
   season favours some crops (faster growth, market demand) and changes the scenery (blossom, lush green, autumn
   leaves, snow). Gentle weather, no storms: rain (waters every crop), sunny spells, heat (soil dries faster), fog
   and morning mist (cosmetic), first frost in late autumn, snow days in winter (some crops can't be planted outside).

@@ -167,12 +167,61 @@
   function costTxt(cost) { return Object.entries(cost).map(([k, n]) => k === 'gold' ? `${n}g` : `${n} ${D.items[k].name}`).join(' + ') || 'Free'; }
   // Seeds and supplies sell back for half their market price.
   const baseValue = id => D.items[id].value || Math.max(1, Math.floor((D.items[id].buy || 2) / 2));
-  function sellPrice(id, q) { const d = S.market.demand; return Math.max(1, Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1) * mult(id) * wrule('sell', 1))); }
+  function sellPrice(id, q) { const d = S.market.demand; return Math.max(1, Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1) * mult(id) * wrule('sell', 1) * seasonSell(id))); }
 
   /* ================= progression ================= */
   /* Weekly challenge rules (see weeklyThemes in data.js). Outside a weekly run every rule is neutral. */
   const wrule = (k, d) => (S && S.race && S.race.rules && S.race.rules[k] != null) ? S.race.rules[k] : d;
   const scoreMult = tags => { const sc = wrule('score', null); if (!sc) return 1; let m = 1; new Set(tags).forEach(t => { if (sc[t]) m *= sc[t]; }); return m; };
+  /* ================= seasons and weather =================
+     A 28-day year of four 7-day seasons (see seasons in data.js). Each day's weather is rolled from the farm's id and
+     the day number, so a reload gives the same day, and kept in S.wx once the day starts. Races and weekly challenge
+     runs have no seasons or weather (always a fair spring day), so every racer plays the same game. */
+  const SR = D.seasonRules, YEAR = SR.len * D.seasons.length;
+  const noSeasons = () => !S || !!S.race;
+  const seasonIdx = (d = S.day) => noSeasons() ? 0 : Math.floor(((d - 1) % YEAR) / SR.len);
+  const season = d => D.seasons[seasonIdx(d)];
+  const seasonDay = (d = S.day) => ((d - 1) % SR.len) + 1;
+  const yearOf = (d = S.day) => Math.floor((d - 1) / YEAR) + 1;
+  function wxRand(d, salt) { const s = (S.fid || 'farm') + ':' + d + ':' + salt; let a = 2166136261;
+    for (let k = 0; k < s.length; k++) { a ^= s.charCodeAt(k); a = Math.imul(a, 16777619); }
+    a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+  function rollWeather(d) {
+    if (d <= 1) return 'clear';
+    const se = season(d), w = Object.assign({}, se.wx, seasonDay(d) >= 5 && se.late ? se.late : {});
+    // while the tutorial is running, keep it gentle so "water the seedlings" never gets rained off
+    if (S.goal < D.goals.length) Object.keys(w).forEach(k => { if (!['clear', 'sun', 'mist'].includes(k)) delete w[k]; });
+    const keys = Object.keys(w), tot = keys.reduce((n, k) => n + w[k], 0); let x = wxRand(d, 'w') * tot;
+    for (const k of keys) { x -= w[k]; if (x <= 0) return k; } return keys[0] || 'clear'; }
+  function weatherOn(d = S.day) { if (noSeasons()) return 'clear';
+    if (d === S.day) { if (!S.wx || S.wx.d !== d || !D.weather[S.wx.k]) S.wx = { d, k: rollWeather(d) }; return S.wx.k; }
+    return rollWeather(d); }
+  const wxNow = () => weatherOn(S.day);
+  const rainCache = {};
+  function rainWin(d) { const k = (S.fid || '') + d; if (!rainCache[k]) { const s = 6 + Math.floor(wxRand(d, 'rs') * 6); rainCache[k] = [s, Math.min(22, s + 5 + Math.floor(wxRand(d, 'rl') * 6))]; } return rainCache[k]; }
+  const raining = () => wxNow() === 'rain' && hour() >= rainWin(S.day)[0] && hour() < rainWin(S.day)[1];
+  const frosty = () => wxNow() === 'frost' && hour() < SR.frostEnds;
+  const cropInSeason = (c, d) => !noSeasons() && season(d).crops.includes(c);
+  const inSeason = (id, d) => !noSeasons() && (season(d).goods.includes(id) || season(d).crops.some(c => D.crops[c].item === id));
+  const seasonSell = id => inSeason(id) ? SR.sell : 1;
+  const snowBlocks = c => wxNow() === 'snow' && !D.crops[c].hardy;
+  function seasonGrow(c) { if (noSeasons()) return 1; const cr = D.crops[c]; let m = 1;
+    if (cropInSeason(c)) m *= SR.grow; else if (season().id === 'winter' && !cr.hardy) m *= SR.winterGrow;
+    if (wxNow() === 'sun') m *= SR.sunGrow; if (frosty() && !cr.hardy) m *= SR.frostGrow; return m; }
+  // what's changing this crop's growth right now, in words (farm plot panel)
+  function growNote(c) { if (noSeasons()) return ''; const cr = D.crops[c], o = [];
+    if (cropInSeason(c)) o.push(`in season: ${Math.round((SR.grow - 1) * 100)}% faster`); else if (season().id === 'winter' && !cr.hardy) o.push(`winter: ${Math.round((1 - SR.winterGrow) * 100)}% slower`);
+    if (wxNow() === 'sun') o.push(`sunny: ${Math.round((SR.sunGrow - 1) * 100)}% faster`);
+    if (frosty() && !cr.hardy) o.push(`frost: half speed until ${SR.frostEnds}:00`);
+    if (raining()) o.push('the rain is watering it');
+    if (wxNow() === 'heat') o.push('heat: the soil dries quickly');
+    return o.join(' · '); }
+  const wxName = k => D.weather[k].name;
+  const nameList = ids => nmList(ids.map(id => D.items[id] ? D.items[id].name : D.crops[id].name));
+  const cropList = ids => nmList(ids.map(c => D.crops[c].name));
+  function wxLine(d) { const k = weatherOn(d); if (k !== 'rain') return D.weather[k].text; const [a, b] = rainWin(d); return `Rain from ${a}:00 to ${b}:00. While it falls it waters every growing crop, and that counts as watering for quality.`; }
+  // ground art and music follow the season; a snow day turns the scenery white
+  const sceneKey = () => noSeasons() ? 'spring' : wxNow() === 'snow' ? 'snow' : season().id;
   function gainScore(n, i, ...tags) { n = Math.round(n * (tags.length ? scoreMult(tags) : 1)); if (n <= 0) return; S.score += n; if (i !== undefined) float(i, `+${n}`, '#f6e27a'); }
   function first(key, dp, why) {
     if (S.firsts[key] || !dp) return; S.firsts[key] = 1; S.dp += dp;
@@ -549,6 +598,8 @@
   // Goods you've made at least once can be bought back from the market at a markup (above even the +50% demand sell price).
   const RESALE = 1.75;
   const buyPrice = id => (S && S.race && S.race.deal && S.race.deal.kit === id) ? S.race.deal.price : Math.max(1, Math.round((D.items[id].buy || (D.items[id].value || 1) * RESALE) * mult(id)));
+  const seasonTag = id => { const c = Object.keys(D.crops).find(k => D.crops[k].seed === id);
+    return inSeason(id) ? `<span class="ins" title="In season: sells for ${Math.round((SR.sell - 1) * 100)}% more">in season +${Math.round((SR.sell - 1) * 100)}%</span>` : c && cropInSeason(c) ? '<span class="ins" title="Grows faster this season">in season</span>' : ''; };
   function moveTag(id) { const m = mult(id); if (Math.abs(m - 1) < .005) return '';
     const pct = Math.round((m - 1) * 100); return `<span class="mv ${pct > 0 ? 'up' : 'dn'}" title="Shared valley price">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`; }
 
@@ -573,7 +624,8 @@
     for (let i = kits.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [kits[i], kits[j]] = [kits[j], kits[i]]; }
     S.market.offers = kits.slice(0, C.marketOffers);
     const pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat));
-    if (pool.length) { const it = pool[(Math.random() * pool.length) | 0]; S.market.demand = { item: it, pct: Math.random() < .3 ? 50 : 25 }; }
+    const ins = pool.filter(id => inSeason(id)), from = ins.length && Math.random() < SR.demandPick ? ins : pool;
+    if (from.length) { const it = from[(Math.random() * from.length) | 0]; S.market.demand = { item: it, pct: Math.random() < .3 ? 50 : 25 }; }
   }
   /* Can this farm actually make the item at Good quality right now? Crops (watering, fertilizer) and anything made
      from them can; gathered things never can; other goods only once one of their stations has a Quality upgrade.
@@ -638,7 +690,10 @@
     if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false && !S.race) UI.pendingWeek = weekReport(); weekStart(); }
     rollMarket(); SND.play('day');
     if (S.moveHeat > 0 && (S.moveCool = (S.moveCool || 0) + 1) >= C.move.coolDays) { S.moveHeat--; S.moveCool = 0; }
-    toast(`<b>Day ${S.day}.</b> ${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
+    const wx = wxNow(), se = season();
+    if (!noSeasons() && seasonDay() === 1) { logAct(`${se.name} begins (year ${yearOf()})`, 'you');
+      toast(`<b>${esc(se.name)} is here.</b> ${esc(se.blurb)} In season: ${esc(cropList(se.crops))} grow ${Math.round((SR.grow - 1) * 100)}% faster, and they sell for ${Math.round((SR.sell - 1) * 100)}% more along with ${esc(nameList(se.goods.slice(0, 3)))} and more. Tap the day in the top bar for the details.`, 'goal'); }
+    toast(`<b>Day ${S.day}${noSeasons() ? '' : ` · ${esc(se.name)} ${seasonDay()}`}.</b> ${noSeasons() || wx === 'clear' ? '' : `${esc(wxName(wx))}: ${esc(wxLine(S.day))} `}${S.market.demand ? `Market wants ${esc(D.items[S.market.demand.item].name)}: +${S.market.demand.pct}% today.` : ''}`, 'info');
     dirty();
   }
 
@@ -676,7 +731,7 @@
   const farmAt = j => { const T = T_(j); return T.o && T.b && T.b.type === 'farm' ? T.b : null; };
   function gatherOut(terrain, act) { const o = Object.assign({}, D.gather[terrain].out), main = Object.keys(o)[0]; o[main] += toolStat(act, 'bonus', 0);
     if (terrain === 'boulder' && unlocked('prospecting')) o.copper_ore = 1; return o; }
-  function waterPlot(b) { b.wet = true; b.w[b.half ? 1 : 0] = 1; }
+  function waterPlot(b) { b.wet = true; b.dry = 0; b.w[b.half ? 1 : 0] = 1; }
 
   /* station work, shared by the farmer, the farmhand and station automation */
   function loadErr(i, rid) { const b = T_(i).b, R = D.recipes[rid]; if (!b || !b.q || !R || R.station !== b.type) return 'Not a station';
@@ -711,6 +766,7 @@
     plant: { label: t => `Plant ${D.crops[t.p].name}`, check: t => { const b = T_(t.i).b, cr = D.crops[t.p];
         if (!b || b.st !== 'tilled') return 'Till the soil first';
         if (count(cr.seed) < 1) return `No ${D.items[cr.seed].name}`;
+        if (snowBlocks(t.p)) return 'Too snowy today: only hardy crops can be planted';
         if (t.f && count('fertilizer') < 1) return 'No fertilizer'; return null; },
       run: t => { const cr = D.crops[t.p]; take(cr.seed, 1); if (t.f) take('fertilizer', 1);
         T_(t.i).b = { type: 'farm', st: 'growing', crop: t.p, last: t.p, g: 0, wet: false, w: [0, 0], half: false, fert: !!t.f };
@@ -979,10 +1035,13 @@
   function update(dt) {
     S.time += dt;
     const day = Math.floor(S.time / C.dayLength) + 1; if (day !== S.day) { S.day = day; newDay(); }
+    const rain = raining(), heat = wxNow() === 'heat';
     S.tiles.forEach((T, i) => {
       const b = T.b;
       if (b && b.type === 'farm' && b.st === 'growing') {
-        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1) * wrule('grow', 1);
+        if (rain && !b.wet) { waterPlot(b); dirty(); }
+        else if (heat && b.wet && (b.dry = (b.dry || 0) + dt) >= SR.heatDry) { b.wet = false; b.dry = 0; dirty(); }
+        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1) * wrule('grow', 1) * seasonGrow(b.crop);
         if (!b.half && b.g >= cr.grow / 2) { b.half = true; b.wet = false; dirty(); }
         if (b.g >= cr.grow) { b.st = 'ready'; float(i, 'Ready!', '#b8f08a'); SND.play('ready'); dirty(); }
       } else if (b && b.q) {
@@ -1218,10 +1277,51 @@
       cx.fillStyle = '#f6e7c1'; cx.fillText(name, sx, y + fs * .04); });
     cx.textBaseline = 'alphabetic';
   }
+  /* ================= weather on screen =================
+     Drawn over the farm in screen space: a soft colour grade for the season, then today's weather (rain while it
+     falls, snow, morning mist, fog, frost, sunshine, heat). Blossom petals in spring and leaves in autumn drift by.
+     With reduced motion on, only the tints are drawn. */
+  const FIELD = { spring: '#1e3a30', summer: '#22392a', autumn: '#33281c', winter: '#24303a', snow: '#2a3440' };
+  // season colour grades are drawn in soft-light, so they warm or cool the picture without washing it out
+  const GRADE = { summer: 'rgba(255,200,90,.14)', autumn: 'rgba(240,130,50,.22)', winter: 'rgba(120,160,220,.28)', snow: 'rgba(170,200,240,.2)' };
+  const WX = { t: 0, last: 0, drops: [], flakes: [], drift: [] };
+  const calm = () => mq('(prefers-reduced-motion: reduce)');
+  // keep a particle list at size n, spawning new ones anywhere on screen (or along the top once settled)
+  function fill(list, n, mk) { while (list.length > n) list.pop(); while (list.length < n) list.push(mk(list.length < n * .9 && !list.settled)); list.settled = true; }
+  function haze(a, col) { if (a <= 0) return; cx.fillStyle = `rgba(${col},${a})`; cx.fillRect(0, 0, W, H);
+    // a few slow drifting banks so it reads as fog rather than a flat tint
+    for (let k = 0; k < 5; k++) { const x = ((WX.t * 6 * DPR + k * W * .37) % (W * 1.6)) - W * .3, y = H * (.2 + .17 * k), r = Math.max(W, H) * .32;
+      const gr = cx.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${col},${a * .9})`); gr.addColorStop(1, `rgba(${col},0)`); cx.fillStyle = gr; cx.fillRect(x - r, y - r, r * 2, r * 2); } }
+  function drawWeather() {
+    const ms = performance.now(), dt = Math.min(.1, (ms - (WX.last || ms)) / 1000); WX.last = ms; WX.t += dt;
+    const sk = sceneKey(), k = wxNow(), hr = hour(), rain = raining(), move = !calm(), A = W * H / (DPR * DPR), D2 = DPR;
+    cx.globalCompositeOperation = 'soft-light';
+    if (GRADE[sk]) { cx.fillStyle = GRADE[sk]; cx.fillRect(0, 0, W, H); }
+    if (k === 'sun' || k === 'heat') { const day = Math.max(0, Math.min(1, (hr - 7) / 3, (20 - hr) / 3)), gr = cx.createRadialGradient(W * .15, 0, 0, W * .15, 0, Math.max(W, H) * 1.1);
+      gr.addColorStop(0, `rgba(255,230,150,${(k === 'heat' ? .5 : .32) * day})`); gr.addColorStop(1, `rgba(255,230,150,${(k === 'heat' ? .16 : .04) * day})`); cx.fillStyle = gr; cx.fillRect(0, 0, W, H);
+      if (k === 'heat') { cx.fillStyle = `rgba(255,140,60,${.14 * day})`; cx.fillRect(0, 0, W, H); } }
+    cx.globalCompositeOperation = 'source-over';
+    if (k === 'rain') { cx.fillStyle = `rgba(50,70,95,${rain ? .18 : .07})`; cx.fillRect(0, 0, W, H); }
+    if (k === 'fog') haze(.2, '226,230,234');
+    if (k === 'mist') haze(hr < 9 ? .24 : hr < 10 ? .24 * (10 - hr) : 0, '232,236,240');
+    if (k === 'frost') { const a = hr < 9 ? .22 : hr < 10 ? .22 * (10 - hr) : 0; if (a > 0) { cx.fillStyle = `rgba(210,232,255,${a})`; cx.fillRect(0, 0, W, H); } }
+    if (!move) return;
+    fill(WX.drops, rain ? Math.round(A / 2600) : 0, any => ({ x: Math.random() * W * 1.2, y: any ? Math.random() * H : -Math.random() * 40 * D2, v: (620 + Math.random() * 240) * D2, l: (9 + Math.random() * 7) * D2 }));
+    if (WX.drops.length) { cx.strokeStyle = 'rgba(196,220,244,.55)'; cx.lineWidth = D2; cx.beginPath();
+      WX.drops.forEach(q => { q.y += q.v * dt; q.x -= q.v * .22 * dt; if (q.y > H + q.l) { q.y = -q.l; q.x = Math.random() * W * 1.2; } cx.moveTo(q.x, q.y); cx.lineTo(q.x + q.l * .22, q.y - q.l); }); cx.stroke(); }
+    fill(WX.flakes, k === 'snow' ? Math.round(A / 3000) : 0, any => ({ x: Math.random() * W, y: any ? Math.random() * H : -8 * D2, v: (28 + Math.random() * 34) * D2, ph: Math.random() * 6.3, s: Math.random() < .3 ? 3 : 2 }));
+    if (WX.flakes.length) { cx.fillStyle = 'rgba(250,252,255,.9)';
+      WX.flakes.forEach(q => { q.y += q.v * dt; q.x += Math.sin(WX.t * 1.3 + q.ph) * 14 * D2 * dt; if (q.y > H) { q.y = -8 * D2; q.x = Math.random() * W; } cx.fillRect(q.x, q.y, q.s * D2, q.s * D2); }); }
+    // spring petals and autumn leaves, a handful at a time on calm days
+    const leafy = (sk === 'spring' || sk === 'autumn') && !rain, cols = sk === 'autumn' ? ['#d06a2a', '#e8a03a', '#b8401e', '#c8a040'] : ['#f4a6c6', '#fbd3e3', '#fff0f6'];
+    fill(WX.drift, leafy ? Math.max(3, Math.round(A / 70000)) : 0, any => ({ x: Math.random() * W, y: any ? Math.random() * H : -6 * D2, v: (22 + Math.random() * 20) * D2, ph: Math.random() * 6.3, c: (Math.random() * 4) | 0 }));
+    WX.drift.forEach(q => { q.y += q.v * dt; q.x += (Math.sin(WX.t * .9 + q.ph) * 26 + 14) * D2 * dt; if (q.y > H || q.x > W + 10) { q.y = -6 * D2; q.x = Math.random() * W * .8; }
+      const f = Math.sin(WX.t * 4 + q.ph) > 0; cx.fillStyle = cols[q.c % cols.length]; cx.fillRect(q.x, q.y, (f ? 3 : 2) * D2, (f ? 2 : 3) * D2); });
+  }
   function draw() {
     const p = P(), now = S.time;
-    cx.imageSmoothingEnabled = false;
-    cx.fillStyle = '#1e3a30'; cx.fillRect(0, 0, W, H);
+    cx.imageSmoothingEnabled = false; ART.setScene(sceneKey());
+    cx.fillStyle = FIELD[sceneKey()] || FIELD.spring; cx.fillRect(0, 0, W, H);
     if (!UI.live) { UI.live = []; S.tiles.forEach((T, i) => { if (T.t !== 'void') UI.live.push(i); }); }
     const order = UI.live.slice(), vd = {};
     order.forEach(i => { vd[i] = view(tx(i), ty(i)); });
@@ -1315,6 +1415,7 @@
     if (labels.length) drawLabels(p, labels);
     // particles
     UI.parts.forEach(q => { cx.fillStyle = `rgba(230,230,235,${.6 * (1 - q.t)})`; cx.fillRect(q.x + q.vx * q.t * 4, q.y - q.t * 18 * p, 2 * p * (1 + q.t), 2 * p * (1 + q.t)); });
+    drawWeather();
     // dusk tint
     const hr = hour(); if (hr > 18) { cx.fillStyle = `rgba(70,30,100,${Math.min(.28, (hr - 18) / 4 * .28)})`; cx.fillRect(0, 0, W, H); }
     // floating text
@@ -1361,6 +1462,10 @@
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
+    { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
+      const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
+      if (ss.length) P.push(`<b>In season:</b> ${esc(nmList(ss))}${ck ? `: the crop grows ${g}% faster and sells for ${sp}% more` : `: sells for ${sp}% more`}.`);
+      if (ck && D.crops[ck].hardy) P.push('Hardy: frost doesn’t slow it, winter doesn’t either, and it can be planted on snow days.'); }
     if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
     else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient; a station Quality upgrade adds one tier on top.`);
     const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
@@ -1404,7 +1509,8 @@
       <div class="stat score" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
-      <div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>
+      ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
+        : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}">${wxName(wxNow())}</span></button>`}
       ${S.goalMin ? (() => { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
         return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; })() : ''}
       <div class="status">${status}</div>`);
@@ -1519,12 +1625,13 @@
       h += `<p class="state">Tilled and ready for seeds.</p><p class="hint small">For ${QN[1]} crops, water at both growth stages. Add fertilizer too for ${QN[2]}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
       if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
       const seeds = Object.keys(D.crops).filter(k => count(D.crops[k].seed) > 0);
-      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s` })).join('')}</div>`
+      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s${cropInSeason(k) ? ' · in season' : ''}` })).join('')}</div>${wxNow() === 'snow' && seeds.some(snowBlocks) ? `<p class="hint small">Snow day: only hardy crops (carrots, potatoes, wheat, apple trees) can be planted today.</p>` : ''}`
         : `<p class="hint">No seeds. Buy some at the Open Market.</p>`;
     } else {
       const cr = D.crops[b.crop];
       h += `<div class="row">${ico(cr.item)}<div class="grow1"><b>${esc(cr.name)}</b> ${b.st === 'ready' ? '· ready' : `· ${b.wet ? 'soil is wet' : '<span class="warn">needs water</span>'}`}${b.st === 'growing' ? pbar('f:' + i) : ''}</div></div>`;
-      const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
+      const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0)), gn = b.st === 'growing' && growNote(b.crop);
+      if (gn) h += `<p class="hint small">${esc(gn.charAt(0).toUpperCase() + gn.slice(1))}.</p>`;
       h += `<p class="hint">Quality: <button class="linkish small" data-qhelp-panel>?</button> watered early ${b.w[0] ? '✓' : '—'} · watered late ${b.w[1] ? '✓' : '—'}${b.fert ? ' · fertilized ✓' : ''} → <b>${b.st === 'ready' ? QN[q] : 'aiming ' + QN[Math.min(2, (b.w[0] && (b.w[1] || !b.half) ? 1 : 0) + (b.fert ? 1 : 0))]}</b></p>`;
       if (b.st === 'growing') h += btn({ a: 'water', i }, 'Water', { cls: 'pri', sub: b.half ? 'Second watering: Good quality' : 'Wet soil grows 2× faster' });
       if (b.st === 'growing' && !b.fert && (unlocked('compost') || count('fertilizer') > 0)) h += btn({ a: 'fertilize', i }, 'Add fertilizer', { sub: `Grows ${Math.round((C.fertGrowth - 1) * 100)}% faster · +1 quality · ${count('fertilizer')} in storage` });
@@ -1611,7 +1718,7 @@
       else if (free <= 5) h += `<div class="fullbar soft">Storage is nearly full: room for <b>${free}</b> more item${free === 1 ? '' : 's'}.</div>`;
       const list = Object.keys(D.items).filter(canBuyItem);
       h += chips('buy', groupCounts(list));
-      h += grouped(list, 'buy', id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
+      h += grouped(list, 'buy', id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)}${seasonTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
       h += `<p class="hint">Any good you've made at least once is sold here too, at about ${RESALE}× its normal value, always Normal quality. Every purchase nudges the price up for everyone; every sale nudges it down.</p>`;
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
@@ -1619,7 +1726,7 @@
       const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0);
       if (ids.length) h += chips('sell', groupCounts(ids));
       const sellRow = id => [0, 1, 2].filter(q => S.inv[id][q] > 0).map(q => { const n = S.inv[id][q], key = `${id}:${q}`, pr = sellPrice(id, q), v = Math.max(1, Math.min(n, UI.sq[key] || 1));
-        return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each ${moveTag(id)} · have ${n}</small></div>
+        return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each ${moveTag(id)}${seasonTag(id)} · have ${n}</small></div>
           <div class="sellctl">${btn({ a: 'sell', i, p: id, q, n: 1 }, 'Sell 1', { cls: 'sm' })}${n > 1 ? btn({ a: 'sell', i, p: id, q, n }, `All · ${pr * n}g`, { cls: 'sm' }) : ''}
           <span class="qtybox"><input type="number" class="qty" id="sq-${id}-${q}" data-sq="${key}" data-max="${n}" data-price="${pr}" min="1" max="${n}" step="1" value="${v}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to sell"><button class="btn sm pri" data-sellqty="${key}" data-i="${i}">Sell · <span data-sqtotal="${key}">${pr * v}</span>g</button></span></div></div>`; }).join('');
       h += ids.length ? grouped(ids, 'sell', sellRow) : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
@@ -1800,6 +1907,25 @@
           if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
           if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
           return h; }
+  /* Seasons and weather: today, tomorrow, what's in season now and next, and the year at a glance. */
+  function seasonDrawer() {
+    const close = `<button class="close" data-close-drawer aria-label="Close">×</button>`;
+    if (noSeasons()) return `<div class="phead"><div><h2>No seasons in races</h2><p class="sub">Races and weekly challenges always run on a fair spring day, so everyone plays the same game.</p></div>${close}</div>`;
+    const se = season(), si = seasonIdx(), nx = D.seasons[(si + 1) % D.seasons.length], left = SR.len - seasonDay() + 1;
+    const g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
+    const items = ids => `<div class="sitems">${ids.map(id => { const it = D.items[id] ? id : D.crops[id].item;
+      return `<span class="sitem ${S.disc.includes(it) ? '' : 'unk'}" title="${S.disc.includes(it) ? '' : 'Not made yet'}">${ico(it, S.disc.includes(it) ? '' : 'dim')}${esc(D.items[it].name)}</span>`; }).join('')}</div>`;
+    const wxBox = (d, label) => { const k = weatherOn(d), dse = season(d), newSe = seasonDay(d) === 1 && d !== S.day;
+      return `<div class="wxcard wx-${k}"><span class="eyebrow">${label} · Day ${d}${newSe ? ` · ${esc(dse.name)} begins` : ''}</span><b>${esc(wxName(k))}</b><p>${esc(wxLine(d))}</p></div>`; };
+    let h = `<div class="phead"><div><h2>${esc(se.name)}, day ${seasonDay()} of ${SR.len}</h2><p class="sub">Year ${yearOf()} · ${esc(se.blurb)}</p></div>${close}</div>`;
+    h += `<div class="wxrow">${wxBox(S.day, 'Today')}${wxBox(S.day + 1, 'Tomorrow')}</div>`;
+    h += `<span class="eyebrow">In season now</span><p class="hint small">Grow ${g}% faster and sell for ${sp}% more:</p>${items(se.crops)}
+      <p class="hint small">Sell for ${sp}% more, and the market often wants them:</p>${items(se.goods)}`;
+    if (se.id === 'winter') h += `<p class="hint small">Winter: tender crops (${esc(cropList(Object.keys(D.crops).filter(k => !D.crops[k].hardy)))}) grow ${Math.round((1 - SR.winterGrow) * 100)}% slower. Hardy crops grow as usual.</p>`;
+    h += `<span class="eyebrow">Next: ${esc(nx.name)}, in ${left} day${left === 1 ? '' : 's'}</span><p class="hint small">${esc(nx.blurb)} In season: ${esc(cropList(nx.crops))}, plus ${esc(nameList(nx.goods))}.</p>`;
+    h += `<span class="eyebrow">The year</span><div class="yearbar">${D.seasons.map((z, k) => `<div class="ys ${z.id} ${k === si ? 'on' : ''}"><b>${esc(z.name)}</b><small>Days ${k * SR.len + 1}–${(k + 1) * SR.len}</small>${k === si ? `<i style="width:${(seasonDay() - 1 + (S.time % C.dayLength) / C.dayLength) / SR.len * 100}%"></i>` : ''}</div>`).join('')}</div>`;
+    h += `<p class="hint small">A year is ${YEAR} days, so each season lines up with a weekly report. Weather comes out the same however often you reload. Rain waters crops for you; heat dries soil out; snow days only let hardy crops be planted; mist and fog are just for looks.</p>`;
+    return h; }
   function renderDrawer() {
     const el = $('#drawer');
     if (!UI.drawer) { el.hidden = true; UI.html['#drawer'] = ''; return; }
@@ -1834,6 +1960,8 @@
         if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
+    } else if (UI.drawer === 'season') {
+      h = seasonDrawer();
     } else if (UI.drawer === 'support') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'medals') {
@@ -1893,7 +2021,7 @@
           ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}</div>`}
         <span class="eyebrow">Sound</span><div class="opts">
         <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
-        ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day and crickets at dusk'], ['mus', 'Music', 'Soft, slow and never the same twice']].map(([k, n, d]) =>
+        ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day, crickets at dusk, rain and summer cicadas'], ['mus', 'Music', 'A different tune for each season, never the same twice']].map(([k, n, d]) =>
           `<label class="slider"><span><b>${n}</b><small>${d}</small></span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.prefs[k] * 100)}" data-vol="${k}" aria-label="${n} volume" ${SND.prefs.mute ? 'disabled' : ''}></label>`).join('')}
         </div>
         <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
@@ -2198,6 +2326,7 @@
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
     tickCatchUp(); SND.setHour(hour()); checkIdle(now); tickRace(dt);
+    { const sc = (noSeasons() ? 'spring' : season().id) + '|' + wxNow() + '|' + raining(); if (sc !== UI.sndScene || (SND.ready && !UI.sndReady)) { UI.sndScene = sc; UI.sndReady = SND.ready; SND.setScene(...sc.split('|').map((v, k) => k === 2 ? v === 'true' : v)); } }
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
     if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
@@ -2212,7 +2341,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-213018';
+  const BUILD = '20261015-223210';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2543,7 +2672,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

@@ -3,6 +3,25 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.41 — 2026-10-15
+- Seasons and weather (Late-game loops, Stage 1). data.js: seasonRules, seasons (crops, goods, weather weights, late-autumn
+  frost), weather texts, crop `hardy` flag. 28-day year from S.day (seasonIdx/seasonDay/yearOf); weather rolled from
+  fid + day (rollWeather, gentle kinds only during the tutorial), memoised in S.wx; rain falls in a seeded window
+  (rainWin) and waters growing plots (counts for quality); heat dries wet plots after 12 s (b.dry); frost halves tender
+  growth before 10:00; snow blocks planting non-hardy crops; in-season crops grow ×1.25, tender crops ×0.8 in winter,
+  sun ×1.1. sellPrice × seasonSell (×1.2 in season); rollMarket picks an in-season demand 60% of the time. Races and
+  weekly runs: noSeasons() keeps everything neutral.
+- UI: the day chip is a button (season + weather tag) opening the 'season' drawer (today/tomorrow, in season now and
+  next, year bar); "in season" tags in the market; plot panel growth note and snow-day hint; info cards list seasons and
+  hardiness; season-start toast and log line; weather in the day toast.
+- Art: ART.setScene (spring/summer/autumn/winter/snow) recolours ground and plant sprites by exact colour swaps, spring
+  blossom on trees, snow caps on every upward edge on snow days; discovery pictures stay spring. Screen-space weather in
+  draw(): soft-light season grades, sun/heat glow, rain streaks, snowflakes, fog/mist banks, frost tint, spring petals
+  and autumn leaves (particles off with reduced motion); background colour per scene.
+- Sound: SND.setScene(season, weather, raining). Four generated themes (spring bells in C, summer plucks + walking bass
+  in G, autumn wooden plucks in A minor, winter celesta in E minor); rain hiss and drips, summer cicadas, fewer birds in
+  autumn/winter, no crickets in winter, muffled breeze in snow and fog.
+
 ## v0.40 — 2026-10-15
 - Finite minerals: gather.deposit (30 digs) on boulder, clay, ore; T.r.dep counts digs left; surface stock refills
   only from what's left; useDep() on mine/gather; migrate() gives old tiles a full deposit. Not applied in races.

@@ -490,9 +490,64 @@ window.HW_ART = (function () {
     for (let y = 0; y < c.height; y++) if (!drop.has(y)) g.drawImage(c, 0, y, c.width, 1, 0, y2++, c.width, 1);
     return o;
   }
-  return {
-    SHIRTS, HATS,
-    get(key) {
+  /* ---------- seasons ----------
+     Spring is the art as drawn. Other seasons recolour the ground and plants pixel by pixel (exact colour swaps), so
+     every tile and tree keeps its shape: lush deep greens in summer, gold and russet in autumn, frosted muted greens
+     in winter, and white ground with snow on every roof and treetop on a snow day. Spring trees get blossom. */
+  let scene = 'spring';
+  const GROUND = new Set(['grass', 'forest', 'water', 'boulder', 'flowers', 'clay', 'reeds', 'ore', 'farm_raw']);
+  const PLANT = new Set(['tree', 'stump', 'sapling', 'blooms', 'reedbed', 'pondreeds']);
+  const SCENES = {
+    summer: {
+      ground: { '#7cc04b': '#84bf3c', '#93d35c': '#9ccc48', '#5fa23a': '#6a9a30', '#a6dc6a': '#c8c860', '#6fb440': '#78ac38',
+        '#5f9e3c': '#5a9432', '#4c8a30': '#467e28', '#73b34a': '#7eac3c', '#3f7a2a': '#3a6e24', '#8ccc58': '#90c44a', '#9bd462': '#a6cc50',
+        '#6a9a5a': '#6e9a4c', '#7aaa62': '#86a854', '#4aa3d8': '#44a0d8', '#9ad6f2': '#b8e6fa' },
+      plant: { '#3f7a2a': '#346c22', '#4c8a30': '#427e26', '#5aa83f': '#52a032', '#7cc04b': '#74b83c' } },
+    autumn: {
+      ground: { '#7cc04b': '#a8a64a', '#93d35c': '#bcb456', '#5fa23a': '#8e8a3a', '#a6dc6a': '#d49a3a', '#6fb440': '#c0602a',
+        '#5f9e3c': '#8a8a3c', '#4c8a30': '#a8642a', '#73b34a': '#d08a30', '#3f7a2a': '#7a5a2a', '#8ccc58': '#a4a848', '#9bd462': '#b8b050',
+        '#6a9a5a': '#8a8a4a', '#5a8a4c': '#7a7a40', '#7aaa62': '#a89a50', '#4aa3d8': '#4a98c8' },
+      plant: { '#3f7a2a': '#a0401e', '#4c8a30': '#c85a24', '#5aa83f': '#e0882a', '#7cc04b': '#f0b83a', '#73b34a': '#d8a040', '#6fb440': '#b85a2a',
+        '#6f9a3a': '#a8904a', '#8ab04a': '#c8a85a' } },
+    winter: {
+      ground: { '#7cc04b': '#9cae8c', '#93d35c': '#b4c4a6', '#5fa23a': '#7e9272', '#a6dc6a': '#dfe8ec', '#6fb440': '#8a9e7c',
+        '#5f9e3c': '#7e9276', '#4c8a30': '#5e7258', '#73b34a': '#a0b096', '#3f7a2a': '#4e6248', '#8ccc58': '#a0b090', '#9bd462': '#b4c0a4',
+        '#e86aa8': '#b8a0b0', '#f6e27a': '#d8d4b0', '#b48ae8': '#a8a0c0', '#6a9a5a': '#8a9a80', '#5a8a4c': '#6e7e66', '#7aaa62': '#a0aa90',
+        '#4aa3d8': '#4a8ebc', '#7cc4ea': '#b8d8ea', '#9ad6f2': '#e4f2f8' },
+      plant: { '#3f7a2a': '#2e5040', '#4c8a30': '#3a6050', '#5aa83f': '#4e7262', '#7cc04b': '#6a8a7a', '#d6334a': '#3a6050',
+        '#e86aa8': '#b8a0b0', '#f6e27a': '#d8d4b0', '#b48ae8': '#a8a0c0', '#f08a24': '#c8a890', '#6f9a3a': '#a89a6a', '#8ab04a': '#c4b88a' } }
+  };
+  SCENES.snow = {
+    ground: Object.assign({}, SCENES.winter.ground, { '#7cc04b': '#eef3f6', '#93d35c': '#ffffff', '#5fa23a': '#9cae8c', '#a6dc6a': '#dce6ec', '#6fb440': '#c8d6de',
+      '#5f9e3c': '#e4ecf0', '#4c8a30': '#7e9276', '#73b34a': '#ffffff', '#3f7a2a': '#c4d2da', '#8ccc58': '#eaf0f2', '#9bd462': '#ffffff',
+      '#e86aa8': '#e8c8d8', '#f6e27a': '#ffffff', '#b48ae8': '#dce6ec', '#f2f2f2': '#ffffff',
+      '#6a9a5a': '#e2eaee', '#5a8a4c': '#a8b49a', '#7aaa62': '#ffffff',
+      '#b3a37a': '#e6ebee', '#9c8c66': '#b8c0c4', '#c7b98f': '#ffffff', '#8a7a58': '#9aa4aa',
+      '#c98a5a': '#ecf0f2', '#b5764a': '#c8a08a', '#d8a06e': '#ffffff', '#a8683e': '#dde4e8',
+      '#9a8a7a': '#e8edf0', '#86766a': '#b0b8bc', '#b0a090': '#ffffff',
+      '#a87444': '#e8eef1', '#946238': '#c0a080', '#bb8652': '#ffffff' }),
+    plant: SCENES.winter.plant
+  };
+  const hexOf = (d, i) => '#' + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
+  function seasonize(src, k) {
+    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+    const img = g.getImageData(0, 0, c.width, c.height), d = img.data, w = c.width, h = c.height, S = SCENES[scene];
+    const map = S ? (GROUND.has(k) ? S.ground : PLANT.has(k) ? S.plant : null) : null;
+    const set = (i, col) => { d[i] = parseInt(col.slice(1, 3), 16); d[i + 1] = parseInt(col.slice(3, 5), 16); d[i + 2] = parseInt(col.slice(5, 7), 16); };
+    if (map) for (let i = 0; i < d.length; i += 4) { if (d[i + 3] !== 255) continue; const to = map[hexOf(d, i)]; if (to) set(i, to); }
+    if (scene === 'spring' && k === 'tree') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, hx = hexOf(d, i), n = (x * 7 + y * 13) % 9;
+      if (d[i + 3] === 255 && (hx === '#4c8a30' || hx === '#5aa83f') && (n === 0 || n === 5)) set(i, n ? '#fbd3e3' : '#f4a6c6'); }
+    // snow day: a white cap on every upward-facing edge (roofs, treetops, rocks, fences)
+    if (scene === 'snow' && !GROUND.has(k)) { const top = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4; if (d[i + 3] === 255 && (y === 0 || d[i - w * 4 + 3] < 200)) top[y * w + x] = 1; }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!top[y * w + x]) continue; const i = (y * w + x) * 4; set(i, '#f4f8fb');
+        const j = i + w * 4; if (y + 1 < h && d[j + 3] === 255 && !top[(y + 1) * w + x] && (x + y) % 2 === 0) set(j, '#d8e4ec'); } }
+    g.putImageData(img, 0, 0); return c;
+  }
+  // which sprites change with the scene: ground and plants always; trees in spring (blossom); everything but crops and people on a snow day
+  const seasonal = (k, objs) => scene === 'spring' ? k === 'tree' : GROUND.has(k) || PLANT.has(k) || (scene === 'snow' && objs);
+  function base(key) {
       if (cache[key]) return cache[key];
       const [k, a] = key.split(':');
       let c;
@@ -503,13 +558,22 @@ window.HW_ART = (function () {
       else c = mk(2, 2, () => {});
       if (SHORT.has(k)) c = dropRows(c, shortRows(k === 'stove_on' ? 'stove' : k));
       return (cache[key] = c);
+  }
+  return {
+    SHIRTS, HATS,
+    get(key) {
+      const k = key.split(':')[0];
+      if (!seasonal(k, !!OBJ[k])) return base(key);
+      const sk = scene + '|' + key; return cache[sk] || (cache[sk] = seasonize(base(key), k));
     },
+    setScene(s) { if (s !== scene && (s === 'spring' || SCENES[s])) scene = s; },
+    get scene() { return scene; },
     icon(id, items) {
       if (urls[id]) return urls[id];
       const it = items[id]; const c = icon(...it.icon);
       return (urls[id] = c.toDataURL());
     },
-    discPic(pic, items) { return discPic(pic, items, k => this.get(k)); },
+    discPic(pic, items) { return discPic(pic, items, base); }, // discovery cards keep the spring look
     iconCanvas(id, items) { const k = 'icon:' + id; if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
   };
 })();
