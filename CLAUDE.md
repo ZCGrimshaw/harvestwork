@@ -11,3 +11,20 @@
 ## Releasing
 1. Edit files in `src/`, then run `./build.sh` (stamps a build id into `game.js`, `version.json` and the script addresses in `index.html`).
 2. Commit and push to `main`; GitHub Pages serves the repo root. Open games see the "new version" banner within ~2 minutes.
+
+## Project facts (for a fresh conversation)
+- Public name **Harvest Valley**; repo/internal name Harvestworks (`ZCGrimshaw/harvestwork`, GitHub Pages:
+  https://zcgrimshaw.github.io/harvestwork/). Also mirrored as a Claude artifact:
+  https://claude.ai/artifact/KGVdTPj3H4mSzeMvRZNE4g (publish `index.html` plus `game.js`, `data.js`, `art.js`, `sound.js`
+  from the repo root after `./build.sh`, to that URL).
+- Code: vanilla JS. `src/game.js` (game, UI, online features), `src/data.js` (all content: items, recipes, buildings,
+  discoveries, contracts, weekly themes, update log), `src/art.js` (procedural pixel art), `src/sound.js` (Web Audio).
+- Online features use Supabase project `xtbsmtystiozdogielrd` (Supabase connector): market prices, leaderboard,
+  names, cloud backups, races, weekly challenge + medals, player keys, presence count. All RPCs are SECURITY DEFINER
+  with RLS on and no policies (intentional). Test SQL inside `begin; … rollback;`.
+- Testing: Playwright with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, opening `src/index.html`
+  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest…).
+  Mock the server with `ctx.route('**/rest/v1/rpc/*')`; seed saves with `add_init_script`. Write test screenshots to
+  a scratch folder, never the repo.
+- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 1 Seasons and weather).
+  History of every release is in `CHANGELOG.md`.
