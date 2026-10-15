@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.39 — 2026-10-15
+- Animals branch (discoveries chickens, dairy, sheep, creamery; chickens needs surveying + a surveyed area via the new
+  `survey: true` flag and discOk()). Stations coop, dairy, pasture, creamery (kits in the market) with feed recipes
+  (recipe `label` for same-output rows); goods egg, milk, wool, butter, cheese, omelette, custard, cake, yarn, blanket.
+  Contracts Farm Fresh, Cozy Woolens, Country Bakery (land: 'any' = needs a surveyed area). Art: animated coop, dairy,
+  pasture sprites, creamery, new icons (egg, bottle, wool, block, wedge, cake, yarn). Toast on the first survey.
+
 ## v0.38.1 — 2026-10-15
 - Contracts: milestones 19–23 carry land:<theme>; S.msOrd (per-farm order) and curMs(); fixMsOrder() swaps a land
   contract whose area isn't open with the next contract that's doable (run on load, after a survey, after a delivery).

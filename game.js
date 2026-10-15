@@ -80,11 +80,13 @@
   function regionNbrs(r) { const rx = r % RW(), ry = r / RW() | 0, o = []; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = rx + dx, y = ry + dy; if (x >= 0 && y >= 0 && x < RW() && y < RW()) o.push(y * RW() + x); }); return o; }
   /* Contracts run in order, except the new-land ones: if the next contract needs an area you haven't surveyed yet
      and a later one needs an area you have (or none at all), they swap, so you're never stuck waiting on land. */
-  const hasLand = th => S.regions.some(R => R.open && R.theme === th);
+  const hasLand = th => th === 'any' ? (S.surveys || 0) > 0 : S.regions.some(R => R.open && R.theme === th);
   const curMs = () => D.milestones[S.msOrd ? S.msOrd[S.ms] : S.ms];
   function fixMsOrder() { if (!S.msOrd) S.msOrd = D.milestones.map((m, k) => k); for (let k = 0; k < D.milestones.length; k++) if (!S.msOrd.includes(k)) S.msOrd.push(k);
     const O = S.msOrd, cur = D.milestones[O[S.ms]]; if (!cur || !cur.land || hasLand(cur.land)) return;
     for (let k = S.ms + 1; k < O.length; k++) { const m = D.milestones[O[k]]; if (!m.land || hasLand(m.land)) { [O[S.ms], O[k]] = [O[k], O[S.ms]]; return; } } }
+  // a discovery is ready once its prerequisites are unlocked (animals also need your first new area surveyed)
+  const discOk = d => d.req.every(unlocked) && (!d.survey || (S.surveys || 0) > 0);
   const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open);
   const areas = () => 1 + (S.surveys || 0);
   const isVoid = i => S.tiles[i].t === 'void';
@@ -722,6 +724,7 @@
       run: t => { pay(surveyCost()); S.regions[t.p].open = true; genRegion(t.p); S.surveys = (S.surveys || 0) + 1; UI.live = null; UI.bounds = null;
         const th = D.regionThemes[S.regions[t.p].theme]; gainScore(C.score.survey, t.i); fixMsOrder(); float(t.i, `New area: ${th.name}`, '#b8f08a');
         first('survey:' + S.regions[t.p].theme, 2, `New area: ${th.name}`);
+        if (S.surveys === 1 && !unlocked('chickens')) setTimeout(() => toast('<b>Animals are here.</b> With new land to spare, Chickens, Dairy Cows and Sheep are now in Discovery → Animals.', 'disc'), 2500);
         toast(`<b>${esc(th.name)} surveyed.</b> Buy its tiles from the edge of your land as usual. You now have ${areas()} areas, so you can build ${areas()} of each station.`, 'goal'); } },
     move: { label: t => `Move ${t.nm || 'building'}`,
       check: t => { const b = T_(t.p) && T_(t.p).b; if (!unlocked('rollers')) return 'Unlock Rollers & Skids';
@@ -1255,6 +1258,7 @@
           if (b.type === 'stove' && active) key = 'stove_on';
           if (b.type === 'medal') key = 'medal:' + b.m.place;
           if (b.type === 'mill' || b.type === 'sawmill') key += ':' + (active ? ((now * 4) | 0) % 2 : 0);
+          if (b.type === 'coop' || b.type === 'dairy' || b.type === 'pasture') key += ':' + (((now * .8) + i * .37) | 0) % 2;
           if (D.buildings[b.type].kind === 'sprinkler') key = (b.type === 'big_sprinkler' ? 'big_sprinkler:' : 'sprinkler:') + (b.fx > 0 ? ((now * 6) | 0) % 2 : 0);
           const img = ART.get(key); blit(img, sx, sy, p, 16, img.height - 4);
           if (UI.labels) labels.push({ sx, sy: sy - (img.height - 1) * p, name: D.buildings[b.type].name });
@@ -1354,7 +1358,7 @@
   const pbar = (key, cls = '') => `<div class="pb ${cls}"><i data-prog="${key}"></i></div>`;
 
   function renderTop() {
-    const canUnlock = D.discoveries.some(d => !unlocked(d.id) && d.req.every(unlocked) && S.dp >= d.cost);
+    const canUnlock = D.discoveries.some(d => !unlocked(d.id) && discOk(d) && S.dp >= d.cost);
     const status = paused() ? 'Paused' : S.cur ? `${S.cur.ph === 'walk' ? 'Walking to' : 'Working:'} ${esc(TASKS[S.cur.a].label(S.cur))}` : 'Idle';
     setHTML('#stats', `
       <div class="stat" title="Gold"><span class="coin"></span><b>${S.gold}</b></div>
@@ -1519,7 +1523,7 @@
       const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
       const le = checkTask({ a: 'load', i, p: id });
       const ex = UI.rexp === i + ':' + id;
-      return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
+      return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(R.label || D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
     }).join('');
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
@@ -1758,14 +1762,14 @@
     el.hidden = false; let h = '';
     if (UI.drawer === 'disc') {
       h = `<div class="phead"><div><h2>Discovery</h2><p class="sub">Earned from firsts, deeper chains, quality and contracts. Never from repeating cheap work. You have <b>${S.dp}</b>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
-      const rank = d => unlocked(d.id) ? 3 : d.req.every(unlocked) ? (S.dp >= d.cost ? 0 : 1) : 2;
+      const rank = d => unlocked(d.id) ? 3 : discOk(d) ? (S.dp >= d.cost ? 0 : 1) : 2;
       const branchOf = d => (D.discoveryBranches.find(b => b.ids.includes(d.id)) || D.discoveryBranches[0]).id;
-      const avail = D.discoveries.filter(d => !unlocked(d.id) && d.req.every(unlocked));
+      const avail = D.discoveries.filter(d => !unlocked(d.id) && discOk(d));
       h += chips('disc', D.discoveryBranches.map(b => [b.id, b.name, D.discoveries.filter(d => branchOf(d) === b.id && !unlocked(d.id)).length || null]), avail.length ? [['avail', 'Ready to unlock', avail.length]] : []);
-      const sel = catSel('disc'), card = d => { const own = unlocked(d.id), reqOk = d.req.every(unlocked);
+      const sel = catSel('disc'), card = d => { const own = unlocked(d.id), reqOk = discOk(d);
         const st = own ? 'own' : reqOk ? (S.dp >= d.cost ? 'can' : 'short') : 'lock';
         return `<div class="card ${st}"><div class="ctop"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div class="ctxt"><b>${esc(d.name)}</b><span class="cost">${own ? 'Unlocked' : d.cost + ' DP'}</span></div></div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p>
-          ${own ? '' : !reqOk ? `<small>Needs ${d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)).join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
+          ${own ? '' : !reqOk ? `<small>Needs ${[...d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : [])].join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
       if (sel === 'avail') h += `<div class="cards">${[...avail].sort((a, b) => rank(a) - rank(b)).map(card).join('')}</div>`;
       else h += D.discoveryBranches.filter(b => sel === 'all' || sel === b.id).map(b => {
         const ds = D.discoveries.filter(d => branchOf(d) === b.id).sort((x, y) => rank(x) - rank(y));
@@ -1995,7 +1999,7 @@
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
     else if (ds.pass) { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
-      if (d && !unlocked(d.id) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
+      if (d && !unlocked(d.id) && discOk(d) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
         if (kit && !S.market.offers.includes(kit)) { S.market.offers.unshift(kit); S.market.offers = S.market.offers.slice(0, C.marketOffers); }
         UI.bounds = null; SND.play('discover');
@@ -2162,7 +2166,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-143418';
+  const BUILD = '20261015-144959';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

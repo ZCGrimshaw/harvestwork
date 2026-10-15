@@ -169,6 +169,39 @@ window.HW_ART = (function () {
         r('#bfe6f8', 16, 8); r('#8fd3ef', 16, 6);
       }
     }),
+    /* animal buildings: f is the animation frame (0/1) so the animals shuffle about */
+    coop: f => mk(32, 32, (g, r) => { f = f | 0;
+      shadow(r, 32, 12);
+      r('#c98a4a', 9, 14, 8, 11); r('#a8703a', 17, 14, 7, 11);
+      for (let i = 0; i < 7; i++) { r('#c8483a', 16 - (3 + i), 7 + i, 3 + i, 1); r('#a8323f', 16, 7 + i, 3 + i, 1); }
+      r('#2a1a14', 12, 18, 3, 4); line(r, '#7a4b28', 12, 22, 8, 27); r('#f2ead8', 19, 16, 3, 2);
+      const hen = (x, y, peck) => { ell(r, '#f8f6ee', x, y, 2, 2); r('#f8f6ee', x + 2, y - 2 - (peck ? -1 : 0), 2, 2); r('#c22a2a', x + 2, y - 3 - (peck ? -1 : 0), 1, 1); r('#f0a030', x + 4, y - 1 - (peck ? -1 : 0)); r('#f0a030', x, y + 2, 1, 1); };
+      hen(f ? 5 : 6, 27, f); hen(f ? 21 : 20, 28, !f);
+    }),
+    dairy: f => mk(32, 36, (g, r) => { f = f | 0;
+      shadow(r, 36, 13);
+      r('#c8483a', 9, 18, 9, 12); r('#a8323f', 18, 18, 9, 12);
+      for (let i = 0; i < 9; i++) { r('#6b4226', 18 - (3 + i), 9 + i, 3 + i, 1); r('#55331a', 18, 9 + i, 3 + i, 1); }
+      r('#f2ead8', 12, 22, 5, 8); r('#c8483a', 13, 23, 3, 7); line(r, '#f2ead8', 13, 23, 15, 29);
+      // a cow beside the barn, grazing on frame 1
+      r('#f8f6ee', 2, 26, 8, 5); r('#2a2a30', 3, 27, 2, 2); r('#2a2a30', 7, 26, 2, 2); r('#f8f6ee', 2, 31, 1, 2); r('#f8f6ee', 8, 31, 1, 2);
+      r('#f8f6ee', f ? 0 : 0, f ? 29 : 24, 3, 3); r('#e8a0a0', 0, f ? 31 : 26, 2, 1); r('#2a2a30', 1, f ? 28 : 23, 1, 1);
+    }),
+    pasture: f => mk(32, 32, (g, r) => { f = f | 0;
+      // a rail fence along the back edges of the tile, a corner post at the front, and three sheep grazing
+      const rail = (x0, y0, x1, y1) => { line(r, '#dcaa68', x0, y0 - 3, x1, y1 - 3); line(r, '#c99a5a', x0, y0 - 1, x1, y1 - 1); };
+      rail(3, 27, 16, 20); rail(16, 20, 29, 27);
+      [[3, 27], [9, 24], [16, 20], [23, 24], [29, 27]].forEach(([x, y]) => r('#7a4b28', x, y - 5, 1, 5));
+      const sheep = (x, y) => { ell(r, '#d8d0c0', x, y + 1, 3, 2); ell(r, '#f8f4ea', x, y, 3, 2); r('#3a3a40', x + 3, y - 1, 2, 2); r('#3a3a40', x - 2, y + 2, 1, 2); r('#3a3a40', x + 2, y + 2, 1, 2); };
+      sheep(f ? 10 : 11, 25); sheep(f ? 21 : 20, 26); sheep(15, f ? 29 : 28);
+    }),
+    creamery: () => mk(32, 32, (g, r) => {
+      shadow(r, 32, 12);
+      r('#f2ece0', 7, 15, 9, 13); r('#d8d0c0', 16, 15, 9, 13);
+      for (let i = 0; i < 8; i++) { r('#5a8ab8', 16 - (3 + i), 7 + i, 3 + i, 1); r('#4a7aa8', 16, 7 + i, 3 + i, 1); }
+      r('#7a4b28', 10, 20, 4, 8); r('#8ab8d8', 18, 18, 4, 3);
+      r('#a8743e', 24, 22, 5, 7); r('#7a4b28', 24, 21, 5, 1); r('#7a4b28', 26, 18, 1, 3); r('#f6dc6a', 25, 23, 3, 1);
+    }),
     // a Weekly Challenge medal on a little wooden stand: 1 gold, 2 silver, 3 bronze
     medal: place => mk(32, 32, (g, r) => {
       const C = { 1: ['#f6d24a', '#c99a1e', '#fff3b0'], 2: ['#d8dde4', '#9aa2ae', '#ffffff'], 3: ['#d98a4a', '#9a5a2a', '#f4c08a'] }[place] || ['#f6d24a', '#c99a1e', '#fff3b0'];
@@ -396,6 +429,13 @@ window.HW_ART = (function () {
         case 'loop': for (let k = 0; k < 20; k++) { const t = k / 20 * Math.PI * 1.7 + .4; r(k > 16 ? b : a, 8 + Math.round(Math.cos(t) * 5), 8 + Math.round(Math.sin(t) * 5), 2, 2); } r(a, 12, 2, 3, 1); r(a, 13, 3, 2, 2); break;
         case 'star': [[7, 1, 2, 4], [1, 5, 14, 2], [3, 7, 10, 2], [4, 9, 8, 2], [3, 11, 3, 2], [10, 11, 3, 2], [2, 13, 2, 2], [12, 13, 2, 2]].forEach(([x, y, w, h]) => r(a, x, y, w, h)); r(b, 7, 9, 2, 2); r('#fff6d0', 7, 2, 1, 2); break;
         case 'kit': r(a, 2, 5, 12, 9); r('#7a4b28', 2, 13, 12, 1); r(b, 2, 8, 12, 2); r('#f6efd8', 6, 3, 4, 2); r('#5e3519', 7, 3, 2, 1); break;
+        case 'egg': ell(r, b, 8, 10, 4, 5); ell(r, a, 8, 9, 4, 5); r('#fff', 6, 6, 2, 2); break;
+        case 'bottle': r(b, 6, 1, 4, 2); r('#c9c4b4', 6, 3, 4, 1); r(a, 5, 4, 6, 11); r(b, 5, 8, 6, 3); r('rgba(255,255,255,.7)', 6, 5, 1, 3); break;
+        case 'wool': ell(r, b, 8, 9, 6, 5); ell(r, a, 6, 8, 3, 3); ell(r, a, 10, 7, 3, 3); ell(r, a, 9, 11, 3, 2); ell(r, a, 5, 11, 2, 2); break;
+        case 'block': for (let y = 0; y < 4; y++) r('#fff3b0', 4 + y, 4 + y, 9, 1); r(a, 3, 8, 9, 6); r(b, 12, 8, 2, 6); r(b, 3, 13, 11, 1); break;
+        case 'wedge': for (let y = 0; y < 8; y++) r(a, 2 + y, 5 + y, 13 - y, 1); r(b, 2, 12, 13, 2); ell(r, b, 7, 9, 1, 1); ell(r, b, 11, 11, 1, 1); break;
+        case 'cake': r(b, 3, 4, 10, 2); r(a, 3, 6, 10, 7); r(b, 3, 9, 10, 1); r('#a8662a', 2, 13, 12, 1); r('#c22a44', 7, 2, 2, 2); r('#fff', 4, 5, 1, 2); r('#fff', 8, 5, 1, 3); r('#fff', 11, 5, 1, 2); break;
+        case 'yarn': ell(r, a, 8, 9, 5, 5); line(r, b, 4, 7, 11, 13); line(r, b, 5, 5, 12, 11); line(r, b, 3, 10, 9, 14); line(r, b, 13, 13, 15, 15); break;
         default: r(a, 4, 4, 8, 8);
       }
     });
