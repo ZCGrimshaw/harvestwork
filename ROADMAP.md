@@ -53,3 +53,28 @@ Not built yet; picked up when we choose to.
   of your stations, factories), districts, more residents wanting finer goods. Watch: scope, art volume, and
   performance on the 36×36 map (may need a separate "town" map).
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
+
+## Late-game loops plan (agreed 2026-10-15)
+
+Built in stages; each stage ships on its own.
+
+- **Stage 1: Seasons and weather.** A 28-day year of four 7-day seasons (lines up with the weekly report). Each
+  season favours some crops (faster growth, market demand) and changes the scenery (blossom, lush green, autumn
+  leaves, snow). Gentle weather, no storms: rain (waters every crop), sunny spells, heat (soil dries faster), fog
+  and morning mist (cosmetic), first frost in late autumn, snow days in winter (some crops can't be planted outside).
+  Each season gets its own music, ambience and colour palette. Client only.
+- **Stage 2: Supply contracts.** Standing deals on the Order Board ("10 bread a day for 5 days"): steady daily
+  deliveries for a big bonus and Discovery; missing a day ends the deal early with partial pay. Seasonal ones use
+  in-season crops. Client only.
+- **Stage 3: The Almanac.** A collection book: every good at every quality, plus rare finds (giant pumpkin, golden
+  egg, pearl while fishing, four-leaf clover). Completed pages give small permanent perks or decorations. Client only.
+- **Stage 4: Valley projects (online).** A shared weekly goal for the Online Valley ("rebuild the mill: planks and
+  flour"). Targets scale with the number of active players that week. Live progress bar; everyone who contributes
+  is rewarded, the top contributors get medals. Server: projects + contributions tables.
+- **Stage 5: The County Fair.** Once a season (end of each season). A special list of Fair orders just for the
+  event, a race to fill it: the clock starts when you open the fair. You get a Fair Cart that holds exactly enough
+  for the list (doesn't use storage). Fastest complete lists win ribbons for the trophy case; everyone who finishes
+  gets a reward. Online ranking like the weekly challenge.
+- **Stage 6: Seed breeding and the Greenhouse.** A Greenhouse grows out of season and crosses two Excellent crops
+  into variants (sweet carrots, giant pumpkins, golden wheat) worth more and recorded in the Almanac.
+- **Pinned for later:** Farm Renown ranks and titles; decorations and farm charm; farmhand expeditions.
