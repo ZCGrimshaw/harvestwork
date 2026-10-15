@@ -545,7 +545,12 @@
   const canBuyItem = id => D.items[id].cat !== 'kit' && (D.items[id].buy ? unlocked(D.items[id].requires) : S.disc.includes(id) && SELLABLE.includes(D.items[id].cat));
   const MARKET_BUYS = SELLABLE.concat(['seed', 'supply']);               // what the market will buy from you
   // A short "how do I use this?" line for items that aren't obvious.
-  function useHint(id) { const it = D.items[id];
+  // stations on Repeat quietly take ingredients from storage; say so wherever the item shows up
+  function repeatUsers(id) { const seen = {};
+    S.tiles.forEach(T => { const b = T.b; if (b && b.rep && D.recipes[b.rep] && D.recipes[b.rep].in[id]) { const k = D.buildings[b.type].name + ' → ' + (D.recipes[b.rep].label || D.items[Object.keys(D.recipes[b.rep].out)[0]].name); seen[k] = 1; } });
+    return Object.keys(seen); }
+  function useHint(id) { const it = D.items[id], ru = repeatUsers(id);
+    if (ru.length) return `On Repeat, used up automatically by: ${ru.join(', ')}. Turn Repeat off at the station to keep it.`;
     if (it.cat === 'seed') { const c = Object.values(D.crops).find(c => c.seed === id); return `Plant on a tilled Farm Plot: select the plot → Plant ${c ? c.name : ''}.`; }
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
     if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
@@ -558,6 +563,13 @@
     const pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat));
     if (pool.length) { const it = pool[(Math.random() * pool.length) | 0]; S.market.demand = { item: it, pct: Math.random() < .3 ? 50 : 25 }; }
   }
+  /* Can this farm actually make the item at Good quality right now? Crops (watering, fertilizer) and anything made
+     from them can; gathered things never can; other goods only once one of their stations has a Quality upgrade.
+     Orders only ask for Good when it's possible. */
+  function canGood(id, depth = 0) { if (depth > 6) return false;
+    if (Object.values(D.crops).some(c => c.item === id)) return true;
+    return Object.entries(D.recipes).some(([rid, R]) => R.out[id] && (S.tiles.some(T => T.b && T.b.type === R.station && T.b.lv && T.b.lv.quality > 0)
+      || (Object.keys(R.in).length && Object.keys(R.in).every(k => canGood(k, depth + 1))))); }
   function genOrder() {
     const pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && !S.orders.some(o => o.need[0][0] === id));
     if (!pool.length) return null;
@@ -566,7 +578,7 @@
     const useC = crafted.length && (!raw.length || Math.random() < .55);
     const list = useC ? crafted : raw, id = list[(Math.random() * list.length) | 0];
     const qty = useC ? 1 + ((Math.random() * 2.5) | 0) : 2 + ((Math.random() * 4) | 0);
-    const minQ = S.maxQ >= 1 && Math.random() < .25 ? 1 : 0;
+    const minQ = S.maxQ >= 1 && Math.random() < .25 && canGood(id) ? 1 : 0;
     const gold = Math.round(D.items[id].value * qty * (useC ? 1.6 : 1.35) * (1 + minQ * .6));
     const names = D.orderNames[useC ? 'crafted' : 'raw'];
     return { id: S.uid++, kind: useC ? 'crafted' : 'raw', name: names[(Math.random() * names.length) | 0], need: [[id, qty, minQ]], gold, score: Math.round(gold * (useC ? .9 : .5)) };
@@ -956,7 +968,8 @@
         const j = b.q.find(x => !x.done);
         if (j) { j.t += dt; if (j.t >= j.dur) { j.done = true; if (!b.auto) float(i, 'Done!', '#b8f08a'); SND.play('done', b.auto ? 0.5 : 1); dirty(); } }
         if (b.auto && unlocked('autocollect') && !collectErr(i)) { doCollect(i); dirty(); }
-        if (b.rep && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty(); }
+        if (b.rep && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty();
+          if (b.repDay !== S.day) { b.repDay = S.day; const R = D.recipes[b.rep]; logAct(`${D.buildings[b.type].name} on Repeat: using ${inTxtPlain(R.in)} for ${R.label || D.items[Object.keys(R.out)[0]].name} (logged once a day)`, 'auto'); } }
       } else if (b && D.buildings[b.type].kind === 'sprinkler') {
         if (b.fx > 0) b.fx -= dt;
         around(i, D.buildings[b.type].radius).forEach(j => { const f = farmAt(j); if (f && f.st === 'growing' && !f.wet) { waterPlot(f); b.fx = 1.4; dirty(); } });
@@ -1300,6 +1313,7 @@
   const ico = (id, cls = '') => `<img class="ico ${cls}" src="${ART.icon(id, D.items)}" alt="" data-info="${id}">`;
   /* Info cards: right-click (or long-press) anything that names an item (an icon, a recipe, a market row, a kit)
      to see what it is, where it comes from, what it's used for and what it's worth. All generated from data.js. */
+  const inTxtPlain = o => Object.entries(o).map(([k, n]) => `${n} ${D.items[k].name}`).join(' + ') || 'nothing';
   const nmList = a => a.length <= 2 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
   const inTxt = o => Object.entries(o).map(([k, n]) => `${n} ${esc(D.items[k].name)}`).join(' + ');
   // How quality works, in one place (Storage, stations, the farm plot and info cards all point here)
@@ -1323,6 +1337,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
+    const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
     else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient, plus the station’s Quality upgrade.`);
     const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
@@ -1915,7 +1930,7 @@
     let h;
     if (UI.logOpen === 'act') {
       h = `<div class="lphead"><b>Activity</b><span class="muted">Newest first · last ${S.log.length}</span><button class="close" data-log="act" aria-label="Close">×</button></div>`;
-      h += S.log.length ? `<ol class="loglist">${S.log.map(e => `<li><span class="when">Day ${e.d} ${e.c}</span><span class="what">${e.who === 'hand' ? '<em>Farmhand</em> ' : ''}${esc(e.text)}</span></li>`).join('')}</ol>`
+      h += S.log.length ? `<ol class="loglist">${S.log.map(e => `<li><span class="when">Day ${e.d} ${e.c}</span><span class="what">${e.who === 'hand' ? '<em>Farmhand</em> ' : e.who === 'auto' ? '<em>Auto</em> ' : ''}${esc(e.text)}</span></li>`).join('')}</ol>`
         : `<p class="hint">Nothing yet. Everything you and your farmhand finish will be listed here.</p>`;
     } else {
       h = `<div class="lphead"><b>Updates</b><span class="muted">What changed in the game</span><button class="close" data-log="upd" aria-label="Close">×</button></div>`;
@@ -2166,7 +2181,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-144959';
+  const BUILD = '20261015-145652';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2497,7 +2512,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { info: id => infoHTML(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

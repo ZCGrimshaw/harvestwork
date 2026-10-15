@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.39.1 — 2026-10-15
+- Audit pass (data reachability, every panel/drawer/title screen on a late-game and a fresh save, 1,500 s sims): no
+  render or runtime errors; all discoveries, items and contracts reachable.
+- Fixes: animal feed recipes were value-losing (milk 12g; egg_scraps 3 eggs; milk_hay 3; milk_veg 2; wool_greens 2).
+  genOrder only asks for Good when canGood(id). stove_kit (90g, place 2 plank + 2 stone) so the Stove follows the
+  one-per-area rule like other stations. repeatUsers(): useHint + info card note; Activity log 'auto' entry once a day.
+
 ## v0.39 — 2026-10-15
 - Animals branch (discoveries chickens, dairy, sheep, creamery; chickens needs surveying + a surveyed area via the new
   `survey: true` flag and discOk()). Stations coop, dairy, pasture, creamery (kits in the market) with feed recipes
