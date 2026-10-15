@@ -461,11 +461,11 @@ window.HW_DATA = {
     { name: 'Copper Rush', need: [['copper_ingot', 4, 0]], gold: 420, dp: 4, hint: 'Prospect boulders, then smelt the ore with charcoal.' },
     { name: 'Gearworks', need: [['gear', 6, 0]], gold: 500, dp: 5, hint: 'Tinkering at the Workbench.' },
     { name: 'Grand Market Fair', need: [['apple_pie', 2, 1], ['mead', 2, 0], ['mushroom_soup', 2, 1]], gold: 900, dp: 6, hint: 'Good-quality ingredients, tuned stations, and everything you’ve built.' },
-    { name: 'Spring Bouquets', need: [['flowers', 8, 0], ['honey', 4, 0]], gold: 420, dp: 4, hint: 'Unlock Land Surveying, open a Meadow area and pick wildflowers.' },
-    { name: 'Roofer’s Order', need: [['roof_tile', 8, 0], ['clay_pot', 2, 0]], gold: 520, dp: 4, hint: 'Survey Clay Banks; fire clay at the Kiln and throw pots on a Potter’s Wheel.' },
-    { name: 'Market Baskets', need: [['basket', 4, 0]], gold: 480, dp: 4, hint: 'Survey a Marsh, cut reeds and weave baskets at the Workbench.' },
-    { name: 'Iron Age', need: [['iron_ingot', 4, 0], ['iron_tools', 1, 0]], gold: 900, dp: 6, hint: 'Survey the Iron Hills, mine ore and build a Forge.' },
-    { name: 'Royal Tailor', need: [['dyed_cloth', 3, 1]], gold: 1200, dp: 7, hint: 'Good-quality linen and dye at a tuned Dye Vat.' }
+    { name: 'Spring Bouquets', land: 'meadow', need: [['flowers', 8, 0], ['honey', 4, 0]], gold: 420, dp: 4, hint: 'Unlock Land Surveying, open a Meadow area and pick wildflowers.' },
+    { name: 'Roofer’s Order', land: 'claybank', need: [['roof_tile', 8, 0], ['clay_pot', 2, 0]], gold: 520, dp: 4, hint: 'Survey Clay Banks; fire clay at the Kiln and throw pots on a Potter’s Wheel.' },
+    { name: 'Market Baskets', land: 'marsh', need: [['basket', 4, 0]], gold: 480, dp: 4, hint: 'Survey a Marsh, cut reeds and weave baskets at the Workbench.' },
+    { name: 'Iron Age', land: 'hills', need: [['iron_ingot', 4, 0], ['iron_tools', 1, 0]], gold: 900, dp: 6, hint: 'Survey the Iron Hills, mine ore and build a Forge.' },
+    { name: 'Royal Tailor', land: 'meadow', need: [['dyed_cloth', 3, 1]], gold: 1200, dp: 7, hint: 'Good-quality linen and dye at a tuned Dye Vat.' }
   ],
 
   startOrders: [
@@ -526,6 +526,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.38.1', at: '2026-10-15 07:50', notes: ['New-land contracts no longer hold you up: if the next contract needs an area you haven’t surveyed yet (like a Meadow for wildflowers), a contract for land you already have comes first, and the other waits until you survey its area.', 'Fixed: surveying a fourth area could ask for roof tiles before you owned Clay Banks to make them. Roof tiles are now only asked for once you have Clay Banks.'] },
   { v: '0.38', at: '2026-10-14 16:15', notes: ['Click any recipe at a station to see each ingredient: how many you have, how many you need, and what it costs at the market.', 'New Discovery: Errands (after Farmhand). From that recipe view, press Send farmhand shopping: your farmhand walks to the Open Market, buys what’s missing, brings it back and loads the station (one batch or fill every free slot), then goes back to their usual jobs.'] },
   { v: '0.37.2', at: '2026-10-14 15:50', notes: ['How quality works is now explained in the game: Storage → “How do I make Good and Excellent goods?”, a line on every farm plot and station (with “More about quality”), and on right-click item cards. Your first Basic harvest also gives a short tip.', 'In short: water a crop at both growth stages for Good, add fertilizer too for Excellent. Station goods are as good as their lowest ingredient, plus the station’s Quality upgrade.'] },
   { v: '0.37.1', at: '2026-10-14 15:10', notes: ['Right-click any item, recipe, kit or market row to see what it is: what it does, where it comes from, what it’s used to make and what it’s worth. Works in Storage, the market, stations and orders. On touch screens, press and hold.'] },

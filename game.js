@@ -78,6 +78,13 @@
   const regionOf = i => ((ty(i) / RS() | 0) * RW() + (tx(i) / RS() | 0));
   const regionTiles = r => { const x0 = (r % RW()) * RS(), y0 = (r / RW() | 0) * RS(), o = []; for (let y = 0; y < RS(); y++) for (let x = 0; x < RS(); x++) o.push(idx(x0 + x, y0 + y)); return o; };
   function regionNbrs(r) { const rx = r % RW(), ry = r / RW() | 0, o = []; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const x = rx + dx, y = ry + dy; if (x >= 0 && y >= 0 && x < RW() && y < RW()) o.push(y * RW() + x); }); return o; }
+  /* Contracts run in order, except the new-land ones: if the next contract needs an area you haven't surveyed yet
+     and a later one needs an area you have (or none at all), they swap, so you're never stuck waiting on land. */
+  const hasLand = th => S.regions.some(R => R.open && R.theme === th);
+  const curMs = () => D.milestones[S.msOrd ? S.msOrd[S.ms] : S.ms];
+  function fixMsOrder() { if (!S.msOrd) S.msOrd = D.milestones.map((m, k) => k); for (let k = 0; k < D.milestones.length; k++) if (!S.msOrd.includes(k)) S.msOrd.push(k);
+    const O = S.msOrd, cur = D.milestones[O[S.ms]]; if (!cur || !cur.land || hasLand(cur.land)) return;
+    for (let k = S.ms + 1; k < O.length; k++) { const m = D.milestones[O[k]]; if (!m.land || hasLand(m.land)) { [O[S.ms], O[k]] = [O[k], O[S.ms]]; return; } } }
   const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open);
   const areas = () => 1 + (S.surveys || 0);
   const isVoid = i => S.tiles[i].t === 'void';
@@ -94,7 +101,7 @@
   }
   function surveyCost() { const n = S.surveys || 0, V = C.survey, c = { gold: Math.round(V.gold * Math.pow(V.goldMult, n) / 50) * 50, fence_kit: V.fence + n, plank: V.plank + V.plankStep * n };
     if (n >= V.brickFrom) c.brick = V.brick + V.brickStep * (n - V.brickFrom);
-    if (n >= V.roofFrom) c.roof_tile = V.roof + V.roofStep * (n - V.roofFrom);
+    if (n >= V.roofFrom && hasLand('claybank')) c.roof_tile = V.roof + V.roofStep * (n - V.roofFrom);
     return c; }
   const homeIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'homestead');
   const startOff = () => (S.w - D.map.rows[0].length) / 2;
@@ -107,7 +114,7 @@
     if (!S.wk) weekStart();
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
-    expandWorld(); UI.live = null;
+    expandWorld(); UI.live = null; fixMsOrder();
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
@@ -713,7 +720,7 @@
     survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
       check: t => { if (!unlocked('surveying')) return 'Unlock Land Surveying in Discovery'; if (!surveyable(t.p)) return 'Survey land next to an area you already have'; return canPay(surveyCost()); },
       run: t => { pay(surveyCost()); S.regions[t.p].open = true; genRegion(t.p); S.surveys = (S.surveys || 0) + 1; UI.live = null; UI.bounds = null;
-        const th = D.regionThemes[S.regions[t.p].theme]; gainScore(C.score.survey, t.i); float(t.i, `New area: ${th.name}`, '#b8f08a');
+        const th = D.regionThemes[S.regions[t.p].theme]; gainScore(C.score.survey, t.i); fixMsOrder(); float(t.i, `New area: ${th.name}`, '#b8f08a');
         first('survey:' + S.regions[t.p].theme, 2, `New area: ${th.name}`);
         toast(`<b>${esc(th.name)} surveyed.</b> Buy its tiles from the edge of your land as usual. You now have ${areas()} areas, so you can build ${areas()} of each station.`, 'goal'); } },
     move: { label: t => `Move ${t.nm || 'building'}`,
@@ -735,11 +742,11 @@
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
       run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i, 'sell'); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
-    deliver: { label: t => t.p === 'ms' ? `Deliver: ${D.milestones[S.ms] ? D.milestones[S.ms].name : 'contract'}` : 'Deliver order',
-      check: t => { const o = t.p === 'ms' ? D.milestones[S.ms] : S.orders.find(o => o.id === t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
+    deliver: { label: t => t.p === 'ms' ? `Deliver: ${curMs() ? curMs().name : 'contract'}` : 'Deliver order',
+      check: t => { const o = t.p === 'ms' ? curMs() : S.orders.find(o => o.id === t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
       run: t => {
-        if (t.p === 'ms') { const m = D.milestones[S.ms]; m.need.forEach(([id, n, q]) => take(id, n, q));
-          S.gold += m.gold; S.dp += m.dp; S.ms++; gainScore(m.gold, t.i);
+        if (t.p === 'ms') { const m = curMs(); m.need.forEach(([id, n, q]) => take(id, n, q));
+          S.gold += m.gold; S.dp += m.dp; S.ms++; fixMsOrder(); gainScore(m.gold, t.i);
           toast(`<b>Contract complete: ${esc(m.name)}</b> · +${m.gold}g · +${m.dp} Discovery`, 'disc');
         } else { const o = S.orders.find(o => o.id === t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
           S.gold += o.gold; gainScore(o.score, t.i, 'order'); S.orders = S.orders.filter(x => x !== o); wk().orders++; S.refill = C.orderRefill;
@@ -1356,13 +1363,13 @@
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       <div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>
-      ${S.goalMin ? (() => { const g = D.goals[S.goal], m = D.milestones[S.ms], t = g ? g.title : m ? m.name : 'All done';
+      ${S.goalMin ? (() => { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
         return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; })() : ''}
       <div class="status">${status}</div>`);
   }
   // The goal / contract card: full, title only, or minimized into a button in the top bar.
   function renderGoals() {
-    const g = D.goals[S.goal], m = D.milestones[S.ms];
+    const g = D.goals[S.goal], m = curMs();
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
     const title = g ? g.title : m ? m.name : 'All contracts complete';
     const el = $('#goals'); el.hidden = !!S.goalMin;
@@ -1593,7 +1600,7 @@
   }
   function boardPanel(i) {
     let h = head('Order Board', 'Requests use goods you know, plus one contract pointing to what’s next.');
-    const m = D.milestones[S.ms];
+    const m = curMs();
     if (m) h += `<div class="order ms"><div class="otop"><span class="eyebrow">Contract</span><b>${esc(m.name)}</b></div>${needRow(m.need)}
       <p class="hint">${esc(m.hint)}</p>${isComplex(m.need) ? `<button class="btn ghost sm treebtn" data-tree="ms">See everything it takes</button>` : ''}<div class="oreward">+${m.gold}g · +${m.dp} Discovery</div>${btn({ a: 'deliver', i, p: 'ms' }, 'Deliver', { cls: 'pri' })}</div>`;
     h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'trap' ? 'Special request' : o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
@@ -1771,7 +1778,7 @@
       const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
       h += ids.length ? grouped(ids, 'inv', slot, 'invgrid') : '<p class="hint">Storage is empty.</p>';
     } else if (UI.drawer === 'tree') {
-      const m = D.milestones[S.ms];
+      const m = curMs();
       if (!m) h = `<div class="phead"><div><h2>All contracts complete</h2></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       else { const roots = m.need.map(([id, n, q]) => tree(id, n, q)), tot = {}; roots.forEach(r => leaves(r, tot));
         const done = roots.every(r => r.short === 0);
@@ -2155,7 +2162,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261014-225412';
+  const BUILD = '20261015-143418';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2371,7 +2378,7 @@
     else if (t === 'week') { const r = UI.week, sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
       const stat = (label, val) => `<div class="wstat"><b>${val}</b><span>${label}</span></div>`;
       const top = r.made.slice(0, 4).map(([k, n]) => `<span class="wmade">${ico(k)} ${n} ${esc(D.items[k].name)}</span>`).join('');
-      const m = D.milestones[S.ms];
+      const m = curMs();
       h = `<div class="tcard week"><span class="twel">Week ${r.n} · days ${r.from}–${r.to}</span><h2>${esc(S.name)}’s week on the farm</h2>
         <div class="wgrid">${stat('gold', sg(r.gold) + 'g')}${stat('score', sg(r.score))}${stat('Discovery earned', sg(Math.max(0, r.dp)))}${stat('sales', r.sold + 'g')}${stat('harvested', r.harvest)}${stat('orders filled', r.orders + r.ms)}</div>
         ${top ? `<span class="eyebrow">Made this week</span><div class="wmades">${top}</div>` : ''}

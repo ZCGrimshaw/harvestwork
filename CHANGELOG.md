@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.38.1 — 2026-10-15
+- Contracts: milestones 19–23 carry land:<theme>; S.msOrd (per-farm order) and curMs(); fixMsOrder() swaps a land
+  contract whose area isn't open with the next contract that's doable (run on load, after a survey, after a delivery).
+- surveyCost(): roof tiles only once a Clay Banks area is open (avoids a deadlock on the 4th survey).
+
 ## v0.38 — 2026-10-14
 - Recipe rows are clickable (UI.rexp): errandBox() lists each ingredient's stock, need and market price (canBuyItem /
   buyPrice) with a 1-batch / fill toggle. New discovery 'errands' (req farmhand, 3 DP): sendErrand() sets S.helper.errand;
