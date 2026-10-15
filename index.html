@@ -553,6 +553,9 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 #panel .btn[data-task]:not(:disabled), #panel .btn.pri:not(:disabled) { border-color: var(--sun); box-shadow: 0 3px 0 var(--wood-lo), inset 0 0 0 1px rgba(245,197,66,.35); }
 #panel .btn[data-task]:not(:disabled):hover { border-color: #ffd65e; }
 #panel[data-fl] { transition: none; max-height: calc(100% - 150px); }
+/* repeat count */
+.reprow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.repn { font: 600 12px var(--f-body, inherit); padding: 3px 6px; background: var(--wood-lo); color: var(--paper); border: 1px solid var(--wood-hi); border-radius: 6px; }
 /* recipe details + farmhand errands */
 #panel .recipe[data-rid] { cursor: pointer; } #panel .recipe.open { border-color: var(--sun); }
 .rexp { font-size: 11px; color: var(--paper-dim); }
@@ -640,9 +643,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261015-145652"></script>
-<script src="art.js?v=20261015-145652"></script>
-<script src="sound.js?v=20261015-145652"></script>
-<script src="game.js?v=20261015-145652"></script>
+<script src="data.js?v=20261015-150220"></script>
+<script src="art.js?v=20261015-150220"></script>
+<script src="sound.js?v=20261015-150220"></script>
+<script src="game.js?v=20261015-150220"></script>
 
 </body></html>

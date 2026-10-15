@@ -409,10 +409,15 @@
   function weekLabel(w) { const mon = weekStartMs(w), y = new Date(mon + 3 * 864e5).getUTCFullYear(), j4 = Date.UTC(y, 0, 4);
     const wk1 = j4 - ((new Date(j4).getUTCDay() + 6) % 7) * 864e5; return `Week ${Math.round((mon - wk1) / 6048e5) + 1}, ${y}`; }
   // Themes come in shuffled rounds: every theme once per round, and never the same theme two weeks running.
-  function weekTheme(w) { const T = D.weeklyThemes, N = T.length, d = w - WEEK0, c = Math.floor(d / N);
-    const perm = c => { const R = raceRng('ROUND' + c), a = T.map((_, i) => i); for (let i = N - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    const cur = perm(c); if (cur[0] === perm(c - 1)[N - 1]) [cur[0], cur[1]] = [cur[1], cur[0]];
+  // Weeks up to 2962 used the first 10 themes; from week 2963 on, every theme (new ones included) is in the rounds.
+  const NEW_ROUNDS = 2963, OLD_THEMES = 10;
+  function themeRound(T, w0, w, salt, before) { const N = T.length, d = w - w0, c = Math.floor(d / N);
+    const perm = c => { const R = raceRng(salt + c), a = T.map((_, i) => i); for (let i = N - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const cur = perm(c), prevId = c > 0 ? T[perm(c - 1)[N - 1]].id : before; if (T[cur[0]].id === prevId) [cur[0], cur[1]] = [cur[1], cur[0]];
     return T[cur[d - c * N]]; }
+  function weekTheme(w) { const T = D.weeklyThemes;
+    if (w < NEW_ROUNDS) return themeRound(T.slice(0, OLD_THEMES), WEEK0, w, 'ROUND', null);
+    return themeRound(T, NEW_ROUNDS, w, 'ROUNDB', weekTheme(NEW_ROUNDS - 1).id); }
   const fmtLeft = ms => { const m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60);
     return d ? `${d}d ${h}h` : h ? `${h}h ${m % 60}m` : `${m % 60}m`; };
   function weeklyPreset(w) {
@@ -434,6 +439,7 @@
     S.tiles.forEach(T => { if (T.b && T.b.type === 'farm' && T.b.st === 'raw') T.b.st = 'tilled'; });
     const want = int(st.plots[0], st.plots[1]) - S.tiles.filter(T => T.b && T.b.type === 'farm').length;
     for (let k = 0; k < want; k++) { const i = free.shift(); if (i !== undefined) S.tiles[i].b = { type: 'farm', st: 'tilled' }; }
+    if (st.helper) { S.helper = { x: Math.round(S.av.x), y: Math.round(S.av.y), path: [], dir: [1, -1], cur: null, steps: [], k: 0, idle: 0, on: true }; kit.push('a farmhand'); }
     if (R() < (st.sprout != null ? st.sprout : .4)) { const f = S.tiles.find(T => T.b && T.b.type === 'farm' && T.b.st === 'tilled'); if (f) { f.b = { type: 'farm', st: 'growing', crop: 'carrot', last: 'carrot', g: int(4, 12), wet: false, w: [0, 0], half: false, fert: false }; kit.push('a carrot crop already growing'); } }
     // the theme's terrain, painted onto the far side of your land (ponds only on the outer edge, so paths stay open)
     const outer = shuffle(free.slice(Math.floor(free.length / 2)));
@@ -969,6 +975,8 @@
         if (j) { j.t += dt; if (j.t >= j.dur) { j.done = true; if (!b.auto) float(i, 'Done!', '#b8f08a'); SND.play('done', b.auto ? 0.5 : 1); dirty(); } }
         if (b.auto && unlocked('autocollect') && !collectErr(i)) { doCollect(i); dirty(); }
         if (b.rep && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty();
+          b.repDone = (b.repDone || 0) + 1;
+          if (b.repN && b.repDone >= b.repN) { { const R = D.recipes[b.rep]; toast(`<b>${esc(D.buildings[b.type].name)}</b> finished its repeats of ${esc(R.label || D.items[Object.keys(R.out)[0]].name)}. Repeat is off.`, 'info'); b.rep = null; b.repN = null; b.repDone = 0; } }
           if (b.repDay !== S.day) { b.repDay = S.day; const R = D.recipes[b.rep]; logAct(`${D.buildings[b.type].name} on Repeat: using ${inTxtPlain(R.in)} for ${R.label || D.items[Object.keys(R.out)[0]].name} (logged once a day)`, 'auto'); } }
       } else if (b && D.buildings[b.type].kind === 'sprinkler') {
         if (b.fx > 0) b.fx -= dt;
@@ -1362,7 +1370,7 @@
   const qtag = q => q ? `<span class="q q${q}">${QN[q]}</span>` : '';
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
-    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
   }
   function btn(t, label, opts = {}) {
@@ -1518,6 +1526,7 @@
       ${free > 1 ? `<div class="chips">${[1, free].filter((v, k, a) => a.indexOf(v) === k).map(v => `<button class="chipf ${n === v ? 'on' : ''}" data-rexp-n="${v}">${v === 1 ? '1 batch' : `Fill ${v} batches`}</button>`).join('')}</div>` : ''}
       ${P.missing.length ? `<p class="hint small">Missing ingredients cost <b>${P.cost}g</b>${P.unbuyable.length ? ' (some aren’t sold at the market)' : ''}.</p>` : ''}
       <button class="btn ${e ? '' : 'pri'}" data-errand="${i}:${rid}:${n}" ${e ? 'disabled' : ''}>Send farmhand shopping${P.missing.length && !P.unbuyable.length ? ` · ${P.cost}g` : ''}<small>${e ? esc(e) : `They buy what’s missing at the Open Market, bring it back and load ${n > 1 ? n + ' batches' : 'it'} here.`}</small></button></div>`; }
+  const REP_OPTS = [0, 1, 2, 3, 5, 10, 15, 20, 30, 50]; // 0 = forever
   function stationPanel(i, b) {
     const B = D.buildings[b.type], slots = stationSlots(b);
     let h = head(B.name, esc(B.desc));
@@ -1538,7 +1547,7 @@
       const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
       const le = checkTask({ a: 'load', i, p: id });
       const ex = UI.rexp === i + ':' + id;
-      return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(R.label || D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
+      return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(R.label || D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<div class="reprow"><button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>${b.rep === id ? `<select class="repn" data-repn="${i}" aria-label="How many times to repeat">${REP_OPTS.map(n => `<option value="${n}" ${(b.repN || 0) === n ? 'selected' : ''}>${n ? n + ' times' : 'Forever'}</option>`).join('')}</select><small class="muted">${b.repN ? `${Math.min(b.repDone || 0, b.repN)} of ${b.repN} done` : `${b.repDone || 0} so far`}</small>` : ''}</div>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
     }).join('');
     h += `<span class="eyebrow">Upgrades</span>`;
     if (!unlocked('tuning')) h += `<p class="hint">Unlock “Station Tuning” in Discovery to improve speed, capacity and quality.</p>`;
@@ -1987,7 +1996,7 @@
   }
 
   // delegated UI events
-  $('#panel').addEventListener('click', e => { if (e.target.closest('button, input, label, .errand')) return; const r = e.target.closest('.recipe[data-rid]'); if (!r) return;
+  $('#panel').addEventListener('click', e => { if (e.target.closest('button, input, label, select, .errand')) return; const r = e.target.closest('.recipe[data-rid]'); if (!r) return;
     const k = r.dataset.st + ':' + r.dataset.rid; UI.rexp = UI.rexp === k ? null : k; UI.rexpN = 1; dirty(); });
   document.addEventListener('click', e => {
     const el = e.target.closest('button'); if (!el) return;
@@ -2022,7 +2031,7 @@
     else if (ds.sellqty) { const [id, q] = ds.sellqty.split(':'), inp = document.querySelector(`[data-sq="${ds.sellqty}"]`);
       const max = +inp.dataset.max, n = Math.max(1, Math.min(max, parseInt(inp.value, 10) || 1)); UI.sq[ds.sellqty] = n; inp.blur();
       queueTask({ a: 'sell', i: +ds.i, p: id, q: +q, n }); }
-    else if (ds.rep) { const [ti, rid] = ds.rep.split(':'), b = S.tiles[+ti].b; b.rep = b.rep === rid ? null : rid; }
+    else if (ds.rep) { const [ti, rid] = ds.rep.split(':'), b = S.tiles[+ti].b; b.rep = b.rep === rid ? null : rid; b.repN = null; b.repDone = 0; }
     else if (ds.auto) { const b = S.tiles[+ds.auto].b; b.auto = !b.auto; }
     else if (ds.fhAdd) { const i = +ds.i, st = { s: ds.fhAdd, i };
       if (st.s === 'tend') st.p = ($('#hcrop') || {}).value; if (st.s === 'station') st.p = ($('#hrec') || {}).value;
@@ -2127,6 +2136,8 @@
   });
   document.addEventListener('change', e => {
     const id = e.target.id;
+    if (e.target.dataset && e.target.dataset.repn) { const b = S.tiles[+e.target.dataset.repn].b; if (b) { const n = +e.target.value; b.repN = n > 0 ? n : null;
+      if (b.repN && (b.repDone || 0) >= b.repN) { b.rep = null; b.repN = null; b.repDone = 0; toast('Already repeated that many times, so Repeat is off.', 'info'); } save(); dirty(); } return; }
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
@@ -2181,7 +2192,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-145652';
+  const BUILD = '20261015-150220';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

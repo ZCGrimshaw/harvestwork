@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.39.2 — 2026-10-15
+- Repeat count: select (REP_OPTS, 0 = forever) beside the Repeat toggle; b.repN / b.repDone; turns off when done.
+  setHTML leaves a focused <select> alone.
+- Weekly themes: barnyard, woolly, dairyweek, helpers (start.helper hires a farmhand). Weeks < 2963 keep the old
+  10-theme rounds (this week unchanged); from 2963 themeRound() deals all 14 per round, no repeats week to week.
+
 ## v0.39.1 — 2026-10-15
 - Audit pass (data reachability, every panel/drawer/title screen on a late-game and a fresh save, 1,500 s sims): no
   render or runtime errors; all discoveries, items and contracts reachable.

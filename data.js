@@ -472,7 +472,20 @@ window.HW_DATA = {
       start: { gold: [12, 18], plots: [5, 7], land: [3, 3], extra: [0, 0], give: { carrot_seed: [12, 16], potato_seed: [12, 16] }, sprout: .9 } },
     { id: 'meadow', name: 'Meadow Week', blurb: 'Wildflowers and a Beehive on your land. Honey and flowers score double.',
       rules: { score: { honey: 2, flowers: 2 } },
-      start: { gold: [12, 22], plots: [2, 4], land: [3, 3], stations: ['hive'], extra: [0, 1], unl: ['berries', 'beekeeping', 'wildflowers'], give: { berry_seed: [4, 6] }, terrain: { flowers: [4, 6] } } }
+      start: { gold: [12, 22], plots: [2, 4], land: [3, 3], stations: ['hive'], extra: [0, 1], unl: ['berries', 'beekeeping', 'wildflowers'], give: { berry_seed: [4, 6] }, terrain: { flowers: [4, 6] } } },
+    // added with animals (in the rounds from week 2963)
+    { id: 'barnyard', name: 'Barnyard Week', blurb: 'A Chicken Coop and a Dairy Barn to start. Eggs and milk score double, and so do omelettes and custard.',
+      rules: { score: { egg: 2, milk: 2, omelette: 2, custard: 2 } },
+      start: { gold: [12, 20], plots: [3, 5], land: [3, 3], stations: ['coop', 'dairy'], extra: [0, 0], unl: ['wheat', 'chickens', 'dairy'], give: { wheat_seed: [10, 14], carrot_seed: [6, 8], potato_seed: [4, 6] } } },
+    { id: 'woolly', name: 'Woolly Week', blurb: 'Sheep on a Pasture and a Loom ready. Wool, yarn and blankets score double.',
+      rules: { score: { wool: 2, yarn: 2, blanket: 2 } },
+      start: { gold: [12, 20], plots: [3, 5], land: [3, 3], stations: ['pasture', 'loom'], extra: [0, 0], unl: ['wheat', 'chickens', 'sheep', 'loom'], give: { wheat_seed: [10, 14] } } },
+    { id: 'dairyweek', name: 'Creamery Week', blurb: 'Cows, a Creamery and wheat to feed them. Butter and cheese score triple.',
+      rules: { craft: { creamery: 1.3 }, score: { butter: 3, cheese: 3 } },
+      start: { gold: [15, 25], plots: [3, 5], land: [3, 3], stations: ['dairy', 'creamery'], extra: [0, 0], unl: ['wheat', 'chickens', 'dairy', 'creamery'], give: { wheat_seed: [12, 16], potato_seed: [4, 6] } } },
+    { id: 'helpers', name: 'Helping Hands Week', blurb: 'A farmhand is hired from the start and can run errands to the market. Sales and orders score 50% more.',
+      rules: { score: { sell: 1.5, order: 1.5 } },
+      start: { gold: [25, 35], plots: [4, 5], land: [2, 3], extra: [1, 1], unl: ['repeat', 'farmhand', 'errands'], helper: true, give: { carrot_seed: [8, 12], potato_seed: [6, 8] } } }
   ],
 
   farmhand: { speeds: [1, 2, 3], hire: { gold: 150 }, walkSpeed: 2.6, workMult: 1.3, maxSteps: 4, idle: 2.5 },
@@ -567,6 +580,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.39.2', at: '2026-10-15 08:20', notes: ['Repeat can now stop on its own: when Repeat is on, pick how many times (1 to 50, or Forever) from the box beside it. It shows how many are done and turns itself off at the end.', 'Four new Weekly Challenge themes join the rotation from next week: Barnyard Week (coop and dairy), Woolly Week (sheep and loom), Creamery Week (butter and cheese) and Helping Hands Week (a farmhand who runs errands). This week’s challenge is unchanged.'] },
   { v: '0.39.1', at: '2026-10-15 09:00', notes: ['Animal feed now always pays off: eggs, milk and wool are worth more than the crops they eat (milk is worth a little more, and carrot and vegetable feeds give more).', 'Orders no longer ask for Good-quality goods you can’t make yet (like Good logs or stone). They only ask for Good when your crops or a tuned station can make it.', 'You can now buy a Stove kit to build a second Stove once you have a second area.', 'Stations on Repeat now say when they use things up: Storage and the item card show “used automatically by …”, and the Activity log notes it once a day.'] },
   { v: '0.39', at: '2026-10-15 08:30', notes: ['Animals! Once you survey your first new area, a new Animals branch opens in Discovery: Chickens, Dairy Cows, Sheep and a Creamery. All peaceful.', 'Hens lay eggs and cows give milk when you feed them spare wheat or vegetables; sheep grow wool. Better feed makes better eggs, milk and wool.', 'New goods: omelettes and custard at the Stove, butter and cheese at the Creamery, Farmhouse Cake in the Oven, yarn and wool blankets at the Loom. Three new contracts to go with them.'] },
   { v: '0.38.1', at: '2026-10-15 07:50', notes: ['New-land contracts no longer hold you up: if the next contract needs an area you haven’t surveyed yet (like a Meadow for wildflowers), a contract for land you already have comes first, and the other waits until you survey its area.', 'Fixed: surveying a fourth area could ask for roof tiles before you owned Clay Banks to make them. Roof tiles are now only asked for once you have Clay Banks.'] },
