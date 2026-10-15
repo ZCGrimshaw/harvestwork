@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.40 — 2026-10-15
+- Finite minerals: gather.deposit (30 digs) on boulder, clay, ore; T.r.dep counts digs left; surface stock refills
+  only from what's left; useDep() on mine/gather; migrate() gives old tiles a full deposit. Not applied in races.
+  Gather panel shows the deposit bar; worked-out tiles offer the new 'deepen' task (Deep Quarrying discovery, 250g +
+  6 plank). Piling a rock field (grass>boulder) makes a 3-dig deposit so it can't mint stone.
+
 ## v0.39.3 — 2026-10-15
 - Quality upgrade capped at +1 tier over the ingredients (effect [0, 1, 1]); level 2 (Master Crafting) gives a bonus
   first-output item every 3rd batch (b.qn counter, job.bonus). Closes the buy-Basic / sell-Excellent loop. Help text,

@@ -26,10 +26,15 @@
   function initRes(t) {
     if (t === 'forest') return { st: 'tree', g: 0 };
     if (t === 'water') return { stock: D.gather.water.stock, rt: 0 };
-    if (t === 'boulder') return { stock: D.gather.boulder.stock, rt: 0 };
-    if (D.gather[t] && D.gather[t].stock) return { stock: D.gather[t].stock, rt: 0 };
+    if (D.gather[t] && D.gather[t].stock) { const G = D.gather[t]; return G.deposit ? { stock: G.stock, rt: 0, dep: G.deposit } : { stock: G.stock, rt: 0 }; }
     return null;
   }
+  /* Rock, clay and ore are finite: r.dep counts the digs left in the tile (what's on the surface included).
+     Surface stock still comes back a bit at a time, but only out of what's left. Races and challenges don't run out. */
+  const finite = T => T.r && T.r.dep != null && !(S && S.race);
+  const worked = T => finite(T) && T.r.dep <= 0;
+  const useDep = T => { if (finite(T)) T.r.dep = Math.max(0, T.r.dep - 1); };
+  const DEEPEN_COST = { gold: 250, plank: 6 };
   function makeB(type) {
     const B = D.buildings[type];
     if (B.kind === 'farm') return { type, st: 'raw' };
@@ -117,6 +122,7 @@
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null; fixMsOrder();
+    S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
@@ -731,13 +737,14 @@
       run: t => { take('sapling', 1); Object.assign(T_(t.i).r, { st: 'sapling', g: 0 }); gainScore(C.score.replant, t.i); } },
     fish: { label: () => 'Fish', check: t => !unlocked('fishing') ? 'Unlock Fishing first' : T_(t.i).r.stock < 1 ? 'Fish are hiding. Try again soon' : outRoom(gatherOut('water', 'fish')) ? null : FULL,
       run: t => { const n = gatherOut('water', 'fish').fish; T_(t.i).r.stock--; addItem('fish', n); float(t.i, `+${n} Fish`, '#fff'); gainScore(C.score.fish, t.i, 'fish'); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
-    mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : T_(t.i).r.stock < 1 ? 'No boulders left. They resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
-      run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i, 'mine', 'stone'); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
+    mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : worked(T_(t.i)) ? 'Quarried out. Reopen it with Deep Quarrying, or change the land' : T_(t.i).r.stock < 1 ? 'No boulders on the surface. More resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
+      run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; useDep(T_(t.i)); for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i, 'mine', 'stone'); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
     gather: { label: t => (D.gather[T_(t.i).t] || {}).verb || 'Gather',
       check: t => { const T = T_(t.i), G = D.gather[T.t]; if (!G || !T.r) return 'Nothing to gather here';
         if (!unlocked(G.needs)) return `Unlock ${D.discoveries.find(d => d.id === G.needs).name} first`;
+        if (worked(T)) return `${D.terrain[T.t].name} is worked out. Reopen it with Deep Quarrying, or change the land`;
         if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(G.out) ? null : FULL; },
-      run: t => { const T = T_(t.i), G = D.gather[T.t]; T.r.stock--; const got = [];
+      run: t => { const T = T_(t.i), G = D.gather[T.t]; T.r.stock--; useDep(T); const got = [];
         for (const k in G.out) { addItem(k, G.out[k]); got.push(`+${G.out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
         float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i, 'gather', ...Object.keys(G.out)); emit('gather'); } },
     survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
@@ -797,6 +804,10 @@
         toast(`<b>${esc(D.buildings[b.type].name)} upgraded:</b> ${D.upgrades[t.p].label(b.lv[t.p])}.`, 'info'); } },
     homeup: { label: () => 'Expand storage', check: () => (homeGate(S.home) && !unlocked(homeGate(S.home))) ? 'Unlock Root Cellar in Discovery' : canPay(homeCost(S.home)),
       run: t => { pay(homeCost(S.home)); S.home++; gainScore(C.score.upgrade, t.i); toast(`<b>Storage expanded</b> to ${cap()} items.`, 'info'); } },
+    deepen: { label: t => `Reopen the ${D.terrain[T_(t.i).t].name}`,
+      check: t => { const T = T_(t.i); if (!unlocked('deepquarry')) return 'Unlock Deep Quarrying in Discovery'; if (!worked(T)) return 'There’s still some left to dig'; return canPay(DEEPEN_COST); },
+      run: t => { const T = T_(t.i), G = D.gather[T.t]; pay(DEEPEN_COST); T.r.dep = G.deposit; T.r.stock = 1; T.r.rt = 0;
+        float(t.i, `${D.terrain[T.t].name} reopened`, '#b8f08a'); gainScore(C.score.upgrade, t.i); } },
     reshape: { label: t => D.landShape[t.p].verb,
       check: t => { const T = T_(t.i), [from, to] = t.p.split('>'), L = D.landShape[t.p];
         if (!L || !T.o) return 'Not your land'; if (T.t !== from) return 'The land has changed';
@@ -810,6 +821,7 @@
         if (from === 'forest' && T.r && T.r.st !== 'tree') back.log = 0; // a stump or sapling has no timber in it
         for (const k in back) if (back[k] > 0) addItem(k, back[k]);
         T.t = to; T.r = initRes(to); if (to === 'forest') Object.assign(T.r, { st: 'sapling', g: 0 });
+        if (T.r && L.deposit != null && T.r.dep != null) { T.r.dep = L.deposit; T.r.stock = Math.min(T.r.stock, L.deposit); }
         if (S.helper) S.helper.steps = S.helper.steps.filter(st => st.i !== t.i);
         if (!D.terrain[to].walk) { // step off a tile that just became water
           const i = t.i; if (Math.round(S.av.x) === tx(i) && Math.round(S.av.y) === ty(i)) { const n = nbrs(i).find(walkable); if (n !== undefined) { S.av.x = tx(n); S.av.y = ty(n); } } }
@@ -987,7 +999,7 @@
       }
       const R = T.r; if (!R) return;
       if (T.t === 'forest') { if (R.st === 'sapling') { R.g += dt; if (R.g >= D.gather.forest.regrow) { R.st = 'tree'; dirty(); } } }
-      else { const G = D.gather[T.t]; if (R.stock < G.stock) { R.rt += dt * (T.t === 'water' ? wrule('fish', 1) : 1); if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
+      else { const G = D.gather[T.t]; if (R.stock < (finite(T) ? Math.min(G.stock, R.dep) : G.stock)) { R.rt += dt * (T.t === 'water' ? wrule('fish', 1) : 1); if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
     });
     if (S.orders.length < C.orderSlots) { S.refill -= dt * wrule('orders', 1); if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
     updateAvatar(dt); updateHelper(dt); checkBroke(dt);
@@ -1648,7 +1660,12 @@
       if (T.r.st === 'tree') h += btn({ a: 'chop', i }, 'Chop tree', { cls: 'pri', sub: `${gatherOut('forest', 'chop').log} logs + 1 sapling` });
       else if (T.r.st === 'stump') h += btn({ a: 'replant', i }, 'Plant sapling', { cls: 'pri', sub: `${count('sapling')} saplings` });
       else h += `<div class="row"><div class="grow1">Sapling growing${pbar('t:' + i)}</div></div>`;
-    } else if (G.action === 'gather') {
+    }
+    if (T.r && T.r.dep != null && !S.race) { const unit = Object.keys(G.out)[0], per = G.out[unit], left = T.r.dep * per, full = G.deposit * per;
+      h += `<div class="row"><div class="grow1">${T.r.dep > 0 ? `Deposit: about <b>${left}</b> of ${full} ${esc(D.items[unit].name.toLowerCase())} left` : `<b>Worked out.</b> Nothing left to dig here.`}<div class="pb thin"><i style="width:${Math.round(T.r.dep / G.deposit * 100)}%"></i></div></div></div>`;
+      if (worked(T)) h += btn({ a: 'deepen', i }, `Reopen with Deep Quarrying`, { cls: 'pri', sub: unlocked('deepquarry') ? `${costTxt(DEEPEN_COST)} · a full deposit again` : 'Unlock Deep Quarrying in Discovery (after Prospecting)' })
+        + `<p class="hint small">Or change the land below. The market also sells ${esc(D.items[unit].name.toLowerCase())}${D.items[unit].buy ? '' : ' once you’ve dug some'}; a new ${T.t === 'clay' ? 'Clay Banks area' : 'Iron Hills area'} brings fresh deposits.</p>`; }
+    if (T.t === 'forest') {} else if (G.action === 'gather') {
       h += `<div class="row"><div class="grow1">${esc(G.what)} available: <b>${T.r.stock}/${G.stock}</b>${T.r.stock < G.stock ? pbar('r:' + i, 'thin') : ''}</div></div>`;
       h += btn({ a: 'gather', i }, G.verb, { cls: 'pri', sub: Object.entries(G.out).map(([k, n]) => `+${n} ${D.items[k].name}`).join(' · ') });
     } else {
@@ -2195,7 +2212,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-200400';
+  const BUILD = '20261015-213018';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

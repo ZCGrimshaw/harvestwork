@@ -47,16 +47,16 @@ window.HW_DATA = {
     water:   { name: 'Pond', cost: 40, walk: false,
                desc: 'Fish here. Stock refills over time.', future: 'Irrigation and water power later.' },
     boulder: { name: 'Boulder Field', cost: 45, walk: true,
-               desc: 'Break boulders into stone. Rocks slowly resurface.', future: 'Ore and metalwork later.' },
+               desc: 'Break boulders into stone. Rocks resurface a few at a time until the field is quarried out.', future: 'Ore and metalwork later.' },
     // found only in new areas you survey
     flowers: { name: 'Wildflower Meadow', cost: 40, walk: true,
                desc: 'Pick wildflowers. They bloom again over time.', future: 'Beehives turn flowers into extra honey; a Dye Vat turns them into dye.' },
     clay:    { name: 'Clay Bank', cost: 45, walk: true,
-               desc: 'Dig soft clay. The bank slowly fills back in.', future: 'Fire clay into roof tiles, or throw pots on a Potter’s Wheel.' },
+               desc: 'Dig soft clay. It seeps back a little at a time until the bank is dug out.', future: 'Fire clay into roof tiles, or throw pots on a Potter’s Wheel.' },
     reeds:   { name: 'Reed Marsh', cost: 40, walk: true,
                desc: 'Cut reeds. They grow back quickly.', future: 'Weave reeds into baskets at the Workbench.' },
     ore:     { name: 'Iron Seam', cost: 60, walk: true,
-               desc: 'Mine iron ore from the rocky seam. It slowly weathers out again.', future: 'Forge iron ingots and tools.' }
+               desc: 'Mine iron ore from the rocky seam until it’s worked out.', future: 'Forge iron ingots and tools.' }
   },
 
   // New areas beyond the starting land. Each theme mixes terrain (weights) and brings one new resource.
@@ -70,11 +70,11 @@ window.HW_DATA = {
   gather: {
     forest:  { action: 'chop', needs: 'woodcutting', out: { log: 2, sapling: 1 }, regrow: 45 },
     water:   { action: 'fish', needs: 'fishing', out: { fish: 1 }, stock: 3, regen: 22 },
-    boulder: { action: 'mine', needs: 'stonecutting', out: { stone: 2 }, stock: 4, regen: 35 },
+    boulder: { action: 'mine', needs: 'stonecutting', out: { stone: 2 }, stock: 4, regen: 35, deposit: 30 },
     flowers: { action: 'gather', verb: 'Pick flowers', what: 'Blooms', sprite: 'blooms', needs: 'wildflowers', out: { flowers: 3 }, stock: 3, regen: 30 },
-    clay:    { action: 'gather', verb: 'Dig clay', what: 'Clay', sprite: 'claypit', needs: 'claydigging', out: { clay: 2 }, stock: 4, regen: 34 },
+    clay:    { action: 'gather', verb: 'Dig clay', what: 'Clay', sprite: 'claypit', needs: 'claydigging', out: { clay: 2 }, stock: 4, regen: 34, deposit: 30 },
     reeds:   { action: 'gather', verb: 'Cut reeds', what: 'Reeds', sprite: 'reedbed', needs: 'reedcutting', out: { reeds: 3 }, stock: 3, regen: 26 },
-    ore:     { action: 'gather', verb: 'Mine iron ore', what: 'Ore', sprite: 'orevein', needs: 'ironmining', out: { iron_ore: 1, stone: 1 }, stock: 3, regen: 45 }
+    ore:     { action: 'gather', verb: 'Mine iron ore', what: 'Ore', sprite: 'orevein', needs: 'ironmining', out: { iron_ore: 1, stone: 1 }, stock: 3, regen: 45, deposit: 30 }
   },
 
   crops: {
@@ -214,7 +214,7 @@ window.HW_DATA = {
     { id: 'other', name: 'Other', cats: ['good'] }
   ],
   discoveryBranches: [
-    { id: 'gathering', name: 'Gathering', ids: ['woodcutting', 'fishing', 'stonecutting', 'prospecting'] },
+    { id: 'gathering', name: 'Gathering', ids: ['woodcutting', 'fishing', 'stonecutting', 'prospecting', 'deepquarry'] },
     { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin'] },
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
@@ -371,6 +371,7 @@ window.HW_DATA = {
     { id: 'compostbin', pic: ['grass:1', 'compost', 'fertilizer'], name: 'Compost Bin', cost: 2, req: ['compost'], text: 'Make your own fertilizer from spare wheat, tomatoes and pumpkins.', where: 'Open Market → Stations.' },
     { id: 'kiln', pic: ['grass:0', 'kiln', 'brick'], name: 'Brick Kiln', cost: 3, req: ['stonecutting', 'woodcutting'], text: 'Fire stone into bricks and burn logs into charcoal.', where: 'Open Market → Stations. Needs 6 stone to place.' },
     { id: 'beekeeping', pic: ['grass:2', 'hive', 'honey'], name: 'Beekeeping', cost: 3, req: ['berries'], text: 'Beehives make honey with no ingredients at all.', where: 'Open Market → Stations.' },
+    { id: 'deepquarry', pic: ['boulder:0', 'rocks:1', 'stone'], name: 'Deep Quarrying', cost: 3, req: ['prospecting'], text: 'Rock, clay and ore run out. Deep Quarrying reopens a worked-out tile with a full deposit, for a price.', where: 'Select a quarried-out Boulder Field, Clay Bank or Iron Seam → Reopen.' },
     { id: 'prospecting', pic: ['boulder:1', 'rocks:3', 'copper_ore'], name: 'Prospecting', cost: 3, req: ['stonecutting'], text: 'Breaking boulders also turns up copper ore.', where: 'Any Boulder Field you own.' },
     { id: 'oven', pic: ['grass:0', 'oven', 'berry_pie'], name: 'Oven', cost: 3, req: ['baking', 'kiln'], text: 'Bake berry, pumpkin and apple pies, and honey cake.', where: 'Open Market → Stations. Needs 4 bricks to place.' },
     { id: 'press', pic: ['grass:1', 'press', 'cider'], name: 'Cider Press', cost: 3, req: ['apples'], text: 'Press apples into cider and berries into juice.', where: 'Open Market → Stations.' },
@@ -428,7 +429,7 @@ window.HW_DATA = {
     'water>grass':   { cost: { gold: 30, stone: 4 }, back: {}, verb: 'Fill in the pond', note: 'Pack the pond with stone and earth.' },
     'grass>forest':  { cost: { gold: 10, sapling: 2 }, back: {}, verb: 'Plant a woodland', note: 'Starts as saplings that grow into a tree to chop.' },
     'grass>water':   { cost: { gold: 40 }, back: {}, verb: 'Dig a pond', note: 'A new pond for fishing. Your farmer can’t walk across it.' },
-    'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, verb: 'Pile a rock field', note: 'Rocks that resurface over time for steady stone.' },
+    'grass>boulder': { cost: { gold: 20, stone: 6 }, back: {}, deposit: 3, verb: 'Pile a rock field', note: 'A small heap of rock you can break back up later (about 6 stone).' },
     'flowers>grass': { cost: { gold: 15 }, back: {}, verb: 'Mow the meadow', note: 'Cut the wildflowers back to plain grass.' },
     'clay>grass':    { cost: { gold: 25 }, back: { clay: 2 }, verb: 'Drain the clay', note: 'Dig out the soft clay and lay turf. You keep 2 clay.' },
     'reeds>grass':   { cost: { gold: 25 }, back: { reeds: 2 }, verb: 'Drain the marsh', note: 'Cut the reeds and dry the ground. You keep 2 reeds.' },
@@ -580,6 +581,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.40', at: '2026-10-15 14:45', notes: ['Stone, clay and iron ore now run out. Each Boulder Field, Clay Bank and Iron Seam holds a deposit (about 60 stone, 60 clay or 30 ore); select one to see how much is left. Surface rocks still come back a few at a time until the deposit is used up.', 'Every tile you already own starts with a full deposit. When one is worked out you can change the land, buy from the market, survey new areas for fresh deposits, or unlock Deep Quarrying (after Prospecting) to reopen it.', 'Trees, ponds, flowers and reeds keep regrowing as before. Races and weekly challenges are unchanged.'] },
   { v: '0.39.3', at: '2026-10-15 13:20', notes: ['Balance: a station’s Quality upgrade now lifts goods one tier above their ingredients, never more. Basic logs make Good planks; Excellent goods need Good ingredients (well-watered or fertilized crops) plus the upgrade. Goods you already have keep their quality.', 'Master Crafting’s second Quality level now gives a bonus item on every third batch at that station instead.'] },
   { v: '0.39.2', at: '2026-10-15 08:20', notes: ['Repeat can now stop on its own: when Repeat is on, pick how many times (1 to 50, or Forever) from the box beside it. It shows how many are done and turns itself off at the end.', 'Four new Weekly Challenge themes join the rotation from next week: Barnyard Week (coop and dairy), Woolly Week (sheep and loom), Creamery Week (butter and cheese) and Helping Hands Week (a farmhand who runs errands). This week’s challenge is unchanged.'] },
   { v: '0.39.1', at: '2026-10-15 09:00', notes: ['Animal feed now always pays off: eggs, milk and wool are worth more than the crops they eat (milk is worth a little more, and carrot and vegetable feeds give more).', 'Orders no longer ask for Good-quality goods you can’t make yet (like Good logs or stone). They only ask for Good when your crops or a tuned station can make it.', 'You can now buy a Stove kit to build a second Stove once you have a second area.', 'Stations on Repeat now say when they use things up: Storage and the item card show “used automatically by …”, and the Activity log notes it once a day.'] },
