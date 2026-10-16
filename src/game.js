@@ -158,7 +158,7 @@
     for (const q of qs) { if (q < minQ) continue; const k = Math.min(a[q], n); if (k > 0) { a[q] -= k; n -= k; worst = Math.min(worst, q); } if (!n) break; }
     return worst;
   }
-  function canPay(cost) { for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) return `Needs ${cost.gold}g`; } else if (count(k) < cost[k]) return `Needs ${cost[k]} ${D.items[k].name}` + (k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : ''); } return null; }
+  function canPay(cost) { for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) return `Needs ${cost.gold}g`; } else if (count(k) < cost[k]) return `Needs ${cost[k]} ${D.items[k].name}` + (k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : k === 'fence_kit' ? (unlocked('workbench') ? ` (make ${cost[k] > 1 ? 'them' : 'it'} at the Workbench: ${inTxt(D.recipes.fence_kit.in)} each)` : ' (unlock the Workbench in Discoveries first, then make Land Kits there)') : ''); } return null; }
   function pay(cost) { for (const k in cost) { if (k === 'gold') S.gold -= cost.gold; else take(k, cost[k]); } }
   // every ingredient of a price, with what you have: ✓ when covered, the shortfall when not
   function costList(cost) {
@@ -1991,7 +1991,7 @@
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
     let h = head(Tr.name, `${esc(Tr.desc)}`);
     if (adj) { const c = expCost(i); h += `<p class="state">Unclaimed land at your border.</p><span class="eyebrow">What it takes</span>${costList(c)}` + btn({ a: 'expand', i }, `Buy this tile`, { cls: 'pri', sub: costTxt(c) });
-      if (S.exp < C.expandStoneAt) h += `<p class="hint">From your ${C.expandStoneAt + 1}th tile, land also costs stone; from the ${C.expandFenceAt + 1}th, a fence kit. Boulder Fields only ever cost gold.</p>`; }
+      if (S.exp < C.expandStoneAt) h += `<p class="hint">From your ${C.expandStoneAt + 1}th tile, land also costs stone; from the ${C.expandFenceAt + 1}th, a Land Kit (made at the Workbench). Boulder Fields only ever cost gold.</p>`; }
     else h += `<p class="hint">Too far away. Buy the land between here and your homestead first.</p>`;
     const G = D.gather[T.t]; if (G && !unlocked(G.needs)) h += `<p class="hint">Working it needs <b>${esc(D.discoveries.find(d => d.id === G.needs).name)}</b>.</p>`;
     return h + `<p class="tip">${esc(Tr.future)}</p>`;

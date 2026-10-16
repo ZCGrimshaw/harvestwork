@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.42.2 — 2026-10-16
+- Fence Kit renamed Land Kit (display name only; the item id stays fence_kit, so saves are untouched). Wording updated on
+  the Workbench and Sheep discoveries, Timber Week, the expansion hint, and the "Fence the Fields" contract is now "Claim the
+  Land". canPay adds a hint when Land Kits are short: make them at the Workbench (recipe cost), or unlock the Workbench first.
+
 ## v0.42.1 — 2026-10-16
 - Your first Online Valley farm asks for a name ("What's your name?") and locks it to the player with claim_name; a
   taken name falls back to the server's suggestion (Name1…) with a toast, and S.name follows the locked name. An empty

@@ -20,7 +20,7 @@ window.HW_DATA = {
     fertGrowth: 1.4,                      // fertilized crops grow 40% faster
     expandStep: 8,                         // land gets pricier with every purchase
     expandStoneAt: 4,                      // from the 5th purchase, land also needs stone
-    expandFenceAt: 8,                      // from the 9th, a fence kit
+    expandFenceAt: 8,                      // from the 9th, a Land Kit
     farmPlotCost: { gold: 20 },
     regionSize: 6,                          // new areas are 6×6
     worldRegions: 6,                        // the world is 6×6 areas; your starting land fills the middle 2×2
@@ -161,7 +161,7 @@ window.HW_DATA = {
     jam:          { name: 'Berry Jam', cat: 'good', value: 40, icon: ['jar', '#c22a44', '#e8e0d0'] },
     pickled_carrots:{ name: 'Pickled Carrots', cat: 'good', value: 34, icon: ['jar', '#f08a24', '#e8e0d0'] },
     plank:        { name: 'Plank', cat: 'component', value: 6, icon: ['plank', '#dcaa68', '#9a6a3c'] },
-    fence_kit:    { name: 'Fence Kit', cat: 'component', value: 30, icon: ['fence', '#dcaa68', '#7a7a82'] },
+    fence_kit:    { name: 'Land Kit', cat: 'component', value: 30, icon: ['fence', '#dcaa68', '#7a7a82'] },
     crate:        { name: 'Crate', cat: 'component', value: 30, icon: ['crate', '#c98a4a', '#7a4b28'] },
 
     tomato:       { name: 'Tomato', cat: 'crop', value: 10, icon: ['berry', '#e0402a', '#3f8a3a'] },
@@ -399,7 +399,7 @@ window.HW_DATA = {
     { id: 'compost', pic: ['farm_wet', 'crop:carrot.1', 'fertilizer'], name: 'Fertilizer', cost: 2, req: [], text: 'Fertilized crops grow 40% faster and come out one quality tier higher.', where: 'Open Market → Buy, then tick “Use fertilizer” when planting.' },
     { id: 'berries', pic: ['farm_tilled', 'crop:berries.2', null], name: 'Berry Bushes', cost: 2, req: [], text: 'Berry seeds join the market.', where: 'Open Market → Buy.' },
     { id: 'preserver', pic: ['grass:0', 'preserver', 'jam'], name: 'Preserver', cost: 3, req: ['sawmill'], text: 'Turn berries and carrots into jam and pickles.', where: 'Open Market → Stations.' },
-    { id: 'workbench', pic: ['grass:1', 'workbench', 'fence_kit'], name: 'Workbench', cost: 3, req: ['sawmill', 'stonecutting'], text: 'Build fence kits for big expansions and crates for storage.', where: 'Open Market → Stations.' },
+    { id: 'workbench', pic: ['grass:1', 'workbench', 'fence_kit'], name: 'Workbench', cost: 3, req: ['sawmill', 'stonecutting'], text: 'Build Land Kits for expanding and surveying land and for pastures, plus crates for storage.', where: 'Open Market → Stations.' },
     { id: 'tuning', pic: ['grass:0', 'stove', 'gear'], name: 'Station Tuning', cost: 3, req: ['sawmill'], text: 'Upgrade any station’s speed, capacity and output quality.', where: 'Select a station → Upgrades.' },
     { id: 'tools', pic: ['farm_raw', null, ['tool', '#9aa0aa', '#c8ccd4']], name: 'Toolsmithing', cost: 2, req: ['sawmill'], text: 'Upgrade your watering can, hoe, axe, pickaxe and fishing rod.', where: 'Select the Homestead → Tools.' },
     { id: 'repeat', pic: ['grass:0', 'sawmill:1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Repeat Recipes', cost: 2, req: ['tuning'], text: 'A station reloads a chosen recipe by itself whenever a slot frees and the ingredients are in storage.', where: 'Select a station → Repeat on a recipe.' },
@@ -426,7 +426,7 @@ window.HW_DATA = {
     { id: 'smelter', pic: ['grass:0', 'smelter', 'copper_ingot'], name: 'Smelter', cost: 4, req: ['prospecting', 'kiln'], text: 'Melt copper ore with charcoal into copper ingots.', where: 'Open Market → Stations.' },
     { id: 'chickens', survey: true, pic: ['grass:1', 'coop', 'egg'], name: 'Chickens', cost: 3, req: ['surveying'], text: 'A Chicken Coop. Hens turn spare wheat or carrots into eggs, and eggs make omelettes at the Stove.', where: 'Open Market → Stations → Chicken Coop kit.' },
     { id: 'dairy', pic: ['grass:2', 'dairy', 'milk'], name: 'Dairy Cows', cost: 3, req: ['chickens'], text: 'A Dairy Barn. Cows turn hay or vegetables into milk; eggs and milk make custard.', where: 'Open Market → Stations → Dairy Barn kit.' },
-    { id: 'sheep', pic: ['grass:0', 'pasture', 'wool'], name: 'Sheep', cost: 3, req: ['chickens'], text: 'A Sheep Pasture for wool. Spin it into yarn and weave blankets at the Loom.', where: 'Open Market → Stations → Sheep Pasture kit (placing takes fence kits).' },
+    { id: 'sheep', pic: ['grass:0', 'pasture', 'wool'], name: 'Sheep', cost: 3, req: ['chickens'], text: 'A Sheep Pasture for wool. Spin it into yarn and weave blankets at the Loom.', where: 'Open Market → Stations → Sheep Pasture kit (placing takes Land Kits).' },
     { id: 'creamery', pic: ['grass:1', 'creamery', 'cheese'], name: 'Creamery', cost: 3, req: ['dairy'], text: 'Churn butter and age cheese. Butter, eggs and flour bake into Farmhouse Cake in the Oven.', where: 'Open Market → Stations → Creamery kit.' },
     { id: 'errands', pic: ['grass:0', 'market', 'crate'], name: 'Errands', cost: 3, req: ['farmhand'], text: 'Your farmhand can run to the market for a recipe’s missing ingredients, pay for them, and load the station for you.', where: 'Click a recipe at any station → Send farmhand shopping.' },
     { id: 'crew', pic: ['grass:1', 'avatar:2.1.1.1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Seasoned Farmhand', cost: 4, req: ['farmhand'], text: 'Your farmhand handles up to 8 jobs and works as fast as you do.', where: 'Select the Homestead → Farmhand.' },
@@ -498,7 +498,7 @@ window.HW_DATA = {
     { id: 'fisher', name: 'Fisher’s Week', blurb: 'Extra ponds on your land, fish come back twice as fast, and fish and fish dishes score double.',
       rules: { fish: 2, score: { fish: 2, cooked_fish: 2, smoked_fish: 2 } },
       start: { gold: [12, 22], plots: [2, 3], land: [3, 3], extra: [1, 1], unl: ['fishing'], give: { carrot_seed: [6, 8] }, terrain: { water: [4, 6] } } },
-    { id: 'timber', name: 'Timber Week', blurb: 'A woodland start with a Sawmill and Workbench. Logs, planks, crates and fence kits score double.',
+    { id: 'timber', name: 'Timber Week', blurb: 'A woodland start with a Sawmill and Workbench. Logs, planks, crates and Land Kits score double.',
       rules: { score: { log: 2, plank: 2, crate: 2, fence_kit: 2 } },
       start: { gold: [10, 20], plots: [2, 3], land: [3, 3], stations: ['sawmill', 'workbench'], extra: [0, 0], unl: ['woodcutting', 'sawmill', 'stonecutting', 'workbench'], give: { stone: [4, 8] }, terrain: { forest: [5, 8] } } },
     { id: 'pantry', name: 'Pantry Week', blurb: 'Jams and pickles score double and the Preserver works 30% faster. Berry seeds to start.',
@@ -546,7 +546,7 @@ window.HW_DATA = {
     { name: 'Fish Fry', need: [['cooked_fish', 2, 0]], gold: 80, dp: 2, hint: 'Unlock Fishing and buy a Pond tile.' },
     { name: 'Fine Fare', need: [['veggie_stew', 2, 1]], gold: 120, dp: 3, hint: 'Water crops at both stages for Good quality, then cook Veggie Stew.' },
     { name: 'Baker’s Basket', need: [['bread', 3, 0]], gold: 140, dp: 3, hint: 'Wheat → Flour Mill → Stove.' },
-    { name: 'Fence the Fields', need: [['fence_kit', 2, 0]], gold: 150, dp: 3, hint: 'Workbench: planks and stone.' },
+    { name: 'Claim the Land', need: [['fence_kit', 2, 0]], gold: 150, dp: 3, hint: 'Workbench: planks and stone.' },
     { name: 'Pantry Stock', need: [['jam', 3, 0]], gold: 180, dp: 3, hint: 'Berries → Preserver.' },
     { name: 'Harvest Festival', need: [['bread', 2, 2], ['jam', 2, 1]], gold: 400, dp: 5, hint: 'Fertilize, water twice, and tune your stations for quality.' },
     { name: 'Brickworks', need: [['brick', 8, 0]], gold: 160, dp: 3, hint: 'Unlock the Brick Kiln and fire stone into bricks.' },
@@ -626,6 +626,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.42.2', at: '2026-10-16 10:05', notes: ['The Fence Kit is now the Land Kit, since you need it for more than fences: expanding your land (from the 9th tile), surveying new areas and building a Sheep Pasture. Your existing kits carry over. When you’re short of Land Kits, the message now tells you where to make them: at the Workbench, from planks and stone.'] },
   { v: '0.42.1', at: '2026-10-16 09:40', notes: ['Starting your first Online Valley farm now asks for your name and locks it to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals. If it’s taken, you’ll get the next free number (Sam1, Sam2…).'] },
   { v: '0.42', at: '2026-10-15 23:45', notes: ['Valley Monuments! Every online farm now builds one shared monument together, and the first is The Great Pyramid, with two weeks to build it. It rises through four stages (foundation, body, detail and the gold capstone), and each phase asks for different goods: stone and bricks, then timber, then food and crafts, then fine goods.', 'Once you finish the tutorial, a Valley Green opens beside your land: a paved plaza with the pyramid at full size and a Monument Depot, where you give goods from storage. It never costs you land and doesn’t count toward your building limits. The new pyramid button by the map controls takes you there, and you can also give from the Homestead or Menu → Valley Monument.', 'Finer goods count for more points, and you can give up to 800 points a day, so every farm gets a share of the work. Giving earns no gold. Instead you earn a small model of the pyramid for your farm (it shows the current stage), +1 Discovery for your first gift in each phase, and +2 when it’s finished. Each stage the valley reaches gets a little celebration. Tap “How do monuments work?” in the Depot for the full rules.', 'The Homestead now has a Notices list for things that are easy to miss, like goods the monument needs or a storage upgrade you can afford. A gold “!” over the Homestead means something new is waiting.'] },
   { v: '0.41', at: '2026-10-15 15:40', notes: ['Seasons and weather! The year now runs through Spring, Summer, Autumn and Winter, seven days each, so every season lines up with a weekly report. The day in the top bar shows the season and today’s weather; tap it for the forecast, what’s in season and the year at a glance.', 'Each season favours its own crops: they grow 25% faster and sell for 20% more, along with seasonal goods like berry juice in summer, pumpkin pie in autumn and wool blankets in winter. The market’s pick of the day is often something in season.', 'Gentle weather, never storms: rain waters every growing crop while it falls (it counts for quality), sunny spells speed growth a little, summer heat dries soil out so crops need water sooner, mist and fog are just for looks, frosty mornings slow tender crops until 10:00, and on snow days only hardy crops (carrots, potatoes, wheat and apple trees) can be planted. In winter, tender crops grow a little slower.', 'The valley changes with the seasons: blossom in spring, deep greens in summer, golden leaves in autumn, frost and snow-capped roofs in winter, with rain, snowflakes, mist and drifting leaves. Each season has its own music, and the ambience brings rain, summer cicadas and quieter winter days.', 'Races and weekly challenges stay on a fair spring day with no weather, so every run is the same for everyone.'] },
