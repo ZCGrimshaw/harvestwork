@@ -83,15 +83,48 @@ Built in stages; each stage ships on its own.
     A minimum contribution earns the decoration; a late joiner can still view finished monuments in the gallery.
   - The small version: a one-tile decoration (like the medals) showing the current stage, staying as the finished
     model afterwards.
-  - Homestead: a Valley section with a slowly rotating floating monument, progress bar, what's needed this phase,
-    your own total, a contributor roll and a Contribute button. Add a general Homestead notices list with a glowing
-    badge for things players forget (an unfinished monument, an affordable storage upgrade, a waiting weekly
-    report), plus a tutorial goal pointing at it.
-  - Valley view: a button beside See-through opens a diorama scene (plaza, the monument at its stage, scaffolding,
-    banner of contributor names), since the shared build can't sit on a private farm map.
+  - Sizes (mockup agreed 2026-10-15): farm decoration 1x (one tile, like a medal); floating Homestead monument 3x
+    (~96 art px wide, redrawn with finer detail, not the small sprite scaled up); full-size on the map ~3×3 tiles.
+    Stage art: 0% surveyed plot (stakes, string, sign), 25% stone base + scaffolding + crane + stone pile, 50% half
+    height, 75% entrance and decorated band with low scaffolding, 100% gold capstone, banners, sparkle.
+  - **Valley Green (replaces the old Valley view diorama, agreed 2026-10-15):** a fixed, pre-cleared plaza area on
+    every online farm, outside the buildable land (never costs farm space or counts toward building caps). It holds
+    one 3×3 pedestal per monument: the current build with its scaffolding, and finished ones as full-size models,
+    so it fills up over the months like a trophy garden; the area grows in bands as monuments finish (start ~6×6).
+    Opened by a tutorial goal that points players to it. The "show the build" button beside See-through jumps the
+    camera to the Green. Online farms only.
+  - **Monument Depot (agreed 2026-10-15):** one free building per farm, standing in the Valley Green (not placeable
+    on the farm). Opening it shows the stage, what this phase needs, the progress bar, your own total, today's
+    remaining allowance, the contributor roll, and Contribute. Donating stacks crates at the Depot and a little cart
+    carries them to the scaffolding. Stage ceremonies play here.
+  - Homestead: a Valley section mirroring the Depot panel (same Contribute button, so phone players never have to
+    travel), with the slowly rotating 3x floating monument. Add a general Homestead notices list with a glowing
+    badge for things players forget (monument needs planks, an affordable storage upgrade, a waiting weekly
+    report).
+  - Donation flow: the panel lists only goods the current phase accepts, with how much is still needed; pick a good
+    and amount, or "Give max" (respects storage and the daily cap). Goods leave storage. Each good has a build
+    value (finer goods count for more); progress is measured in points per phase. The server adds to the shared
+    total; crossing a stage updates everyone and queues the ceremony pop-up. Decoration earned after a minimum total,
+    plus a few Discovery points.
+  - **Player explanations (required, 2026-10-15):** players must always understand what this is and why it helps.
+    - First visit to the Green/Depot: a short welcome card ("Every farm in the valley builds this together. Donate
+      goods, watch it rise, and keep a model of it on your farm.") with the four stages pictured and the rewards
+      stated up front (decoration + Discovery, no gold).
+    - A "How monuments work" info card (in the Depot, the Homestead section and the Info menu): stages and phases,
+      build value, the daily allowance and why it exists (so every farm can take part), that donations give no gold,
+      when the monument ends, and what happens if it isn't finished in time.
+    - Inline help in the panel: each good shows its build value and "counts as N points"; the daily allowance shows
+      as "You can give N more points today, resets at 00:00 UTC"; the phase line says why ("Phase 2: planks for the
+      scaffolding"); greyed goods say what's missing ("you have none in storage" / "not needed this phase").
+    - After donating: a toast with what you gave, the points, your new total, and how close the next stage is;
+      a note when you've earned the decoration ("Placed in Menu → Monuments, put it anywhere on your farm").
+    - Tutorial goal text, the Homestead notice and the "show the build" button tooltip all say what to do next.
+    - Offline or private farms: the Green shows a plain explanation that monuments need an online farm, not a
+      broken or empty panel. Release notes visible and written for players.
   - Valley Gallery of finished monuments. Candidates: pyramid first, then mill, lighthouse, stone bridge, clock
     tower, great barn, fountain square, harvest statue.
-  - Server: projects + contributions tables, per-report caps like record_trade, active-player count for scaling.
+  - Server: projects + contributions tables, per-report caps like record_trade (the server can't see storage, so it
+    limits each report and each day rather than verifying goods), active-player count for scaling.
 - **Stage 5: The County Fair.** Once a season (end of each season). A special list of Fair orders just for the
   event, a race to fill it: the clock starts when you open the fair. You get a Fair Cart that holds exactly enough
   for the list (doesn't use storage). Fastest complete lists win ribbons for the trophy case; everyone who finishes
