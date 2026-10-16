@@ -1711,6 +1711,9 @@
     UI.catShow[kind] = cur;
     return `<div class="chips" role="group" aria-label="Filter by category">${opts.map(([id, name, n]) => `<button class="chipf ${cur === id ? 'on' : ''}" data-cat="${kind}:${id}" aria-pressed="${cur === id}">${esc(name)}${n != null ? `<span>${n}</span>` : ''}</button>`).join('')}</div>`;
   }
+  // ways to sort Storage: 'cat' is the usual category headings; the rest are one flat list (the category chips still filter it)
+  const INV_SORTS = [['cat', 'Category', 'Grouped under category headings'], ['name', 'A–Z', 'By name'], ['most', 'Most', 'Biggest stacks first'], ['least', 'Fewest', 'Smallest stacks first'],
+    ['worth', 'Worth', 'Highest total value first, to see what is worth selling'], ['best', 'Best quality', 'Most Excellent and Good goods first'], ['newest', 'Newest', 'Most recently added to storage first']];
   const catSel = kind => UI.catShow[kind] || UI.cat[kind] || 'all';
   // render ids grouped under category headings, honouring the active chip
   function grouped(ids, kind, row, wrap) {
@@ -2132,8 +2135,16 @@
         <button class="linkish small" data-qhelp>${UI.qhelp ? 'Hide' : 'How do I make'} ${QN[1]} and ${QN[2]} goods?</button>${UI.qhelp ? QUALITY_HELP : ''}`;
       const ids = Object.keys(S.inv).filter(id => count(id) > 0);
       if (ids.length) h += chips('inv', groupCounts(ids, count));
-      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
-      h += ids.length ? grouped(ids, 'inv', slot, 'invgrid') : '<p class="hint">Storage is empty.</p>';
+      const sortK = INV_SORTS.some(s => s[0] === UI.cat.invsort) ? UI.cat.invsort : 'cat', worth = id => (D.items[id].value || 0) * count(id);
+      if (ids.length > 1) h += `<div class="chips sortbar" role="group" aria-label="Sort storage"><span class="sortlbl">Sort by</span>${INV_SORTS.map(([k, nm, tip]) => `<button class="chipf ${sortK === k ? 'on' : ''}" data-cat="invsort:${k}" aria-pressed="${sortK === k}" title="${esc(tip)}">${esc(nm)}</button>`).join('')}</div>`;
+      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
+      if (!ids.length) h += '<p class="hint">Storage is empty.</p>';
+      else if (sortK === 'cat') h += grouped(ids, 'inv', slot, 'invgrid');
+      else { const sel = catSel('inv'), nm = id => D.items[id].name, order = Object.keys(S.inv), inv = id => S.inv[id];
+        const key = { name: (a, b) => nm(a).localeCompare(nm(b)), most: (a, b) => count(b) - count(a), least: (a, b) => count(a) - count(b), worth: (a, b) => worth(b) - worth(a),
+          best: (a, b) => inv(b)[2] - inv(a)[2] || inv(b)[1] - inv(a)[1] || count(b) - count(a), newest: (a, b) => order.indexOf(b) - order.indexOf(a) }[sortK];
+        const list = ids.filter(id => sel === 'all' || groupOf(id) === sel).sort((a, b) => key(a, b) || nm(a).localeCompare(nm(b)));
+        h += `<div class="invgrid">${list.map(slot).join('')}</div>`; }
     } else if (UI.drawer === 'tree') {
       const m = curMs();
       if (!m) h = `<div class="phead"><div><h2>All contracts complete</h2></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -2540,7 +2551,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261016-214104';
+  const BUILD = '20261016-221408';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

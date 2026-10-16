@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.43 — 2026-10-16
+- Storage sorting. A "Sort by" row in the Storage drawer (INV_SORTS): Category (the grouped view, unchanged default),
+  A–Z, Most, Fewest, Worth (item value × count; the slot shows the total), Best quality (Excellent, then Good, then
+  count) and Newest (reverse order items first entered storage). Everything but Category is one flat list; the category
+  chips still filter it. Saved with the other tab choices (UI.cat.invsort in harvestworks.tabs). Client only.
+
 ## v0.42.4 — 2026-10-16
 - Daily allowance dead end fixed. mon_give used to refuse when the allowance left was smaller than one item's points
   (allow < val, and allow / val rounded down), so a player 1 point short of 800 could not give a 4-point item. Server
