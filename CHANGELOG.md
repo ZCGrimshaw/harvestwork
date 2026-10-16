@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.42.3 — 2026-10-16
+- Valley Green attaches to a corner of the farm (the area diagonal to a corner of the starting land) instead of an edge
+  area. greenSpot(k) finds it for 'back' | 'right' | 'left' | 'front' (back = top of the map at the default rotation); a
+  corner is unavailable if that area is off the map or already surveyed. New farms open at 'back', falling back to the
+  old nearest-area rule if all four are taken. moveGreen(k) (free) returns the old area to unsurveyed void and paves the
+  new one; the picker is in the Depot and Green panels. Existing Greens keep their place (k = null) until moved.
+
 ## v0.42.2 — 2026-10-16
 - Fence Kit renamed Land Kit (display name only; the item id stays fence_kit, so saves are untouched). Wording updated on
   the Workbench and Sheep discoveries, Timber Week, the expansion hint, and the "Fence the Fields" contract is now "Claim the

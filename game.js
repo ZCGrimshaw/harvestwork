@@ -382,20 +382,40 @@
     const seen = lsGet('harvestworks.monseen', {}); seen[m.id] = p.stage; lsSet('harvestworks.monseen', seen);
     if (p.stage >= m.phases.length && m.mine > 0) { S.monDone = S.monDone || {}; if (!S.monDone[m.id]) { S.monDone[m.id] = 1; S.dp += 2; toast(`<b>+2 Discovery</b> · you helped finish ${esc(m.name)}`, 'disc'); save(); } }
     UI.monShow = p; openTitle('monstage'); SND.play('contract'); }
-  /* The Valley Green: the nearest unsurveyed area to your land becomes a paved plaza with the monument and the Depot. */
+  /* The Valley Green: a 6×6 plaza with the monument and the Depot, tucked against one of the four corners of your farm
+     (the area diagonal to that corner). You pick the corner, and can move it any time for free. */
   const greenT = i => !!(D.terrain[T_(i).t] && D.terrain[T_(i).t].green);
-  function openGreenIfReady() {
-    if (!S || S.green || S.race || !online() || !MONK() || S.goal < D.goals.length) return;
-    const R = C.worldRegions, c = (R - 1) / 2, cand = S.regions.map((Rg, r) => r).filter(r => !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open && S.regions[n].theme !== 'green'));
-    if (!cand.length) return;
-    cand.sort((a, b) => Math.hypot(a % R - c, (a / R | 0) - c) - Math.hypot(b % R - c, (b / R | 0) - c) || a - b);
-    const r = cand[0], x0 = (r % R) * RS(), y0 = (r / R | 0) * RS(), ctr = idx(x0 + 2, y0 + 2), dep = idx(x0 + 5, y0 + 2), m = MONK(); // the Depot sits 3 tiles from the centre, so it never ties the monument's front corner for draw order
+  const GREEN_CORNERS = [['back', 'Back corner', -1, -1], ['right', 'Right corner', 1, -1], ['left', 'Left corner', -1, 1], ['front', 'Front corner', 1, 1]];
+  // the area diagonal to a corner of your starting land, or -1 if it's off the map or you've already surveyed it
+  function greenSpot(k) { const R = RW(), home = S.regions.map((g, r) => g.theme === 'home' ? r : -1).filter(r => r >= 0), c = GREEN_CORNERS.find(g => g[0] === k); if (!home.length || !c) return -1;
+    const xs = home.map(r => r % R), ys = home.map(r => r / R | 0), x = c[2] < 0 ? Math.min(...xs) - 1 : Math.max(...xs) + 1, y = c[3] < 0 ? Math.min(...ys) - 1 : Math.max(...ys) + 1;
+    if (x < 0 || y < 0 || x >= R || y >= R) return -1; const r = y * R + x, g = S.regions[r]; return !g.open || g.theme === 'green' ? r : -1; }
+  // lay the plaza, the monument site and the Depot over area r
+  function paveGreen(r, meta) { const R = C.worldRegions, x0 = (r % R) * RS(), y0 = (r / R | 0) * RS(), ctr = idx(x0 + 2, y0 + 2), dep = idx(x0 + 5, y0 + 2); // the Depot sits 3 tiles from the centre, so it never ties the monument's front corner for draw order
     S.regions[r] = { open: true, theme: 'green' };
     for (let y = 0; y < RS(); y++) for (let x = 0; x < RS(); x++) { const i = idx(x0 + x, y0 + y), foot = x >= 1 && x <= 3 && y >= 1 && y <= 3, ring = x <= 4 && y <= 4 && !((x === 0 || x === 4) && (y === 0 || y === 4));
-      S.tiles[i] = { t: foot || ring ? 'plaza' : 'lawn', o: true, b: foot ? { type: 'mon_site', c: ctr, p: m.id, kind: m.kind } : null, r: null, v: (x * 7 + y * 13) % 3 }; }
-    S.tiles[dep].b = { type: 'depot' };
-    S.green = { r, c: ctr, d: dep, day: S.day }; UI.live = null; save();
+      S.tiles[i] = { t: foot || ring ? 'plaza' : 'lawn', o: true, b: foot ? { type: 'mon_site', c: ctr, p: meta.p, kind: meta.kind } : null, r: null, v: (x * 7 + y * 13) % 3 }; }
+    S.tiles[dep].b = { type: 'depot' }; return { c: ctr, d: dep }; }
+  function openGreenIfReady() {
+    if (!S || S.green || S.race || !online() || !MONK() || S.goal < D.goals.length) return;
+    let k = GREEN_CORNERS.map(g => g[0]).find(k => greenSpot(k) >= 0), r = k ? greenSpot(k) : -1;
+    if (r < 0) { // all four corners are taken or off the map: fall back to the nearest unsurveyed area beside your land
+      const R = C.worldRegions, c = (R - 1) / 2, cand = S.regions.map((Rg, q) => q).filter(q => !S.regions[q].open && regionNbrs(q).some(n => S.regions[n].open && S.regions[n].theme !== 'green'));
+      if (!cand.length) return; cand.sort((a, b) => Math.hypot(a % R - c, (a / R | 0) - c) - Math.hypot(b % R - c, (b / R | 0) - c) || a - b); r = cand[0]; k = null; }
+    const m = MONK(), p = paveGreen(r, { p: m.id, kind: m.kind });
+    S.green = { r, c: p.c, d: p.d, day: S.day, k }; UI.live = null; save();
     if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
+  // move the Green to another corner: the old area goes back to being unsurveyed land
+  function moveGreen(k) { if (!S.green || S.race) return; const r = greenSpot(k); if (r < 0 || r === S.green.r) return;
+    const o = S.tiles[S.green.c].b || {}, old = S.green.r;
+    regionTiles(old).forEach(i => { S.tiles[i] = { t: 'void', o: false, b: null, r: null, v: 0 }; });
+    S.regions[old] = { open: false, theme: themeAt(old % RW(), old / RW() | 0) };
+    const p = paveGreen(r, { p: o.p, kind: o.kind }); S.green = { r, c: p.c, d: p.d, day: S.green.day, k }; UI.live = null; save();
+    showGreen(); toast(`<b>Valley Green moved</b> to the ${esc(GREEN_CORNERS.find(g => g[0] === k)[1].toLowerCase())} of your farm.`, 'goal'); }
+  function greenMoveHTML() { if (!S.green || S.race) return '';
+    return `<span class="eyebrow">Where it sits</span><p class="hint small">The Valley Green is tucked against one corner of your farm. Move it to any corner you haven’t built land on. It’s free, and you can change it back any time. Corners are named as the map first appears.</p>
+      <div class="modepick">${GREEN_CORNERS.map(([k, nm]) => { const here = S.green.k === k, ok = here || greenSpot(k) >= 0;
+        return `<button class="modeopt ${here ? 'on' : ''}" data-green-move="${k}" ${ok ? '' : 'disabled'}><b>${nm}</b><small>${here ? 'Here now' : ok ? 'Move it here' : 'Not available: that area is already part of your land'}</small></button>`; }).join('')}</div>`; }
   const monTiles = () => S.green ? S.tiles.map((T, i) => T.b && T.b.type === 'mon_site' && T.b.c === S.green.c ? i : -1).filter(i => i >= 0) : [];
   function showGreen() { if (!S.green) return; UI.drawer = null; UI.title && closeTitle(); centerOn(S.green.c); clampCam(); UI.sel = S.green.d; dirty(); }
   // Give goods. Lowest quality goes first, since quality doesn't count here.
@@ -1943,15 +1963,16 @@
     h += modelLine(m);
     if ((m.top || []).length) h += `<span class="eyebrow">Contributors</span><ol class="monroll">${m.top.map(x => `<li class="${x.me ? 'me' : ''}"><span>${esc(x.name)}${x.me ? ' (you)' : ''}</span><b>${x.points.toLocaleString()}</b></li>`).join('')}</ol>${m.givers > m.top.length ? `<p class="hint small">…and ${m.givers - m.top.length} more farm${m.givers - m.top.length === 1 ? '' : 's'}.</p>` : ''}`;
     else h += `<p class="hint small">No one has given anything yet. Be the first name on the roll!</p>`;
-    if (where === 'drawer' && S.green) h += `<button class="btn ghost" data-mon-show>See it on your Valley Green<small>The full-size build, beside your farm</small></button>`;
-    else if (!S.green && S.goal < D.goals.length) h += `<p class="hint small">When you finish the tutorial, a Valley Green opens beside your farm with the monument at full size.</p>`;
+    if (where === 'drawer' && S.green) h += `<button class="btn ghost" data-mon-show>See it on your Valley Green<small>The full-size build, at a corner of your farm</small></button>`;
+    else if (!S.green && S.goal < D.goals.length) h += `<p class="hint small">When you finish the tutorial, a Valley Green opens at a corner of your farm with the monument at full size.</p>`;
     h += `<button class="linkish small" data-mon-help>${UI.monHelp ? 'Hide: how' : 'How'} do monuments work?</button>${UI.monHelp ? monHelpHTML(m) : ''}`;
     return h; }
   function monPanel(i) { const b = T_(i).b, depot = b.type === 'depot';
-    return head(depot ? 'Monument Depot' : (MONK() ? MONK().name : 'Valley Monument'), depot ? 'Give goods to the monument the whole valley is building.' : 'Built together by every online farm in the valley.') + monHTML('depot'); }
+    return head(depot ? 'Monument Depot' : (MONK() ? MONK().name : 'Valley Monument'), depot ? 'Give goods to the monument the whole valley is building.' : 'Built together by every online farm in the valley.') + monHTML('depot') + greenMoveHTML(); }
   function greenPanel(i) {
-    return head('Valley Green', esc(D.terrain[T_(i).t].desc)) + `<p class="hint">The Valley Green opened beside your farm for the valley’s monuments. It never cost you land, nothing can be built on it, and it doesn’t count toward your building limits. Finished monuments stay here at full size.</p>
-      ${S.green ? `<button class="btn pri" data-goto="${S.green.d}">Open the Monument Depot<small>See what the monument needs and give goods</small></button>` : ''}`; }
+    return head('Valley Green', esc(D.terrain[T_(i).t].desc)) + `<p class="hint">The Valley Green opened at the edge of your farm for the valley’s monuments. It never cost you land, nothing can be built on it, and it doesn’t count toward your building limits. Finished monuments stay here at full size.</p>
+      ${S.green ? `<button class="btn pri" data-goto="${S.green.d}">Open the Monument Depot<small>See what the monument needs and give goods</small></button>` : ''}
+      ${greenMoveHTML()}`; }
   function modelPanel(i) { const mm = T_(i).b.m, K = D.monuments[mm.kind] || D.monuments.pyramid, x = earnedModels().find(p => p.id === mm.id) || { name: K.name }, st = monStageOf(mm.id), fin = !!x.finished_at || st >= 4;
     return head(`${monShort(x.name)} model`, 'A Valley Monument you helped build.') + `<div class="medalbig"><img src="${ART.monPic(mm.kind || 'pyramid', st)}" alt="" style="width:84px;height:auto"><p class="state">${fin ? `The valley finished ${esc(x.name)}${x.mine ? `, and you gave ${x.mine.toLocaleString()} points to it` : ''}.` : `The valley is building ${esc(x.name)}. This model shows its current stage: <b>${esc(K.stages[st])}</b>.`}</p></div>
       ${fin ? '' : '<button class="btn" data-drawer="valley">Open the monument<small>Give goods and watch it grow</small></button>'}<button class="btn ghost" data-mon-away="${i}">Put it away</button><p class="hint small">Place it again any time from the Monument Depot or Menu → Valley Monument.</p>`; }
@@ -2408,6 +2429,7 @@
     else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your trophy case (Menu → Medals).', 'info'); } }
     else if (ds.monGive) { const inp = $('#mg-' + ds.monGive); monGive(ds.monGive, inp ? Math.max(1, parseInt(inp.value, 10) || 1) : 1); return; }
     else if ('monShow' in ds) { showGreen(); }
+    else if (ds.greenMove) { moveGreen(ds.greenMove); }
     else if ('monHelp' in ds) { UI.monHelp = !UI.monHelp; }
     else if (ds.monPlace) { UI.placeMon = ds.monPlace; UI.drawer = null; UI.sel = -1; toast('Select any empty grass you own, then press <b>Place the model here</b>.', 'info'); }
     else if (ds.monPut) { const p = earnedModels().find(x => x.id === ds.monPut), i = +ds.i;
@@ -2518,7 +2540,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261016-162858';
+  const BUILD = '20261016-164735';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2698,7 +2720,7 @@
         <div class="tmenu"><button class="btn pri big" data-t="wleave">Back to my farm</button><button class="btn big" data-t="weekly">This week’s board</button></div></div>`; }
     else if (t === 'monwelcome' && MONK()) { const m = MONK(), K = monKind(m), st = monTotals(m).stage;
       h = `<div class="tcard moncard"><span class="twel">New in the valley</span><img class="monheroimg" src="${ART.monPic(m.kind, st)}" alt="">
-        <h2>The valley is building ${esc(m.name)}!</h2><p class="sub">Every online farm builds it together. A <b>Valley Green</b> has opened beside your land, with the monument at full size and a <b>Monument Depot</b> where you give goods.</p>
+        <h2>The valley is building ${esc(m.name)}!</h2><p class="sub">Every online farm builds it together. A <b>Valley Green</b> has opened at a corner of your land, with the monument at full size and a <b>Monument Depot</b> where you give goods.</p>
         <div class="monstrip">${[0, 1, 2, 3, 4].map(k => `<span class="${k <= st ? 'on' : ''}"><img src="${ART.monPic(m.kind, k)}" alt=""><small>${k ? k * 25 + '%' : 'Start'}</small></span>`).join('')}</div>
         <ul class="monpts"><li><b>Four stages.</b> It rises at 25, 50, 75 and 100%. Each phase asks for different goods: ${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))}.</li>
           <li><b>Points.</b> Finer goods count for more. You can give up to ${m.cap.toLocaleString()} points a day, so every farm gets a share of the work.</li>
