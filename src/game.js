@@ -2726,11 +2726,12 @@
     else if (t === 'confirm') h = `<div class="tcard"><h2>Start a new farm?</h2>
         <p class="sub">This replaces <b>${esc(S.name)}’s farm</b> (day ${S.day}, ${S.gold}g) in this browser. Download a save file first if you might want it back.</p>
         <div class="tmenu"><button class="btn big" data-t="dl">Download save file</button><button class="btn danger big" data-t="name">Replace it and start fresh</button>${back}</div></div>`;
-    else if (t === 'name') h = `<div class="tcard"><h2>Name your farmer</h2>
-        <label class="field tname">Name <input id="tname" maxlength="14" placeholder="Farmer" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
+    else if (t === 'name') { const first = firstOnline(); h = `<div class="tcard"><h2>${first ? 'What’s your name?' : 'Name your farmer'}</h2>
+        <label class="field tname">${first ? 'Your name' : 'Name'} <input id="tname" maxlength="14" placeholder="${first ? 'Pick a name' : 'Farmer'}" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
+        ${first ? `<p class="hint small ${UI.nameErr ? 'err' : ''}">${UI.nameErr ? 'Please type a name to play in the Online Valley. ' : ''}It’s locked to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals, on every farm you play. If it’s taken you’ll get the next free number (Name1, Name2…).</p>` : ''}
         <div class="modepick">${['online', 'private'].map(m => `<button class="modeopt ${(UI.newMode || 'online') === m ? 'on' : ''}" data-t="pickmode" data-m="${m}"><b>${MODES[m].name}</b><small>${MODES[m].blurb}</small></button>`).join('')}</div>
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
-        <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`;
+        <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`; }
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
     else if (t === 'restore') { const R = UI.rest || {};
       const slotPick = (o, act) => `<span class="eyebrow">Load it into</span><div class="slots">${[0, 1, 2].map(k => { const f = k === SLOT && UI.hadSave && !S.race ? { name: S.name, day: S.day } : slotInfo(k);
@@ -2764,7 +2765,15 @@
     titleEl.className = 'title-' + t; titleEl.innerHTML = h; titleEl.hidden = false;
     const inp = $('#tname'); if (inp) inp.focus();
   }
+  // Your first Online Valley farm asks for a name and locks it to this player (a taken name gets the next free number).
+  const firstOnline = () => (UI.newMode || 'online') !== 'private' && !NET.myName;
+  async function lockFirstName(name) {
+    await claimName(name); const c = UI.claim || {};
+    if (c.taken && c.suggestion) { await claimName(c.suggestion);
+      if (UI.claim && UI.claim.done) toast(`<b>${esc(name)} was already taken</b>, so you’re <b>${esc(UI.claim.done)}</b> in the valley.`, 'info'); }
+    if (NET.myName && S && S.name !== NET.myName && online()) { S.name = NET.myName; save(); dirty(); } }
   function startNewFarm(name, tut) {
+    const lock = (UI.newMode || 'online') !== 'private' && !NET.myName && name;
     if (UI.newSlot != null) { if (!S.race) save(); setSlot(UI.newSlot); UI.newSlot = null; }
     if (S.race) { if (!S.race.weekly) try { localStorage.removeItem(RINFO); localStorage.removeItem(RACE_KEY); } catch (e) { } S.race = null; }
     try { localStorage.removeItem(saveKey()); } catch (e) { }
@@ -2772,6 +2781,7 @@
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
     if (tut) startTut(); else toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
+    if (lock) lockFirstName(name);
   }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
@@ -2820,7 +2830,9 @@
     else if (a === 'loadgo' && UI.tFile && UI.tFile.o) { const o = UI.tFile.o; adoptState(o); UI.hadSave = true; closeTitle();
       toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
     else if (a === 'pickmode') { UI.tnameDraft = ($('#tname') || {}).value || ''; UI.newMode = el.dataset.m; renderTitle(); }
-    else if (a === 'go' || a === 'go-tut') { const n = ($('#tname') || {}).value; startNewFarm((n || '').trim(), a === 'go-tut'); }
+    else if (a === 'go' || a === 'go-tut') { const n = (($('#tname') || {}).value || '').trim();
+      if (firstOnline() && !n) { UI.nameErr = true; UI.tnameDraft = ''; renderTitle(); const f = $('#tname'); if (f) f.focus(); return; }
+      UI.nameErr = false; startNewFarm(n, a === 'go-tut'); }
   });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rjoin') { e.preventDefault(); joinRace(e.target.value); } });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rcode') { e.preventDefault(); findBackup(e.target.value); } });

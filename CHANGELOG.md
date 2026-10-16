@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.42.1 — 2026-10-16
+- Your first Online Valley farm asks for a name ("What's your name?") and locks it to the player with claim_name; a
+  taken name falls back to the server's suggestion (Name1…) with a toast, and S.name follows the locked name. An empty
+  name stops the start. Private farms and players who already have a locked name see the old "Name your farmer" card.
+
 ## v0.42 — 2026-10-15
 - Valley Monuments (Late-game loops, Stage 4). Server: mon_projects (phases jsonb with need, items→points, name, short,
   blurb; cap points/day; keep_min for the model) and mon_gifts (project, player, UTC day, points); hw_mon_current();
