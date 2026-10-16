@@ -420,7 +420,7 @@
   function showGreen() { if (!S.green) return; UI.drawer = null; UI.title && closeTitle(); centerOn(S.green.c); clampCam(); UI.sel = S.green.d; dirty(); }
   // Give goods. Lowest quality goes first, since quality doesn't count here.
   function monMax(id) { const m = MONK(); if (!m) return 0; const t = monTotals(m), v = +(m.phases[t.phase].items || {})[id] || 0; if (!v) return 0;
-    return Math.max(0, Math.min(count(id), Math.floor(monLeftToday(m) / v), Math.ceil((t.need - t.done) / v))); }
+    return Math.max(0, Math.min(count(id), Math.ceil(monLeftToday(m) / v), Math.ceil((t.need - t.done) / v))); }
   async function monGive(id, n) {
     const m = MONK(); if (!m || UI.monBusy) return;
     n = Math.min(n | 0, count(id)); if (n < 1) { toast(`You have no ${esc(D.items[id].name)} in storage.`, 'warn'); return; }
@@ -1924,7 +1924,7 @@
       <p><b>Built together.</b> Every online farm in the valley builds the same monument. There’s no race and no ranking; the contributor roll is just a thank-you.</p>
       <p><b>Four stages.</b> It rises at 25%, 50%, 75% and 100%. Each stage is a phase that asks for different goods${m && m.phases ? ` (${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))})` : ''}, so every kind of farm gets its turn. Only the current phase’s goods are taken.</p>
       <p><b>Points.</b> Every good counts for a set number of points; finer goods count for more. Quality doesn’t change the points, so your lowest-quality goods go first.</p>
-      <p><b>Daily allowance.</b> You can give up to ${cap.toLocaleString()} points a day (it resets at 00:00 UTC), so no single farm can finish it alone and everyone gets a share of the work.</p>
+      <p><b>Daily allowance.</b> You can give up to ${cap.toLocaleString()} points a day (it resets at 00:00 UTC), so no single farm can finish it alone and everyone gets a share of the work. Goods can’t be split, so if you have less than one item’s worth left, you can still give one last item and go a little over.</p>
       <p><b>Rewards.</b> Giving earns no gold. Give ${km.toLocaleString()} points in total to earn a small model of ${esc(k.name)} for your farm (it shows the monument’s current stage). You also get +1 Discovery for your first gift in each phase, and +2 when it’s finished.</p>
       <p><b>Target date.</b> Each monument has one. If the valley hasn’t finished by then, building simply carries on until it’s done.</p>
       <p><b>Where.</b> At the Monument Depot on your Valley Green, or from the Homestead (Valley Monument). Goods come out of your storage, and buying goods at the market to give is fine.</p></div>`; }
@@ -1956,9 +1956,9 @@
       h += `<div class="monyou"><b>Your part:</b> ${(m.mine || 0).toLocaleString()} points given${rank >= 0 ? ` (#${rank + 1} on the roll)` : ''}. Today: ${(m.today || 0).toLocaleString()} of ${m.cap.toLocaleString()} points${left ? `, so you can give <b>${left.toLocaleString()}</b> more` : ', all used'}. Resets at 00:00 UTC, in ${fmtLeftShort(utcReset())}.</div>`;
       const items = Object.entries(ph.items || {}).filter(([id]) => D.items[id]).sort((a, b) => a[1] - b[1] || D.items[a[0]].name.localeCompare(D.items[b[0]].name));
       h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
-        const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} points you have left today` : '';
+        const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} left today, but your last gift can go a little over` : '';
         return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}</div>`; }).join('')}</div>
-        <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance, or what’s left of this phase.</p>`;
+        <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance (the last item may go a little over), or what’s left of this phase.</p>`;
     } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stays on your Valley Green for good, and the next monument will appear here when it starts.</p>`;
     h += modelLine(m);
     if ((m.top || []).length) h += `<span class="eyebrow">Contributors</span><ol class="monroll">${m.top.map(x => `<li class="${x.me ? 'me' : ''}"><span>${esc(x.name)}${x.me ? ' (you)' : ''}</span><b>${x.points.toLocaleString()}</b></li>`).join('')}</ol>${m.givers > m.top.length ? `<p class="hint small">…and ${m.givers - m.top.length} more farm${m.givers - m.top.length === 1 ? '' : 's'}.</p>` : ''}`;
@@ -2540,7 +2540,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261016-164735';
+  const BUILD = '20261016-214104';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

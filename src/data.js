@@ -626,6 +626,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.42.4', at: '2026-10-16 14:55', notes: ['Valley Monument: if you have less than one item’s worth of today’s allowance left, you can now still give one last item and go a little over, instead of being stuck with goods that are worth too much. The monument’s help card explains it.'] },
   { v: '0.42.3', at: '2026-10-16 11:00', notes: ['The Valley Green now sits against a corner of your farm instead of beside a side, so it never gets in the way of surveying. You can move it to any corner you haven’t built on: select the Monument Depot or the Green and pick a corner. Moving is free, and the area it leaves becomes open land you can survey.'] },
   { v: '0.42.2', at: '2026-10-16 10:05', notes: ['The Fence Kit is now the Land Kit, since you need it for more than fences: expanding your land (from the 9th tile), surveying new areas and building a Sheep Pasture. Your existing kits carry over. When you’re short of Land Kits, the message now tells you where to make them: at the Workbench, from planks and stone.'] },
   { v: '0.42.1', at: '2026-10-16 09:40', notes: ['Starting your first Online Valley farm now asks for your name and locks it to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals. If it’s taken, you’ll get the next free number (Sam1, Sam2…).'] },

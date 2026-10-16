@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.42.4 — 2026-10-16
+- Daily allowance dead end fixed. mon_give used to refuse when the allowance left was smaller than one item's points
+  (allow < val, and allow / val rounded down), so a player 1 point short of 800 could not give a 4-point item. Server
+  (migration mon_give_last_gift_can_pass_cap): any allowance > 0 lets you give, n = ceil(allow / val), so the last gift
+  of the day can pass the cap by less than one item's value; the 'cap' error now means allowance <= 0. Client monMax uses
+  ceil to match, the "worth more than…" reason now says the last gift can go over, and the help card explains it.
+  Tested in begin…rollback (799 + 5 stone → 1 stone, 803; next gift refused) and by t_cap.py.
+
 ## v0.42.3 — 2026-10-16
 - Valley Green attaches to a corner of the farm (the area diagonal to a corner of the starting land) instead of an edge
   area. greenSpot(k) finds it for 'back' | 'right' | 'left' | 'front' (back = top of the map at the default rotation); a
