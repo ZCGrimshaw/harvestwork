@@ -12,7 +12,7 @@
 
   let S = null;                                   // the whole saveable game state
   const UI = { cat: Object.assign({ buy: 'all', sell: 'all', inv: 'all', disc: 'all' }, (() => { try { return JSON.parse(localStorage.getItem('harvestworks.tabs')) || {}; } catch (e) { return {}; } })()), catShow: {}, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
-               floats: [], parts: [], labels: false, sq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
+               floats: [], parts: [], labels: false, sq: {}, mq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
   const cam = { u: 0, v: 80, z: 1.6 };
   // Phones: a narrow screen (portrait) or a short one (landscape), driven by touch.
   const mq = q => window.matchMedia && window.matchMedia(q).matches;
@@ -92,7 +92,7 @@
     for (let k = S.ms + 1; k < O.length; k++) { const m = D.milestones[O[k]]; if (!m.land || hasLand(m.land)) { [O[S.ms], O[k]] = [O[k], O[S.ms]]; return; } } }
   // a discovery is ready once its prerequisites are unlocked (animals also need your first new area surveyed)
   const discOk = d => d.req.every(unlocked) && (!d.survey || (S.surveys || 0) > 0);
-  const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open);
+  const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open && S.regions[n].theme !== 'green');
   const areas = () => 1 + (S.surveys || 0);
   const isVoid = i => S.tiles[i].t === 'void';
   // Lay out a freshly surveyed area: weighted terrain from its theme, smoothed once so like joins like.
@@ -348,7 +348,87 @@
   function usePlayerKey(code, pk) { // this device becomes that player
     PLAYER = pk.player; try { localStorage.setItem('harvestworks.player', pk.player); } catch (e) { }
     setMyName(pk.name || null); NET.pkey = code; lsSet('harvestworks.pkey', code); lsSet('harvestworks.linked', []);
-    NET.medals = []; lsSet('harvestworks.medals', []); fetchMedals(true); }
+    NET.medals = []; lsSet('harvestworks.medals', []); fetchMedals(true); fetchMon(); }
+  /* ================= Valley Monuments =================
+     Every online farm builds one shared monument together. The valley server keeps the monument, its phases (which
+     goods each phase takes and how many points each is worth), everyone's gifts and the daily allowance; it accepts
+     as many goods as fit and says how many to take from storage, so nothing leaves storage unless it counted.
+     Giving earns no gold: you earn the monument's model (keep_min points), +1 Discovery for your first gift in each
+     phase, and +2 when it's finished. Once the tutorial is done, an online farm gets a Valley Green beside its land:
+     a 6×6 plaza (never bought or built on) with the monument at full size and the Monument Depot. */
+  NET.mon = lsGet('harvestworks.mon', null);
+  const MONK = () => NET.mon && NET.mon.id ? NET.mon : null;
+  const monKind = m => D.monuments[m && m.kind] || D.monuments.pyramid;
+  const monShort = n => String(n || '').replace(/^The /, ''); // "the Great Pyramid model"
+  function monTotals(m) { const ph = m.phases || [], cum = [0]; ph.forEach(p => cum.push(cum[cum.length - 1] + (+p.need || 0)));
+    const total = cum[cum.length - 1] || 1, pts = Math.min(m.points || 0, total);
+    let stage = 0; while (stage < ph.length && pts >= cum[stage + 1]) stage++;
+    const phase = Math.min(stage, ph.length - 1);
+    return { total, cum, pts, stage: m.finished_at ? ph.length : stage, phase, done: pts - cum[phase], need: ph[phase] ? +ph[phase].need : 1, finished: !!m.finished_at || pts >= total }; }
+  const monStageOf = id => { const m = MONK(); if (m && m.id === id) return monTotals(m).stage; const x = m && (m.mine_all || []).find(p => p.id === id); return x ? monTotals(x).stage : (lsGet('harvestworks.monstage', {})[id] || 0); };
+  const monLeftToday = m => Math.max(0, (m.cap || 0) - (m.today || 0));
+  const utcReset = () => { const n = new Date(Date.now() - (NET.monSkew || 0)), r = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1); return r - n.getTime(); };
+  const fmtLeftShort = ms => { const h = Math.floor(ms / 3600000), m = Math.max(1, Math.round((ms % 3600000) / 60000)); return h >= 24 ? `${Math.round(h / 24)} days` : h ? `${h}h ${m}m` : `${m} min`; };
+  async function fetchMon() { if (!S || !online()) return; NET.monAt = Date.now();
+    try { const r = await rpc('mon_state', { p_player: PLAYER }); if (r) setMon(r); } catch (e) { } }
+  function setMon(r) { NET.mon = r; NET.monOk = true; lsSet('harvestworks.mon', r); if (r.now) NET.monSkew = Date.now() - Date.parse(r.now);
+    const st = lsGet('harvestworks.monstage', {}); (r.mine_all || []).forEach(p => { st[p.id] = monTotals(p).stage; }); if (r.id) st[r.id] = monTotals(r).stage; lsSet('harvestworks.monstage', st);
+    checkMonStage(); openGreenIfReady(); dirty(); }
+  // a stage crossed since this device last looked: a ceremony card (once per stage)
+  function checkMonStage() { const m = MONK(); if (!m || !S || S.race) return; const seen = lsGet('harvestworks.monseen', {}), st = monTotals(m).stage;
+    if (seen[m.id] == null) { seen[m.id] = st; lsSet('harvestworks.monseen', seen); return; }
+    if (st > seen[m.id] && S.green) UI.monPend = { id: m.id, stage: st }; }
+  function showMonStage() { const p = UI.monPend; UI.monPend = null; const m = MONK(); if (!m || m.id !== p.id) return;
+    const seen = lsGet('harvestworks.monseen', {}); seen[m.id] = p.stage; lsSet('harvestworks.monseen', seen);
+    if (p.stage >= m.phases.length && m.mine > 0) { S.monDone = S.monDone || {}; if (!S.monDone[m.id]) { S.monDone[m.id] = 1; S.dp += 2; toast(`<b>+2 Discovery</b> · you helped finish ${esc(m.name)}`, 'disc'); save(); } }
+    UI.monShow = p; openTitle('monstage'); SND.play('contract'); }
+  /* The Valley Green: the nearest unsurveyed area to your land becomes a paved plaza with the monument and the Depot. */
+  const greenT = i => !!(D.terrain[T_(i).t] && D.terrain[T_(i).t].green);
+  function openGreenIfReady() {
+    if (!S || S.green || S.race || !online() || !MONK() || S.goal < D.goals.length) return;
+    const R = C.worldRegions, c = (R - 1) / 2, cand = S.regions.map((Rg, r) => r).filter(r => !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open && S.regions[n].theme !== 'green'));
+    if (!cand.length) return;
+    cand.sort((a, b) => Math.hypot(a % R - c, (a / R | 0) - c) - Math.hypot(b % R - c, (b / R | 0) - c) || a - b);
+    const r = cand[0], x0 = (r % R) * RS(), y0 = (r / R | 0) * RS(), ctr = idx(x0 + 2, y0 + 2), dep = idx(x0 + 5, y0 + 2), m = MONK(); // the Depot sits 3 tiles from the centre, so it never ties the monument's front corner for draw order
+    S.regions[r] = { open: true, theme: 'green' };
+    for (let y = 0; y < RS(); y++) for (let x = 0; x < RS(); x++) { const i = idx(x0 + x, y0 + y), foot = x >= 1 && x <= 3 && y >= 1 && y <= 3, ring = x <= 4 && y <= 4 && !((x === 0 || x === 4) && (y === 0 || y === 4));
+      S.tiles[i] = { t: foot || ring ? 'plaza' : 'lawn', o: true, b: foot ? { type: 'mon_site', c: ctr, p: m.id, kind: m.kind } : null, r: null, v: (x * 7 + y * 13) % 3 }; }
+    S.tiles[dep].b = { type: 'depot' };
+    S.green = { r, c: ctr, d: dep, day: S.day }; UI.live = null; save();
+    if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
+  const monTiles = () => S.green ? S.tiles.map((T, i) => T.b && T.b.type === 'mon_site' && T.b.c === S.green.c ? i : -1).filter(i => i >= 0) : [];
+  function showGreen() { if (!S.green) return; UI.drawer = null; UI.title && closeTitle(); centerOn(S.green.c); clampCam(); UI.sel = S.green.d; dirty(); }
+  // Give goods. Lowest quality goes first, since quality doesn't count here.
+  function monMax(id) { const m = MONK(); if (!m) return 0; const t = monTotals(m), v = +(m.phases[t.phase].items || {})[id] || 0; if (!v) return 0;
+    return Math.max(0, Math.min(count(id), Math.floor(monLeftToday(m) / v), Math.ceil((t.need - t.done) / v))); }
+  async function monGive(id, n) {
+    const m = MONK(); if (!m || UI.monBusy) return;
+    n = Math.min(n | 0, count(id)); if (n < 1) { toast(`You have no ${esc(D.items[id].name)} in storage.`, 'warn'); return; }
+    UI.monBusy = id; dirty(); const ph = monTotals(m).phase;
+    try { const r = await rpc('mon_give', { p_player: PLAYER, p_name: NET.myName || S.name, p_project: m.id, p_item: id, p_qty: n });
+      if (!r || r.error) { const e = r && r.error;
+        toast(e === 'cap' ? `<b>That’s your share for today.</b> You’ve given ${(r.today || 0).toLocaleString()} of ${(r.cap || 0).toLocaleString()} points. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}).`
+          : e === 'not_needed' ? 'The monument has moved on to its next phase, which needs different goods. Here’s the new list.'
+          : e === 'finished' ? `${esc(m.name)} is finished! Nothing more is needed.` : 'The monument couldn’t take that just now. Nothing was taken from storage.', e === 'cap' ? 'info' : 'warn');
+        fetchMon(); }
+      else { const q = Math.min(r.qty, count(id)); if (q > 0) take(id, q, 0, 'low');
+        S.monPh = S.monPh || {}; const got = S.monPh[m.id] = S.monPh[m.id] || [];
+        const st = r.state || m, t = monTotals(st);
+        toast(`<b>Gave ${r.qty} ${esc(D.items[id].name)}: +${r.points.toLocaleString()} points.</b> Your total: ${(st.mine || 0).toLocaleString()}. ${t.finished ? `${esc(m.name)} is complete!` : `${Math.max(0, t.cum[t.stage + 1] - t.pts).toLocaleString()} points to the next stage (${esc(monKind(m).stages[t.stage + 1] || '')}).`}${r.qty < n ? ` (${n - r.qty} stayed in storage: ${monLeftToday(st) < 1 ? 'that’s your allowance for today' : t.finished ? 'that finished the monument' : 'that finished this phase'}.)` : ''}`, 'goal');
+        if (!got.includes(ph)) { got.push(ph); S.dp += 1; toast(`<b>+1 Discovery</b> · your first gift to the ${esc(m.phases[ph].name)} phase`, 'disc'); }
+        if ((m.mine || 0) < m.keep_min && (st.mine || 0) >= m.keep_min) toast(`<b>You earned the ${esc(monShort(m.name))} model!</b> Place it on your farm from the Monument Depot or the Homestead. It always shows the monument’s current stage.`, 'goal');
+        if (S.green) UI.cart = { t: 0 };
+        SND.play('sell'); setMon(st); save(); } }
+    catch (e) { toast('Couldn’t reach the valley. Nothing was given, so your goods are still in storage.', 'warn'); }
+    UI.monBusy = null; dirty(); }
+  /* Homestead notices: things players forget, with a glowing "!" over the Homestead until the list is opened. */
+  function notices() { const o = [], m = MONK(), hi = homeIdx();
+    if (m && online() && !S.race && !monTotals(m).finished && monLeftToday(m) > 0) { const t = monTotals(m), have = Object.keys(m.phases[t.phase].items || {}).filter(id => D.items[id] && count(id) > 0);
+      if (have.length) o.push({ k: `mon${m.id}.${t.phase}.${utcDay()}`, html: `<b>${esc(m.name)}</b> needs ${esc((m.phases[t.phase].short || m.phases[t.phase].name).toLowerCase())}, and you have ${esc(nmList(have.slice(0, 3).map(id => D.items[id].name)))} to give.`, act: `<button class="btn sm" data-drawer="valley">Give</button>` }); }
+    if (hi >= 0 && !S.race && !checkTask({ a: 'homeup', i: hi })) o.push({ k: `home${S.home}`, html: `You can afford to expand your Homestead’s storage to ${homeCap(S.home + 1)}.`, act: '' });
+    return o; }
+  const utcDay = () => new Date(Date.now() - (NET.monSkew || 0)).toISOString().slice(0, 10);
+  const noticeKey = () => notices().map(n => n.k).join('|');
   async function shareSave() {
     save(); const body = JSON.stringify({ format: 'harvestworks-save', saved: new Date().toISOString(), version: D.updates[0].v, state: S });
     const file = new File([body], saveFileName(), { type: 'application/json' });
@@ -584,7 +664,8 @@
   async function pullMarket() {
     try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
-      NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now(); }
+      NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now();
+      if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
   }
@@ -849,7 +930,7 @@
         gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`);
         toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
     expand: { label: t => `Buy ${D.terrain[T_(t.i).t].name}`,
-      check: t => { if (T_(t.i).o) return 'Already yours'; if (!nbrs(t.i).some(n => T_(n).o)) return 'Expand closer first'; return canPay(expCost(t.i)); },
+      check: t => { if (T_(t.i).o) return 'Already yours'; if (!nbrs(t.i).some(n => T_(n).o && !greenT(n))) return 'Expand closer first'; return canPay(expCost(t.i)); },
       run: t => { const T = T_(t.i); pay(expCost(t.i)); T.o = true; S.exp++; gainScore(C.score.expand, t.i);
         first('expand:' + T.t, C.firsts.expand, `New terrain: ${D.terrain[T.t].name}`); float(t.i, 'New land!', '#b8f08a'); emit('expand'); } },
     upgrade: { label: t => `Upgrade ${D.upgrades[t.p].name}`,
@@ -1325,8 +1406,10 @@
     if (!UI.live) { UI.live = []; S.tiles.forEach((T, i) => { if (T.t !== 'void') UI.live.push(i); }); }
     const order = UI.live.slice(), vd = {};
     order.forEach(i => { vd[i] = view(tx(i), ty(i)); });
+    // the 3×3 monument is drawn once, from whichever of its tiles is nearest the viewer at this angle
+    UI.monFront = -1; if (S.green) { let bd = -1e9; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = S.green.c + dy * S.w + dx, v = vd[j]; if (!v) continue; const d = v[0] + v[1] + v[0] * 1e-3; if (d > bd) { bd = d; UI.monFront = j; } } }
     order.sort((a, b) => (vd[a][0] + vd[a][1]) - (vd[b][0] + vd[b][1]) || vd[a][0] - vd[b][0]);
-    const frontier = new Set(); order.forEach(i => { if (!S.tiles[i].o && nbrs(i).some(n => S.tiles[n].o)) frontier.add(i); });
+    const frontier = new Set(); order.forEach(i => { if (!S.tiles[i].o && nbrs(i).some(n => S.tiles[n].o && !greenT(n))) frontier.add(i); });
     // screen step for one tile along world x and world y at the current angle
     { const o = toScreen(0, 0), ax = toScreen(1, 0), ay = toScreen(0, 1); UI.ex = [ax[0] - o[0], ax[1] - o[1]]; UI.ey = [ay[0] - o[0], ay[1] - o[1]]; }
     // the map's earthen sides, drawn under the tops along its outer edges
@@ -1389,15 +1472,26 @@
           if (b.st === 'growing' || b.st === 'ready') { const st = b.st === 'ready' ? 2 : b.g < D.crops[b.crop].grow / 2 ? 0 : 1; blit(ART.get(`crop:${b.crop}.${st}`), sx, sy, p, 16, 16); }
           if (b.st === 'growing') { bar(sx, sy + 5 * p, p, b.g / D.crops[b.crop].grow, '#7cc04b'); if (!b.wet) bubble(sx, sy - 10 * p, p, null); }
           if (b.st === 'ready') bubble(sx, sy - 12 * p, p, ART.iconCanvas(D.crops[b.crop].item, D.items));
+        } else if (b.type === 'mon_site') {
+          if (i === UI.monFront) { const kind = b.kind || 'pyramid', img = ART.get(`mon:${kind}.${monStageOf(b.p)}.${'site'}`), [mx, my] = toScreen(tx(b.c), ty(b.c));
+            blit(img, mx, my, p, img.ax, img.ay);
+            if (UI.labels) labels.push({ sx: mx, sy: my - (img.ay - 6) * p, name: (D.monuments[kind] || D.monuments.pyramid).name }); }
         } else {
           let key = b.type; const active = b.q && b.q.some(j => !j.done);
+          if (b.type === 'depot') { const m = MONK(); key = 'depot:' + (m ? Math.min(5, Math.ceil((m.today || 0) / Math.max(1, (m.cap || 800) / 5))) : 0); }
+          if (b.type === 'monument') key = `mon:${b.m.kind || 'pyramid'}.${monStageOf(b.m.id)}.deco`;
           if (b.type === 'stove' && active) key = 'stove_on';
           if (b.type === 'medal') key = 'medal:' + b.m.place;
           if (b.type === 'mill' || b.type === 'sawmill') key += ':' + (active ? ((now * 4) | 0) % 2 : 0);
           if (b.type === 'coop' || b.type === 'dairy' || b.type === 'pasture') key += ':' + (((now * .8) + i * .37) | 0) % 2;
           if (D.buildings[b.type].kind === 'sprinkler') key = (b.type === 'big_sprinkler' ? 'big_sprinkler:' : 'sprinkler:') + (b.fx > 0 ? ((now * 6) | 0) % 2 : 0);
-          const img = ART.get(key); blit(img, sx, sy, p, 16, img.height - 4);
+          const img = ART.get(key); if (img.ax != null) blit(img, sx, sy, p, img.ax, img.ay); else blit(img, sx, sy, p, 16, img.height - 4);
           if (UI.labels) labels.push({ sx, sy: sy - (img.height - 1) * p, name: D.buildings[b.type].name });
+          if (b.type === 'homestead' && UI.noticeK && S.noticeSeen !== UI.noticeK && !S.race) { // something waiting at the Homestead
+            const gy = sy - (img.height + 4) * p, gl = .55 + .45 * Math.sin(now * 4);
+            cx.fillStyle = `rgba(246,210,74,${.25 * gl})`; cx.beginPath(); cx.arc(sx, gy - 5 * p, 9 * p, 0, 7); cx.fill();
+            cx.fillStyle = '#f6d24a'; cx.strokeStyle = '#3d2617'; cx.lineWidth = p * .8; cx.beginPath(); cx.arc(sx, gy - 5 * p, 5.5 * p, 0, 7); cx.fill(); cx.stroke();
+            cx.fillStyle = '#3d2617'; cx.fillRect(sx - p * .8, gy - 9 * p, p * 1.6, 5 * p); cx.fillRect(sx - p * .8, gy - 3 * p, p * 1.6, p * 1.6); }
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
@@ -1412,6 +1506,10 @@
       }
     }
     while (ai < actors.length) drawAv(actors[ai++]);
+    if (UI.cart && S.green) { // a little cart carries your gift from the Depot to the monument
+      const k = Math.min(1, UI.cart.t / 2.4), a = toScreen(tx(S.green.d), ty(S.green.d)), b2 = toScreen(tx(S.green.c), ty(S.green.c)), x = a[0] + (b2[0] - a[0]) * k, y = a[1] + (b2[1] - a[1]) * k - 2 * p;
+      cx.globalAlpha = Math.min(1, (1 - k) * 4); cx.fillStyle = '#7a4b28'; cx.fillRect(x - 5 * p, y - 4 * p, 10 * p, 3 * p); cx.fillStyle = '#c99b5a'; cx.fillRect(x - 4 * p, y - 8 * p, 8 * p, 4 * p);
+      cx.fillStyle = '#a8743e'; cx.fillRect(x - 4 * p, y - 8 * p, 8 * p, p); cx.fillStyle = '#3d2617'; cx.fillRect(x - 4 * p, y - p, 2 * p, 2 * p); cx.fillRect(x + 2 * p, y - p, 2 * p, 2 * p); cx.globalAlpha = 1; }
     if (labels.length) drawLabels(p, labels);
     // particles
     UI.parts.forEach(q => { cx.fillStyle = `rgba(230,230,235,${.6 * (1 - q.t)})`; cx.fillRect(q.x + q.vx * q.t * 4, q.y - q.t * 18 * p, 2 * p * (1 + q.t), 2 * p * (1 + q.t)); });
@@ -1681,6 +1779,10 @@
   }
   function homePanel(i) {
     let h = head(`${S.name}’s Homestead`, esc(D.buildings.homestead.desc));
+    const ns = notices(); if (ns.length) h += `<div class="notices"><span class="eyebrow">Notices</span>${ns.map(n => `<div class="notice"><span>${n.html}</span>${n.act}</div>`).join('')}</div>`;
+    if (online() && !S.race) { const m = MONK(), t = m && monTotals(m);
+      h += `<span class="eyebrow">Valley Monument</span>` + (m ? `<div class="monmini"><img class="monfloat sm" src="${ART.monPic(m.kind, t.stage)}" alt=""><div class="grow1"><b>${esc(m.name)}</b><div class="pb"><i style="width:${monPct(t)}%"></i></div><small>${t.finished ? 'Finished!' : `Stage ${t.stage} of ${m.phases.length} · ${monPct(t)}% · phase ${t.phase + 1} wants ${esc((m.phases[t.phase].short || m.phases[t.phase].name).toLowerCase())}`} · you’ve given ${(m.mine || 0).toLocaleString()}</small></div></div>`
+        : `<p class="hint small">${NET.mon && NET.mon.none ? 'No monument is being built right now.' : 'Every online farm builds a shared monument together. Connecting…'}</p>`) + `<button class="btn" data-drawer="valley">Open the Valley Monument<small>What it needs, giving goods, how it works</small></button>`; }
     h += `<div class="row"><div class="grow1"><span class="eyebrow">Storage</span><div class="pb"><i style="width:${Math.round(used() / cap() * 100)}%"></i></div><small>${used()} of ${cap()} items</small></div></div>`;
     const ex = extraCap(), nb = S.tiles.filter(t => t.b && D.buildings[t.b.type] && D.buildings[t.b.type].kind === 'storage').length;
     h += `<p class="hint">Homestead ${homeCap(S.home)}${ex ? ` + ${nb} storage building${nb === 1 ? '' : 's'} ${ex}` : ''}. Expand the Homestead below, or build Storage Barns from the Open Market for more room.</p>`;
@@ -1796,6 +1898,63 @@
   function medalPanel(i) { const m = T_(i).b.m;
     return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(weekTheme(m.week).name)}) with <b>${m.score.toLocaleString()}</b> points.</p></div>
       <button class="btn ghost" data-medal-away="${i}">Put it away</button><p class="hint small">It goes back to your trophy case (Menu → Medals). Place it again any time, on any farm.</p>`; }
+  /* ---------- Valley Monument panels (Depot, the monument's tiles, the Homestead drawer) ---------- */
+  function monHelpHTML(m) { const k = monKind(m), cap = m ? m.cap : 800, km = m ? m.keep_min : 150;
+    return `<div class="qhelp monhelp"><b>How Valley Monuments work</b>
+      <p><b>Built together.</b> Every online farm in the valley builds the same monument. There’s no race and no ranking; the contributor roll is just a thank-you.</p>
+      <p><b>Four stages.</b> It rises at 25%, 50%, 75% and 100%. Each stage is a phase that asks for different goods${m && m.phases ? ` (${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))})` : ''}, so every kind of farm gets its turn. Only the current phase’s goods are taken.</p>
+      <p><b>Points.</b> Every good counts for a set number of points; finer goods count for more. Quality doesn’t change the points, so your lowest-quality goods go first.</p>
+      <p><b>Daily allowance.</b> You can give up to ${cap.toLocaleString()} points a day (it resets at 00:00 UTC), so no single farm can finish it alone and everyone gets a share of the work.</p>
+      <p><b>Rewards.</b> Giving earns no gold. Give ${km.toLocaleString()} points in total to earn a small model of ${esc(k.name)} for your farm (it shows the monument’s current stage). You also get +1 Discovery for your first gift in each phase, and +2 when it’s finished.</p>
+      <p><b>Target date.</b> Each monument has one. If the valley hasn’t finished by then, building simply carries on until it’s done.</p>
+      <p><b>Where.</b> At the Monument Depot on your Valley Green, or from the Homestead (Valley Monument). Goods come out of your storage, and buying goods at the market to give is fine.</p></div>`; }
+  const monPct = t => Math.floor(t.pts / t.total * 1000) / 10;
+  function monWhen(m, t) { const now = Date.now() - (NET.monSkew || 0);
+    if (t.finished) return m.finished_at ? `finished ${new Date(m.finished_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'finished';
+    const end = Date.parse(m.ends_at); return end > now ? `target date in ${fmtLeftShort(end - now)}` : 'past its target date, so building carries on until it’s finished'; }
+  function modelLine(m) { const id = m.id, km = m.keep_min || 0, K = monKind(m);
+    if ((m.mine || 0) < km) return `<p class="hint small">Give <b>${(km - (m.mine || 0)).toLocaleString()} more points</b> to earn a model of ${esc(m.name)} for your farm.</p>`;
+    if (S.race) return '';
+    const at = modelAt(id); return at !== undefined ? `<p class="state">Your ${esc(monShort(m.name))} model is on show on this farm ✓</p><button class="btn ghost sm" data-goto="${at}">Show me the model</button>`
+      : `<p class="state">You’ve earned the ${esc(monShort(m.name))} model ✓</p><button class="btn ${UI.placeMon === id ? 'pri' : ''}" data-mon-place="${id}">Place the model on this farm<small>Free · it shows the monument’s current stage</small></button>`; }
+  const placedModels = () => S.tiles.map((T, i) => T.b && T.b.type === 'monument' ? i : -1).filter(i => i >= 0);
+  const modelAt = id => placedModels().find(i => S.tiles[i].b.m.id === id);
+  const earnedModels = () => { const all = (NET.mon && NET.mon.mine_all) || []; return all.filter(p => p.mine >= (p.keep_min || 0)); };
+  function monHTML(where) {
+    if (S.race) return `<p class="hint">Valley Monuments aren’t part of races or challenge runs. Head back to your own farm to help.</p>`;
+    if (!online()) return `<p class="hint">Valley Monuments are built together by every <b>online</b> farm, so this private farm can’t take part. Your online farms can, and models you earn there can be placed on any farm.</p>`;
+    const m = MONK();
+    if (!m) return NET.mon && NET.mon.none ? `<p class="hint">No monument is being built right now. The next one will appear here, so check back soon.</p>` : `<p class="hint">${NET.tried && !NET.ok ? 'Valley Monuments need the shared valley connection (web version).' : 'Fetching the monument from the valley…'}</p>`;
+    const K = monKind(m), t = monTotals(m), ph = m.phases[t.phase] || {}, left = monLeftToday(m), n = m.phases.length;
+    let h = `<div class="monhero"><img class="monfloat" src="${ART.monPic(m.kind, t.stage)}" alt=""><div class="grow1"><b class="monname">${esc(m.name)}</b><small>Stage ${t.stage} of ${n}: <b>${esc(K.stages[t.stage])}</b>. ${esc(K.stageText[t.stage])}</small></div></div>`;
+    h += `<div class="monbar"><i style="width:${monPct(t)}%"></i>${t.cum.slice(1, -1).map(c => `<s style="left:${c / t.total * 100}%"></s>`).join('')}</div>
+      <small class="monline">${t.pts.toLocaleString()} of ${t.total.toLocaleString()} points (${monPct(t)}%) · ${m.givers} farm${m.givers === 1 ? '' : 's'} helping · ${monWhen(m, t)}</small>`;
+    if (!t.finished) {
+      h += `<span class="eyebrow">Phase ${t.phase + 1} of ${n}: ${esc(ph.name)}</span>${ph.blurb ? `<p class="hint small">${esc(ph.blurb)}</p>` : ''}
+        <div class="pb"><i style="width:${Math.min(100, t.done / t.need * 100)}%"></i></div><small>${Math.max(0, t.done).toLocaleString()} of ${t.need.toLocaleString()} points for this phase. When it fills, the monument reaches ${esc(K.stages[t.phase + 1])}.</small>`;
+      const rank = (m.top || []).findIndex(x => x.me);
+      h += `<div class="monyou"><b>Your part:</b> ${(m.mine || 0).toLocaleString()} points given${rank >= 0 ? ` (#${rank + 1} on the roll)` : ''}. Today: ${(m.today || 0).toLocaleString()} of ${m.cap.toLocaleString()} points${left ? `, so you can give <b>${left.toLocaleString()}</b> more` : ', all used'}. Resets at 00:00 UTC, in ${fmtLeftShort(utcReset())}.</div>`;
+      const items = Object.entries(ph.items || {}).filter(([id]) => D.items[id]).sort((a, b) => a[1] - b[1] || D.items[a[0]].name.localeCompare(D.items[b[0]].name));
+      h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
+        const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} points you have left today` : '';
+        return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}</div>`; }).join('')}</div>
+        <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance, or what’s left of this phase.</p>`;
+    } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stays on your Valley Green for good, and the next monument will appear here when it starts.</p>`;
+    h += modelLine(m);
+    if ((m.top || []).length) h += `<span class="eyebrow">Contributors</span><ol class="monroll">${m.top.map(x => `<li class="${x.me ? 'me' : ''}"><span>${esc(x.name)}${x.me ? ' (you)' : ''}</span><b>${x.points.toLocaleString()}</b></li>`).join('')}</ol>${m.givers > m.top.length ? `<p class="hint small">…and ${m.givers - m.top.length} more farm${m.givers - m.top.length === 1 ? '' : 's'}.</p>` : ''}`;
+    else h += `<p class="hint small">No one has given anything yet. Be the first name on the roll!</p>`;
+    if (where === 'drawer' && S.green) h += `<button class="btn ghost" data-mon-show>See it on your Valley Green<small>The full-size build, beside your farm</small></button>`;
+    else if (!S.green && S.goal < D.goals.length) h += `<p class="hint small">When you finish the tutorial, a Valley Green opens beside your farm with the monument at full size.</p>`;
+    h += `<button class="linkish small" data-mon-help>${UI.monHelp ? 'Hide: how' : 'How'} do monuments work?</button>${UI.monHelp ? monHelpHTML(m) : ''}`;
+    return h; }
+  function monPanel(i) { const b = T_(i).b, depot = b.type === 'depot';
+    return head(depot ? 'Monument Depot' : (MONK() ? MONK().name : 'Valley Monument'), depot ? 'Give goods to the monument the whole valley is building.' : 'Built together by every online farm in the valley.') + monHTML('depot'); }
+  function greenPanel(i) {
+    return head('Valley Green', esc(D.terrain[T_(i).t].desc)) + `<p class="hint">The Valley Green opened beside your farm for the valley’s monuments. It never cost you land, nothing can be built on it, and it doesn’t count toward your building limits. Finished monuments stay here at full size.</p>
+      ${S.green ? `<button class="btn pri" data-goto="${S.green.d}">Open the Monument Depot<small>See what the monument needs and give goods</small></button>` : ''}`; }
+  function modelPanel(i) { const mm = T_(i).b.m, K = D.monuments[mm.kind] || D.monuments.pyramid, x = earnedModels().find(p => p.id === mm.id) || { name: K.name }, st = monStageOf(mm.id), fin = !!x.finished_at || st >= 4;
+    return head(`${monShort(x.name)} model`, 'A Valley Monument you helped build.') + `<div class="medalbig"><img src="${ART.monPic(mm.kind || 'pyramid', st)}" alt="" style="width:84px;height:auto"><p class="state">${fin ? `The valley finished ${esc(x.name)}${x.mine ? `, and you gave ${x.mine.toLocaleString()} points to it` : ''}.` : `The valley is building ${esc(x.name)}. This model shows its current stage: <b>${esc(K.stages[st])}</b>.`}</p></div>
+      ${fin ? '' : '<button class="btn" data-drawer="valley">Open the monument<small>Give goods and watch it grow</small></button>'}<button class="btn ghost" data-mon-away="${i}">Put it away</button><p class="hint small">Place it again any time from the Monument Depot or Menu → Valley Monument.</p>`; }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
     return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + moveSection(i);
@@ -1805,7 +1964,8 @@
     if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
       h += btn({ a: 'move', i, p: UI.moving, nm }, `Move the ${esc(nm)} here`, { cls: 'pri', sub: costTxt(moveCost(b.type)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
     if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)}</small></button>`; });
-    h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
+    if (!S.race) earnedModels().filter(p => modelAt(p.id) === undefined).forEach(p => { h += `<button class="btn ${UI.placeMon === p.id ? 'pri' : 'ghost'}" data-mon-put="${p.id}" data-i="${i}">Place the ${esc(monShort(p.name))} model here<small>Free · it shows the monument’s current stage</small></button>`; });
+    h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal || UI.placeMon ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
     h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building]; return btn({ a: 'place', i, p: id }, `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}` }); }).join('')
       : `<p class="hint">Station kits are sold at the Open Market once unlocked.</p>`;
@@ -1894,8 +2054,10 @@
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
-      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? medalPanel(i) : boardPanel(i); }
+      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
+      if (k === 'home') S.noticeSeen = UI.noticeK; }
     else if (T.r) h = gatherPanel(i, T);
+    else if (greenT(i)) h = greenPanel(i);
     else h = emptyPanel(i);
     setHTML('#panel', h);
   }
@@ -1960,6 +2122,8 @@
         if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
+    } else if (UI.drawer === 'valley') {
+      h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
       h = seasonDrawer();
     } else if (UI.drawer === 'support') {
@@ -2029,7 +2193,7 @@
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race && S.race.weekly ? `<div class="demand"><span><b>${esc(weekTheme(S.race.week).name)}</b> · ${S.race.ranked ? 'ranked run' : 'practice run'}, ${fmtTime(Math.max(0, S.race.end - Date.now()))} left. ${esc(weekTheme(S.race.week).blurb)}</span></div><div class="menu"><button class="btn" data-week-end>End this run now<small>${S.race.ranked ? 'Your score so far counts' : 'Practice doesn’t count'}</small></button></div>`
         : S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button>${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -2129,6 +2293,8 @@
     tr.style.transform = `translateX(${-(UI.tickX || 0)}px)`;
   }
   function renderUI() {
+    UI.noticeK = S.race ? '' : noticeKey();
+    { const b = $('#zoom [data-mon-show]'); if (b) b.hidden = !S.green || !!S.race; }
     renderLogs(); renderTicker();
     renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar();
   }
@@ -2240,6 +2406,13 @@
       if (m && isEmptyGrass(i) && medalAt(m) === undefined) { T_(i).b = { type: 'medal', m: { week: m.week, place: m.place, score: m.score } }; UI.placeMedal = null; save(); SND.play('contract');
         float(i, `${MEDAL[m.place][0]} medal on show`, '#f6e27a'); } }
     else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your trophy case (Menu → Medals).', 'info'); } }
+    else if (ds.monGive) { const inp = $('#mg-' + ds.monGive); monGive(ds.monGive, inp ? Math.max(1, parseInt(inp.value, 10) || 1) : 1); return; }
+    else if ('monShow' in ds) { showGreen(); }
+    else if ('monHelp' in ds) { UI.monHelp = !UI.monHelp; }
+    else if (ds.monPlace) { UI.placeMon = ds.monPlace; UI.drawer = null; UI.sel = -1; toast('Select any empty grass you own, then press <b>Place the model here</b>.', 'info'); }
+    else if (ds.monPut) { const p = earnedModels().find(x => x.id === ds.monPut), i = +ds.i;
+      if (p && isEmptyGrass(i) && modelAt(p.id) === undefined) { T_(i).b = { type: 'monument', m: { id: p.id, kind: p.kind } }; UI.placeMon = null; save(); SND.play('contract'); float(i, `${monShort(p.name)} model on show`, '#f6e27a'); } }
+    else if ('monAway' in ds) { const i = +ds.monAway; if (T_(i).b && T_(i).b.type === 'monument') { T_(i).b = null; UI.sel = -1; save(); toast('Model put away. Place it again from the Monument Depot or Menu → Valley Monument.', 'info'); } }
     else if ('medalShow' in ds) { const i = +ds.medalShow; UI.drawer = null; UI.sel = i; centerOn(i); clampCam(); }
     else if ('farmsOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.slotWipe = null; openTitle('slots'); return; }
     else if ('restoreOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; UI.rest = null; openTitle('restore'); return; }
@@ -2287,7 +2460,7 @@
     if (e.target.dataset && e.target.dataset.repn) { const b = S.tiles[+e.target.dataset.repn].b; if (b) { const n = +e.target.value; b.repN = n > 0 ? n : null;
       if (b.repN && (b.repDone || 0) >= b.repN) { b.rep = null; b.repN = null; b.repDone = 0; toast('Already repeated that many times, so Repeat is off.', 'info'); } save(); dirty(); } return; }
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
-  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
     if (e.target.id === 'lbname') { UI.lbDraft = e.target.value; if (UI.claim && UI.claim.taken) UI.claim = null; return; }
     if (e.target.dataset && e.target.dataset.vol) { SND.unlock(); SND.set(e.target.dataset.vol, (+e.target.value) / 100); return; }
@@ -2298,6 +2471,7 @@
         .catch(err => { if (UI.importText !== e.target.value) return; UI.importErr = err.message; showImportStatus(); });
       showImportStatus();
       return; } if (e.target.id === 'pname') { S.name = e.target.value.trim() || 'Farmer'; renderTop(); }
+    if (e.target.dataset && e.target.dataset.mq) { UI.mq[e.target.dataset.mq] = Math.max(1, parseInt(e.target.value, 10) || 1); return; }
     const sq = e.target.dataset && e.target.dataset.sq; if (sq) { const max = +e.target.dataset.max, n = Math.max(1, Math.min(max, parseInt(e.target.value, 10) || 1));
       UI.sq[sq] = n; const out = document.querySelector(`[data-sqtotal="${sq}"]`); if (out) out.textContent = n * +e.target.dataset.price; } });
   function centerOn(i) { const [vx, vy] = view(tx(i), ty(i)); cam.u = isoU(vx, vy); cam.v = isoV(vx, vy); }
@@ -2328,9 +2502,12 @@
     tickCatchUp(); SND.setHour(hour()); checkIdle(now); tickRace(dt);
     { const sc = (noSeasons() ? 'spring' : season().id) + '|' + wxNow() + '|' + raining(); if (sc !== UI.sndScene || (SND.ready && !UI.sndReady)) { UI.sndScene = sc; UI.sndReady = SND.ready; SND.setScene(...sc.split('|').map((v, k) => k === 2 ? v === 'true' : v)); } }
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
+    else if (UI.monWelcome && !UI.title && !UI.catchup && !S.race) { UI.monWelcome = false; openTitle('monwelcome'); }
+    else if (UI.monPend && !UI.title && !UI.catchup && !S.race) showMonStage();
     if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
+    if (UI.cart && (UI.cart.t += dt) > 2.4) UI.cart = null;
     draw(); placePanel();
     uiT -= dt; if (UI.dirty || uiT <= 0) { renderUI(); UI.dirty = false; uiT = .5; }
     document.querySelectorAll('[data-prog]').forEach(el => { el.style.width = (Math.min(1, progress(el.dataset.prog)) * 100).toFixed(1) + '%'; });
@@ -2341,7 +2518,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261015-223210';
+  const BUILD = '20261016-063420';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2519,6 +2696,19 @@
         <p class="sub">${R.ranked ? (W.mine ? `Your best this week is <b>${W.mine.score.toLocaleString()}</b>, #${W.mine.rank} of ${W.players}. ${W.mine.rank <= 3 ? 'Medal position! Hold on to it until the week closes.' : 'The top three win medals when the week closes.'}` : 'Your ranked score is in.') : 'Practice run: this one doesn’t count, but it’s the same farm everyone gets this week.'}</p>
         ${(W.top || []).length ? `<ol class="rresults wboard">${W.top.slice(0, 5).map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.score.toLocaleString()}</span></li>`).join('')}</ol>` : ''}
         <div class="tmenu"><button class="btn pri big" data-t="wleave">Back to my farm</button><button class="btn big" data-t="weekly">This week’s board</button></div></div>`; }
+    else if (t === 'monwelcome' && MONK()) { const m = MONK(), K = monKind(m), st = monTotals(m).stage;
+      h = `<div class="tcard moncard"><span class="twel">New in the valley</span><img class="monheroimg" src="${ART.monPic(m.kind, st)}" alt="">
+        <h2>The valley is building ${esc(m.name)}!</h2><p class="sub">Every online farm builds it together. A <b>Valley Green</b> has opened beside your land, with the monument at full size and a <b>Monument Depot</b> where you give goods.</p>
+        <div class="monstrip">${[0, 1, 2, 3, 4].map(k => `<span class="${k <= st ? 'on' : ''}"><img src="${ART.monPic(m.kind, k)}" alt=""><small>${k ? k * 25 + '%' : 'Start'}</small></span>`).join('')}</div>
+        <ul class="monpts"><li><b>Four stages.</b> It rises at 25, 50, 75 and 100%. Each phase asks for different goods: ${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))}.</li>
+          <li><b>Points.</b> Finer goods count for more. You can give up to ${m.cap.toLocaleString()} points a day, so every farm gets a share of the work.</li>
+          <li><b>Rewards.</b> No gold, but a model of ${esc(K.name)} for your farm (from ${m.keep_min.toLocaleString()} points), +1 Discovery for your first gift in each phase, and +2 when it’s finished.</li></ul>
+        <div class="tmenu"><button class="btn pri big" data-t="monshow">Show me the Valley Green</button><button class="btn big" data-t="continue">Later<small>Homestead → Valley Monument, any time</small></button></div></div>`; }
+    else if (t === 'monstage' && MONK()) { const m = MONK(), K = monKind(m), st = UI.monShow.stage, n = m.phases.length, nx = m.phases[st];
+      h = `<div class="tcard moncard"><span class="twel">${esc(m.name)} · stage ${st} of ${n}</span><img class="monheroimg" src="${ART.monPic(m.kind, st)}" alt="">
+        <h2>${st >= n ? `${esc(m.name)} is finished!` : `${esc(m.name)} reached ${esc(K.stages[st])}!`}</h2><p class="sub">${esc(K.stageText[st])} ${m.mine > 0 ? `You’ve given ${m.mine.toLocaleString()} points. Thank you!` : 'Lend a hand at the Monument Depot.'}</p>
+        ${nx ? `<p class="hint">Next phase: <b>${esc(nx.name)}</b>${nx.blurb ? `. ${esc(nx.blurb)}` : ''}</p>` : `<p class="hint">It stays on your Valley Green for good.${m.mine > 0 ? ' +2 Discovery for helping finish it.' : ''}</p>`}
+        <div class="tmenu">${S.green ? '<button class="btn pri big" data-t="monshow">See it on the Valley Green</button>' : ''}<button class="btn big" data-t="continue">Continue</button></div></div>`; }
     else if (t === 'medal') { const m = UI.medalShow;
       h = `<div class="tcard medalcard"><span class="twel">Weekly Challenge · ${weekLabel(m.week)}</span><img class="medalhero" src="${medalImg(m.place)}" alt="">
         <h2>You won a ${MEDAL[m.place][0].toLowerCase()} medal!</h2><p class="sub">${MEDAL[m.place][1]}, with ${m.score.toLocaleString()} points in ${esc(weekTheme(m.week).name)}.</p>
@@ -2587,6 +2777,7 @@
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
     if (a === 'main') { UI.newSlot = null; openTitle('main'); }
     else if (a === 'continue') closeTitle();
+    else if (a === 'monshow') { closeTitle(); showGreen(); }
     else if (a === 'race') { UI.rerr = null; openTitle('race'); }
     else if (a === 'rtarget') { UI.rtarget = +el.dataset.n; renderTitle(); }
     else if (a === 'rhost') hostRace(UI.rtarget || 1000);
@@ -2672,7 +2863,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

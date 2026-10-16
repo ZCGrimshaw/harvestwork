@@ -3,6 +3,29 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.42 — 2026-10-15
+- Valley Monuments (Late-game loops, Stage 4). Server: mon_projects (phases jsonb with need, items→points, name, short,
+  blurb; cap points/day; keep_min for the model) and mon_gifts (project, player, UTC day, points); hw_mon_current();
+  mon_state(p_player) (project, points, mine, today, givers, top 10, mine_all, gallery); mon_give(p_player, p_name,
+  p_project, p_item, p_qty) accepts only the current phase's goods, at most the daily allowance and never past the end
+  of the phase, and returns how many to take. First project 'pyramid-1' (The Great Pyramid): 4 × 8,000 points, 800/day,
+  model at 150, 2026-10-16 → 2026-10-30; building carries on past the target date.
+- Client: NET.mon (cached in localStorage), fetched with the market every 2 min; monTotals (stage/phase from cumulative
+  needs); monGive takes lowest quality first only after the server accepts; +1 DP for the first gift per phase per farm
+  (S.monPh), +2 when finished (S.monDone). Ceremony title cards ('monstage', once per stage per device) and a welcome
+  card ('monwelcome') when the Green opens.
+- Valley Green: after the tutorial, online farms get the unsurveyed area nearest the middle as S.green (theme 'green',
+  36 owned lawn/plaza tiles, not counted as a survey, can't be built on, can't buy land or survey from it). 3×3
+  'mon_site' tiles drawn once from the front-most tile at any angle; 'depot' (kind depot) 3 tiles from the centre so it
+  never ties the monument's draw order; a cart animation after each gift; map button [data-mon-show].
+- Panels: Depot / monument tiles (monPanel), Valley Green tiles (greenPanel), drawer 'valley' (Menu and Homestead),
+  model decoration 'monument' (kind decor, placed like medals, shows the current stage), "How monuments work" card,
+  inline help on points, allowance and greyed goods. Homestead Notices list (notices()) with a glowing "!" over the
+  Homestead until opened (S.noticeSeen).
+- Art: monument(kind, stage, mode) in art.js, pyramid at 5 stages × 3 sizes ('deco' 1 tile, 'site' 3×3 on a plinth,
+  'big' floating for panels; canvases carry ax/ay anchors), ART.monPic, depot sprite with crates for today's gifts,
+  lawn and plaza ground tiles (seasonal).
+
 ## v0.41 — 2026-10-15
 - Seasons and weather (Late-game loops, Stage 1). data.js: seasonRules, seasons (crops, goods, weather weights, late-autumn
   frost), weather texts, crop `hardy` flag. 28-day year from S.day (seasonIdx/seasonDay/yearOf); weather rolled from

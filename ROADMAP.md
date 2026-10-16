@@ -68,7 +68,13 @@ Built in stages; each stage ships on its own.
   in-season crops. Client only.
 - **Stage 3: The Almanac.** A collection book: every good at every quality, plus rare finds (giant pumpkin, golden
   egg, pearl while fishing, four-leaf clover). Completed pages give small permanent perks or decorations. Client only.
-- **Stage 4: Valley Monuments (online, co-op; agreed 2026-10-15, now first in line after Stage 1).** Replaces the
+- ~~**Stage 4: Valley Monuments**~~ (done in v0.42: The Great Pyramid, 2026-10-16 → 10-30). Built as planned below, with these
+  changes: the Valley Green opens after the tutorial with a welcome card (instead of a new tutorial goal, which would
+  have reopened the finished tutorial for existing players); the floating monument bobs gently rather than rotating;
+  the Depot sits on the lawn 3 tiles from the centre. Still to do: a second pedestal on the Green for the next monument
+  (the area grows in bands), the Valley Gallery, and the next monuments. To start the next one, insert a mon_projects
+  row (see CHANGELOG v0.42) and add its art to art.js MONUMENTS and data.js monuments.
+  Original plan, Stage 4: Valley Monuments (online, co-op; agreed 2026-10-15, now first in line after Stage 1). Replaces the
   old "Valley projects" idea. Every online farm helps build one shared monument; it is co-operative, with no
   rankings or race. First monument runs 2 weeks, to see how it goes; after that one per month, with weekly
   mini-projects possibly added later as feeders. Shared events follow the real calendar (seasons are only theming).

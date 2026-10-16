@@ -56,7 +56,22 @@ window.HW_DATA = {
     reeds:   { name: 'Reed Marsh', cost: 40, walk: true,
                desc: 'Cut reeds. They grow back quickly.', future: 'Weave reeds into baskets at the Workbench.' },
     ore:     { name: 'Iron Seam', cost: 60, walk: true,
-               desc: 'Mine iron ore from the rocky seam until it’s worked out.', future: 'Forge iron ingots and tools.' }
+               desc: 'Mine iron ore from the rocky seam until it’s worked out.', future: 'Forge iron ingots and tools.' },
+    // the Valley Green: shared-monument land beside your farm (never bought, never built on)
+    lawn:    { name: 'Valley Green', cost: 0, walk: true, green: true,
+               desc: 'Part of the Valley Green, where the valley’s monuments stand. Nothing can be built here.' },
+    plaza:   { name: 'Valley Green paving', cost: 0, walk: true, green: true,
+               desc: 'Paving around the Valley Monument. Nothing can be built here.' }
+  },
+
+  /* Valley Monuments: built together by every online farm (see the monument rules on the server). The server decides
+     the phases, the goods each phase takes and their points; this is how each kind looks and reads in the game. */
+  monuments: {
+    pyramid: { name: 'The Great Pyramid',
+      stages: ['Surveyed plot', 'Foundation', 'Body', 'Detail', 'Complete'],
+      stageText: ['Stakes and string mark out the site.', 'The stone base is down and the scaffolding is up.',
+        'Half height, with the crane hauling stone.', 'The entrance and the painted band are done.',
+        'The gold capstone is on. The Great Pyramid stands finished.'] }
   },
 
   // New areas beyond the starting land. Each theme mixes terrain (weights) and brings one new resource.
@@ -261,6 +276,9 @@ window.HW_DATA = {
     pasture:   { name: 'Sheep Pasture', kind: 'station', slots: 2, place: { plank: 2, fence_kit: 2 }, desc: 'A fenced field of sheep. Feed them and they grow wool to shear.' },
     creamery:  { name: 'Creamery', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Churns milk into butter and ages it into cheese.' },
     medal:     { name: 'Medal', kind: 'decor', desc: 'A Weekly Challenge medal, on show.' },
+    monument:  { name: 'Monument model', kind: 'decor', desc: 'A small model of a Valley Monument you helped build.' },
+    depot:     { name: 'Monument Depot', kind: 'depot', desc: 'Where your farm gives goods to the valley’s shared monument. Free, and it never counts toward your building limits.' },
+    mon_site:  { name: 'Valley Monument', kind: 'monsite', desc: 'The monument every online farm in the valley is building together.' },
     stove:     { name: 'Stove', kind: 'station', slots: 2, place: { plank: 2, stone: 2 }, desc: 'Turns raw food into cooked dishes worth more than the ingredients.' },
     market:    { name: 'Open Market', kind: 'market', desc: 'Buy seeds and supplies, sell goods, and pick up station kits.' },
     board:     { name: 'Order Board', kind: 'board', desc: 'Delivery requests for gold, score and Discovery.' },
@@ -608,6 +626,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.42', at: '2026-10-15 23:45', notes: ['Valley Monuments! Every online farm now builds one shared monument together, and the first is The Great Pyramid, with two weeks to build it. It rises through four stages (foundation, body, detail and the gold capstone), and each phase asks for different goods: stone and bricks, then timber, then food and crafts, then fine goods.', 'Once you finish the tutorial, a Valley Green opens beside your land: a paved plaza with the pyramid at full size and a Monument Depot, where you give goods from storage. It never costs you land and doesn’t count toward your building limits. The new pyramid button by the map controls takes you there, and you can also give from the Homestead or Menu → Valley Monument.', 'Finer goods count for more points, and you can give up to 800 points a day, so every farm gets a share of the work. Giving earns no gold. Instead you earn a small model of the pyramid for your farm (it shows the current stage), +1 Discovery for your first gift in each phase, and +2 when it’s finished. Each stage the valley reaches gets a little celebration. Tap “How do monuments work?” in the Depot for the full rules.', 'The Homestead now has a Notices list for things that are easy to miss, like goods the monument needs or a storage upgrade you can afford. A gold “!” over the Homestead means something new is waiting.'] },
   { v: '0.41', at: '2026-10-15 15:40', notes: ['Seasons and weather! The year now runs through Spring, Summer, Autumn and Winter, seven days each, so every season lines up with a weekly report. The day in the top bar shows the season and today’s weather; tap it for the forecast, what’s in season and the year at a glance.', 'Each season favours its own crops: they grow 25% faster and sell for 20% more, along with seasonal goods like berry juice in summer, pumpkin pie in autumn and wool blankets in winter. The market’s pick of the day is often something in season.', 'Gentle weather, never storms: rain waters every growing crop while it falls (it counts for quality), sunny spells speed growth a little, summer heat dries soil out so crops need water sooner, mist and fog are just for looks, frosty mornings slow tender crops until 10:00, and on snow days only hardy crops (carrots, potatoes, wheat and apple trees) can be planted. In winter, tender crops grow a little slower.', 'The valley changes with the seasons: blossom in spring, deep greens in summer, golden leaves in autumn, frost and snow-capped roofs in winter, with rain, snowflakes, mist and drifting leaves. Each season has its own music, and the ambience brings rain, summer cicadas and quieter winter days.', 'Races and weekly challenges stay on a fair spring day with no weather, so every run is the same for everyone.'] },
   { v: '0.40', at: '2026-10-15 14:45', notes: ['Stone, clay and iron ore now run out. Each Boulder Field, Clay Bank and Iron Seam holds a deposit (about 60 stone, 60 clay or 30 ore); select one to see how much is left. Surface rocks still come back a few at a time until the deposit is used up.', 'Every tile you already own starts with a full deposit. When one is worked out you can change the land, buy from the market, survey new areas for fresh deposits, or unlock Deep Quarrying (after Prospecting) to reopen it.', 'Trees, ponds, flowers and reeds keep regrowing as before. Races and weekly challenges are unchanged.'] },
   { v: '0.39.3', at: '2026-10-15 13:20', notes: ['Balance: a station’s Quality upgrade now lifts goods one tier above their ingredients, never more. Basic logs make Good planks; Excellent goods need Good ingredients (well-watered or fertilized crops) plus the upgrade. Goods you already have keep their quality.', 'Master Crafting’s second Quality level now gives a bonus item on every third batch at that station instead.'] },

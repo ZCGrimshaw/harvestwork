@@ -57,7 +57,13 @@ window.HW_ART = (function () {
     ore:     s => ground('#9a8a7a', ['#86766a', '#b0a090', '#a8603a', '#6e5e52'], '#6e5e4e', '#56483c', 141 + s),
     farm_raw: () => ground('#a87444', ['#946238', '#bb8652', '#7cc04b'], SIDE[0], SIDE[1], 91),
     farm_tilled: () => ground('#80502b', ['#8e5c33'], SIDE[0], SIDE[1], 92, furrows('#5e3519', '#966238')),
-    farm_wet: () => ground('#5c3820', ['#4c2e1a'], SIDE[0], SIDE[1], 93, furrows('#432612', '#6b4426'))
+    farm_wet: () => ground('#5c3820', ['#4c2e1a'], SIDE[0], SIDE[1], 93, furrows('#432612', '#6b4426')),
+    // the Valley Green: a mown lawn (stripes) and sandstone paving
+    lawn: s => ground('#7cc04b', ['#93d35c', '#6fb440'], SIDE[0], SIDE[1], 151 + s,
+      (g, r) => { for (let y = 1; y < 15; y++) { const hw = hwAt(y) - 1; for (let x = 16 - hw; x < 16 + hw; x++) if (Math.floor((x + 2 * y) / 6) % 2) r('#6fb440', x, y); } }),
+    plaza: s => ground('#dccb9c', ['#e8daae', '#cdb985'], '#a8916a', '#8a7552', 161 + s,
+      (g, r) => { for (let y = 1; y < 15; y++) { const hw = hwAt(y) - 1; for (let x = 16 - hw; x < 16 + hw; x++) { const u = x / 2 + y, v = x / 2 - y + 40;
+        if (Math.abs(u % 4) < .5 || Math.abs(v % 4) < .5) r('#c4ae7c', x, y); } } })
   };
 
   /* ---------- structures: 32 wide, bottom row sits 4px below tile centre ---------- */
@@ -441,6 +447,92 @@ window.HW_ART = (function () {
     });
   }
 
+  /* ---------- Valley Monuments ----------
+     A monument is drawn at one of five stages (0 surveyed plot, 1 base, 2 body, 3 detail, 4 complete) and three sizes:
+     'deco' the one-tile model on your farm, 'site' the full-size build on the Valley Green (3×3 tiles, on a plinth),
+     'big' the floating monument in the Homestead and Depot panels. Each canvas carries its anchor (ax, ay): the
+     point that sits on the tile centre. */
+  function inPoly(p, x, y) { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const a = p[i], b = p[j];
+    if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+  function pyramid(stage, mode) {
+    const S = mode === 'deco' ? 1 : 3, fine = S > 1, P = 1;
+    const f = [0, .3, .55, .72, 1][stage];
+    const W = (mode === 'deco' ? 13 : 14) * S, Hh = (mode === 'deco' ? 18 : 19) * S, M = 13 * S, cx = Math.max(W + 3 * S, mode === 'deco' ? 0 : 16 * S + 1), by = M + Hh;
+    const w = cx * 2, h = by + W / 2 + (mode === 'big' ? 12 * S : mode === 'site' ? 5 * S : 4);
+    const c = mk(w, h, (g, r0) => {
+      const R = rng(7 + stage), r = (col, x, y, ww = 1, hh = 1) => r0(col, Math.round(x), Math.round(y), Math.max(1, Math.round(ww)), Math.max(1, Math.round(hh)));
+      const ln = (col, x0, y0, x1, y1, t = 1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) r(col, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, t, t); };
+      const each = fn => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) fn(x, y, x + .5, y + .5); };
+      const dia = (x, y, hw, yc) => Math.abs(x - cx) / hw + Math.abs(y - yc) / (hw / 2);
+      if (mode === 'big') { // floating plinth, gold trim, shadow far below
+        each((x, y, px, py) => { const dx = (px - cx) / (13 * S), dy = (py - (h - 3 * S)) / (2.5 * S); if (dx * dx + dy * dy <= 1) r('rgba(0,0,0,.3)', x, y); });
+        each((x, y, px, py) => { const hw = 16 * S;
+          if (dia(px, py, hw, by) <= 1) r((x * 7 + y * 13) % 13 === 0 ? '#e6d3a0' : '#d9c48e', x, y);
+          else if (py > by && dia(px, py - 3 * S, hw, by) <= 1) r(px < cx ? '#b39a64' : '#8f7a4c', x, y);
+          else if (py > by && dia(px, py - 4 * S, hw, by) <= 1 && Math.abs(px - cx) < 14 * S && (x >> 1) % 3) r('#f6d24a', x, y); });
+      } else if (mode === 'site') { // a low stone plinth filling the 3×3 footprint
+        each((x, y, px, py) => { const hw = 16 * S - 2;
+          if (dia(px, py, hw, by) <= 1) r((x * 5 + y * 11) % 17 === 0 ? '#e6d6a6' : dia(px, py, hw, by) > .9 ? '#c9b483' : '#d9c79a', x, y);
+          else if (py > by && dia(px, py - 3, hw, by) <= 1) r(px < cx ? '#a8916a' : '#8a7552', x, y); });
+      } else each((x, y, px, py) => { const dx = (px - cx - 2) / (13 * S), dy = (py - by - S) / (4.5 * S); if (dx * dx + dy * dy <= 1) r('rgba(30,20,10,.25)', x, y); });
+      const Wt = W * (1 - f), ty = by - Hh * f, ch = fine ? 1.5 * S : 3, jw = fine ? 2.5 * S : 5, goldZ = .82 * Hh;
+      if (stage === 0) { // the surveyed site: stakes, string and a sign
+        const pts = [[cx - W, by], [cx, by + W / 2], [cx + W, by], [cx, by - W / 2]];
+        for (let i = 0; i < 4; i++) { const a = pts[i], b = pts[(i + 1) % 4]; ln('#f2ece0', a[0], a[1] - 3 * S, b[0], b[1] - 3 * S); }
+        pts.forEach(p => { r('#7a4b28', p[0], p[1] - 6 * S, Math.max(1, S * .7), 7 * S); r('#c23a3a', p[0] - 1, p[1] - 6 * S, 3 * Math.max(1, S * .7), 2 * Math.max(1, S * .7)); });
+        r('#7a4b28', cx - S, by + 1 * S, Math.max(1, S * .7), 5 * S); r('#d8b070', cx - 5 * S, by - 4 * S, 10 * S, 6 * S); r('#7a4b28', cx - 5 * S, by - 4 * S, 10 * S, Math.max(1, S * .6));
+        ln('#7a4b28', cx - 3 * S, by - 2 * S, cx + 3 * S, by - 2 * S); ln('#7a4b28', cx - 3 * S, by, cx + S, by);
+        for (let k = 0; k < 5; k++) { r('#c4b894', cx - 8 * S + k * 3 * S, by + 4 * S - (k % 2) * S, 2 * S, 2 * S); r('#9a9078', cx - 8 * S + k * 3 * S, by + 5 * S - (k % 2) * S, 2 * S, Math.max(1, S * .6)); }
+        return; }
+      const polL = [[cx - W, by], [cx, by + W / 2], [cx, ty + Wt / 2], [cx - Wt, ty]], polR = [[cx + W, by], [cx, by + W / 2], [cx, ty + Wt / 2], [cx + Wt, ty]];
+      const polT = [[cx - Wt, ty], [cx, ty - Wt / 2], [cx + Wt, ty], [cx, ty + Wt / 2]];
+      each((x, y, px, py) => { const inL = inPoly(polL, px, py), inR = inPoly(polR, px, py), inT = f < 1 && inPoly(polT, px, py);
+        if (!inL && !inR && !inT) return; let col;
+        if (inT) { col = R() < .12 ? '#e8d598' : '#f3e3ac'; if (Math.abs(px - cx) / Wt + Math.abs(py - ty) / (Wt / 2) > .82) col = '#dcc98a'; }
+        else { const left = inL, yb = left ? by + (px - (cx - W)) * .5 : by + ((cx + W) - px) * .5, z = yb - py, u = left ? px - (cx - W) : (cx + W) - px, course = Math.floor(z / ch), odd = course & 1;
+          col = left ? (odd ? '#e0c682' : '#ecd596') : (odd ? '#bb9858' : '#c9a866');
+          if (z % ch < 1 || Math.floor((u + (odd ? jw / 2 : 0)) / jw) !== Math.floor((u - 1 + (odd ? jw / 2 : 0)) / jw)) col = left ? '#c4a864' : '#a38449';
+          else if (R() < .08) col = left ? '#f3e0a8' : '#b8975a';
+          if (Math.abs(px - cx) < P) col = left ? '#d5b872' : '#9c7d46';
+          if (stage >= 3 && z > 9 * S && z < 11 * S && !(stage === 4 && z > goldZ)) col = Math.floor(u / (3 * S)) % 2 === 0 ? (left ? '#e8a070' : '#c47a52') : (left ? '#b5523b' : '#97412e');
+          if (stage === 4 && z > goldZ) col = z % ch < 1 ? (left ? '#c99a1e' : '#a87c12') : (left ? '#f6d24a' : '#d8a82a'); }
+        r(col, x, y); });
+      if (stage >= 3) { const dx = cx - 7 * S, dw = 5 * S, yb0 = by + (dx - (cx - W)) * .5; // the entrance
+        for (let x = 0; x < dw; x++) { const yb = by + (dx + x - (cx - W)) * .5, top = 6 * S - (x < S || x >= dw - S ? S : 0); for (let z = 0; z < top; z++) r(z < 1 ? '#4a3524' : '#2a1c12', dx + x, yb - z - 1); }
+        r('#f3e0a8', dx - 1, yb0 - 7 * S, dw + 2, Math.max(1, S * .7)); }
+      const topZ = f * Hh, T = Math.max(1, Math.round(S * .7));
+      if (stage >= 1 && stage <= 3) { // scaffolding, and a crane while the body goes up
+        const hh = (stage === 3 ? .35 : 1) * (topZ + 5 * S), poles = [[cx - W - 1.5 * S, by + .5 * S], [cx, by + W / 2 + 1.5 * S], [cx + W + 1.5 * S, by + .5 * S]];
+        poles.forEach(p => r('#7a4b28', p[0], p[1] - hh, T, hh));
+        for (let z = 3 * S; z < hh; z += 6 * S) { ln('#c99b5a', poles[0][0], poles[0][1] - z, poles[1][0], poles[1][1] - z, T); ln('#a8743e', poles[1][0], poles[1][1] - z, poles[2][0], poles[2][1] - z, T); }
+        if (stage < 3) { const ax = cx - S, ay = ty - S;
+          r('#7a4b28', ax, ay - 9 * S, T + (fine ? 1 : 0), 9 * S); ln('#9a6a3c', ax, ay - 9 * S, ax + 9 * S, ay - 6 * S, T); ln('#f2ece0', ax + 8 * S, ay - 6 * S, ax + 8 * S, ay - S, 1);
+          r('#c4b894', ax + 6.5 * S, ay - S, 3 * S, 2 * S); r('#9a9078', ax + 6.5 * S, ay + .5 * S, 3 * S, T); }
+        const sx = cx + W - 2 * S, sy = by + W / 2 - 3 * S; // stone waiting to go up
+        [[0, 0], [3, 0], [1.5, -2], [6, 1]].forEach(([a, b]) => { r('#c4b894', sx + a * S, sy + b * S, 3 * S, 2 * S); r('#9a9078', sx + a * S, sy + (b + 1.5) * S, 3 * S, T); }); }
+      if (stage === 4) { // banners and a glint on the capstone
+        [[cx - W + 1.2 * S, by + .6 * S, '#c23a3a'], [cx + W - 1.2 * S, by + .6 * S, '#3d6fb8']].forEach(([x, y, col]) => {
+          r('#7a4b28', x, y - 10 * S, T, 10 * S); for (let i = 0; i < 4 * S; i++) r(col, x + T, y - 10 * S + i, Math.max(1, (4 * S - i) * 1.1), 1); });
+        for (let k = 0; k < 14; k++) { const a = k / 14 * 6.28, rr = (6 + R() * 5) * S; r(k % 3 ? '#fff3b0' : '#f6d24a', cx + Math.cos(a) * rr * 1.3, by - Hh + 3 * S + Math.sin(a) * rr * .7, T, T); }
+        r('#fff3b0', cx - T / 2, by - Hh - 2 * S, T, 3 * S); r('#fff3b0', cx - 2 * S, by - Hh + .5 * S, 5 * S, T); }
+    });
+    c.ax = cx; c.ay = by; return c;
+  }
+  const MONUMENTS = { pyramid };
+  function monument(kind, stage, mode) { return (MONUMENTS[kind] || pyramid)(Math.max(0, Math.min(4, stage | 0)), mode); }
+  // the Monument Depot: an open wooden shed with an awning; crates pile up in front as you give
+  OBJ.depot = n => mk(32, 34, (g, r) => {
+    shadow(r, 34, 12);
+    r('#9a6a3c', 6, 14, 10, 16); r('#7a4b28', 16, 14, 10, 16); r('#3a2414', 8, 18, 7, 12); r('#5e3519', 6, 29, 20, 1);
+    for (let x = 6; x < 26; x += 4) r('#5e3519', x, 14, 1, 16);
+    for (let i = 0; i < 8; i++) { const hw = 4 + i * 1.6 | 0; for (let x = 16 - hw; x < 16 + hw; x++) r(Math.floor((x + 1) / 3) % 2 ? '#3d6fb8' : '#f2ece0', x, 6 + i); }
+    for (let x = 4; x < 28; x += 3) { r('#3d6fb8', x, 14, 2, 2); r('#2c528a', x + 2, 14, 1, 1); }
+    r('#7a4b28', 15, 1, 2, 6); r('#f6d24a', 17, 1, 5, 3); r('#c99a1e', 17, 3, 5, 1); // pennant
+    r('#d8b070', 19, 18, 6, 5); r('#7a4b28', 19, 18, 6, 1); r('#c9a866', 21, 19, 2, 2); r('#e0c682', 20, 21, 4, 1); // sign with a little pyramid
+    const crates = [[3, 25], [24, 25], [7, 27], [21, 27], [12, 28]];
+    for (let k = 0; k < Math.min(5, n | 0); k++) { const [x, y] = crates[k]; r('#c99b5a', x, y, 5, 4); r('#a8743e', x, y, 5, 1); r('#7a4b28', x + 2, y, 1, 4); r('#8a5a2e', x, y + 3, 5, 1); }
+  });
+
   const urls = {};
   // A small scene for a discovery card: a ground tile, an object on it, and an optional item badge.
   const picCache = {};
@@ -495,7 +587,7 @@ window.HW_ART = (function () {
      every tile and tree keeps its shape: lush deep greens in summer, gold and russet in autumn, frosted muted greens
      in winter, and white ground with snow on every roof and treetop on a snow day. Spring trees get blossom. */
   let scene = 'spring';
-  const GROUND = new Set(['grass', 'forest', 'water', 'boulder', 'flowers', 'clay', 'reeds', 'ore', 'farm_raw']);
+  const GROUND = new Set(['grass', 'forest', 'water', 'boulder', 'flowers', 'clay', 'reeds', 'ore', 'farm_raw', 'lawn', 'plaza']);
   const PLANT = new Set(['tree', 'stump', 'sapling', 'blooms', 'reedbed', 'pondreeds']);
   const SCENES = {
     summer: {
@@ -525,7 +617,8 @@ window.HW_ART = (function () {
       '#b3a37a': '#e6ebee', '#9c8c66': '#b8c0c4', '#c7b98f': '#ffffff', '#8a7a58': '#9aa4aa',
       '#c98a5a': '#ecf0f2', '#b5764a': '#c8a08a', '#d8a06e': '#ffffff', '#a8683e': '#dde4e8',
       '#9a8a7a': '#e8edf0', '#86766a': '#b0b8bc', '#b0a090': '#ffffff',
-      '#a87444': '#e8eef1', '#946238': '#c0a080', '#bb8652': '#ffffff' }),
+      '#a87444': '#e8eef1', '#946238': '#c0a080', '#bb8652': '#ffffff',
+      '#dccb9c': '#eef2f4', '#e8daae': '#ffffff', '#cdb985': '#dfe6ea', '#c4ae7c': '#c8d2d8' }),
     plant: SCENES.winter.plant
   };
   const hexOf = (d, i) => '#' + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
@@ -543,7 +636,7 @@ window.HW_ART = (function () {
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4; if (d[i + 3] === 255 && (y === 0 || d[i - w * 4 + 3] < 200)) top[y * w + x] = 1; }
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!top[y * w + x]) continue; const i = (y * w + x) * 4; set(i, '#f4f8fb');
         const j = i + w * 4; if (y + 1 < h && d[j + 3] === 255 && !top[(y + 1) * w + x] && (x + y) % 2 === 0) set(j, '#d8e4ec'); } }
-    g.putImageData(img, 0, 0); return c;
+    g.putImageData(img, 0, 0); c.ax = src.ax; c.ay = src.ay; return c;
   }
   // which sprites change with the scene: ground and plants always; trees in spring (blossom); everything but crops and people on a snow day
   const seasonal = (k, objs) => scene === 'spring' ? k === 'tree' : GROUND.has(k) || PLANT.has(k) || (scene === 'snow' && objs);
@@ -554,6 +647,7 @@ window.HW_ART = (function () {
       if (G[k]) c = G[k](+a || 0);
       else if (k === 'crop') { const [kind, st] = a.split('.'); c = crop(kind, +st); }
       else if (k === 'avatar') { const [s, h, f, w] = a.split('.').map(Number); c = avatar(s, h, f, w); }
+      else if (k === 'mon') { const [kind, st, mode] = a.split('.'); c = monument(kind, +st, mode); }
       else if (OBJ[k]) c = OBJ[k](a === undefined ? undefined : +a);
       else c = mk(2, 2, () => {});
       if (SHORT.has(k)) c = dropRows(c, shortRows(k === 'stove_on' ? 'stove' : k));
@@ -574,6 +668,7 @@ window.HW_ART = (function () {
       return (urls[id] = c.toDataURL());
     },
     discPic(pic, items) { return discPic(pic, items, base); }, // discovery cards keep the spring look
+    monPic(kind, stage) { const k = 'monpic:' + kind + stage; return urls[k] || (urls[k] = base(`mon:${kind}.${stage}.big`).toDataURL()); },
     iconCanvas(id, items) { const k = 'icon:' + id; if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
   };
 })();

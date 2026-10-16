@@ -20,11 +20,12 @@
 - Code: vanilla JS. `src/game.js` (game, UI, online features), `src/data.js` (all content: items, recipes, buildings,
   discoveries, contracts, weekly themes, update log), `src/art.js` (procedural pixel art), `src/sound.js` (Web Audio).
 - Online features use Supabase project `xtbsmtystiozdogielrd` (Supabase connector): market prices, leaderboard,
-  names, cloud backups, races, weekly challenge + medals, player keys, presence count. All RPCs are SECURITY DEFINER
+  names, cloud backups, races, weekly challenge + medals, player keys, presence count, Valley Monuments
+  (mon_projects + mon_gifts; a new monument is a new mon_projects row). All RPCs are SECURITY DEFINER
   with RLS on and no policies (intentional). Test SQL inside `begin; … rollback;`.
 - Testing: Playwright with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, opening `src/index.html`
-  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, drawer…).
+  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, mon (set, give, totals, notices, show, green), drawer…).
   Mock the server with `ctx.route('**/rest/v1/rpc/*')`; seed saves with `add_init_script`. Write test screenshots to
   a scratch folder, never the repo.
-- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 4 Valley Monuments, agreed 2026-10-15, then Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41).
+- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan" Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41, Stage 4 Valley Monuments in v0.42).
   History of every release is in `CHANGELOG.md`.

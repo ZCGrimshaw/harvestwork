@@ -614,6 +614,25 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .medalrow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--wood-lo); border-radius: var(--r); }
 .medalrow img { width: 48px; height: 48px; image-rendering: pixelated; flex: none; } .medalrow small { display: block; color: var(--paper-dim); font-size: 12px; }
 .medalbig { display: flex; gap: 10px; align-items: center; } .medalbig img { width: 64px; height: 64px; image-rendering: pixelated; flex: none; }
+.monhero { display: flex; gap: 10px; align-items: center; } .monhero small { display: block; color: var(--paper-dim); font-size: 13px; line-height: 1.35; }
+.monname { display: block; font-size: 16px; margin-bottom: 2px; }
+.monfloat { width: 120px; height: auto; image-rendering: pixelated; flex: none; animation: monbob 3.2s ease-in-out infinite; } .monfloat.sm { width: 64px; }
+@keyframes monbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.monbar { position: relative; height: 12px; background: rgba(0,0,0,.35); border-radius: 6px; overflow: hidden; margin: 8px 0 4px; }
+.monbar i { display: block; height: 100%; background: linear-gradient(90deg, #c99a1e, #f6d24a); } .monbar s { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(36,22,13,.6); }
+.monline { display: block; color: var(--paper-dim); font-size: 12px; }
+.monyou { margin: 8px 0; padding: 8px 10px; background: var(--wood-lo); border-radius: var(--r); font-size: 13px; line-height: 1.4; }
+.trade.give.off { opacity: .62; } .ico.dim { filter: grayscale(.7); }
+.monroll { margin: 4px 0; padding-left: 24px; font-size: 13px; } .monroll li { padding: 1px 0; } .monroll li span { display: inline-block; min-width: 60%; } .monroll li.me { color: #f6d24a; font-weight: 600; }
+.monmini { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; } .monmini small { display: block; color: var(--paper-dim); font-size: 12px; }
+.notices .notice { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 7px 9px; margin-bottom: 6px; font-size: 13px; line-height: 1.35;
+  background: rgba(246,210,74,.12); border: 1px solid rgba(246,210,74,.45); border-radius: var(--r); }
+.monhelp p { margin: 6px 0; }
+.moncard { text-align: center; } .monheroimg { display: block; width: 200px; height: auto; margin: 6px auto 0; image-rendering: pixelated; animation: monbob 3.2s ease-in-out infinite; }
+.monstrip { display: flex; justify-content: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; } .monstrip span { opacity: .45; } .monstrip span.on { opacity: 1; }
+.monstrip img { display: block; width: 52px; height: auto; image-rendering: pixelated; } .monstrip small { font-size: 11px; color: var(--paper-dim); }
+.monpts { text-align: left; max-width: 460px; margin: 8px auto; padding-left: 20px; font-size: 14px; line-height: 1.4; } .monpts li { margin: 5px 0; }
+@media (prefers-reduced-motion: reduce) { .monfloat, .monheroimg { animation: none; } }
 .medalcard { text-align: center; } .medalhero { display: block; width: 128px; height: 128px; margin: 8px auto 0; image-rendering: pixelated; animation: medalpop .6s ease-out; }
 @keyframes medalpop { 0% { transform: scale(.3) rotate(-20deg); opacity: 0; } 70% { transform: scale(1.12) rotate(4deg); opacity: 1; } 100% { transform: none; } }
 #title .slots .btn.sm small { display: block; font-size: 11px; font-weight: 600; opacity: .8; }
@@ -651,6 +670,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
     <button class="ibtn" data-rot="-1" aria-label="Rotate map left" title="Rotate left (Q)">⟲</button>
     <button class="ibtn" data-rot="1" aria-label="Rotate map right" title="Rotate right (E)">⟳</button>
     <button class="ibtn" data-zoom="home" aria-label="Center on homestead">⌂</button>
+    <button class="ibtn" data-mon-show hidden aria-label="Show the Valley Monument" title="Show the Valley Monument"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 2.5 19h19z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 3v16" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 12.5h11" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <button class="ibtn eye" data-labels aria-pressed="false" aria-label="Show building names" title="Show building names (X)"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></button>
   </div>
   <div id="logbar"></div>
@@ -665,9 +685,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261015-223210"></script>
-<script src="art.js?v=20261015-223210"></script>
-<script src="sound.js?v=20261015-223210"></script>
-<script src="game.js?v=20261015-223210"></script>
+<script src="data.js?v=20261016-063420"></script>
+<script src="art.js?v=20261016-063420"></script>
+<script src="sound.js?v=20261016-063420"></script>
+<script src="game.js?v=20261016-063420"></script>
 
 </body></html>
