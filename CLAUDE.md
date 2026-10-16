@@ -26,5 +26,5 @@
   via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, drawer…).
   Mock the server with `ctx.route('**/rest/v1/rpc/*')`; seed saves with `add_init_script`. Write test screenshots to
   a scratch folder, never the repo.
-- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41).
+- Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan", Stage 4 Valley Monuments, agreed 2026-10-15, then Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41).
   History of every release is in `CHANGELOG.md`.

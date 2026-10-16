@@ -68,9 +68,30 @@ Built in stages; each stage ships on its own.
   in-season crops. Client only.
 - **Stage 3: The Almanac.** A collection book: every good at every quality, plus rare finds (giant pumpkin, golden
   egg, pearl while fishing, four-leaf clover). Completed pages give small permanent perks or decorations. Client only.
-- **Stage 4: Valley projects (online).** A shared weekly goal for the Online Valley ("rebuild the mill: planks and
-  flour"). Targets scale with the number of active players that week. Live progress bar; everyone who contributes
-  is rewarded, the top contributors get medals. Server: projects + contributions tables.
+- **Stage 4: Valley Monuments (online, co-op; agreed 2026-10-15, now first in line after Stage 1).** Replaces the
+  old "Valley projects" idea. Every online farm helps build one shared monument; it is co-operative, with no
+  rankings or race. First monument runs 2 weeks, to see how it goes; after that one per month, with weekly
+  mini-projects possibly added later as feeders. Shared events follow the real calendar (seasons are only theming).
+  - Four visual stages at 25/50/75/100% funded (a pyramid: base, body, detail, crown). Each stage is also a phase that
+    asks for a different kind of good (stone/brick, then planks, then finished goods, then fine goods), so farms with
+    different specialities matter at different points. Scaffolding fills in as the current stage progresses.
+    Crossing a stage gives every contributor a ceremony pop-up on next open (like the medals). Stage thresholds are
+    decided on the server so everyone sees the same stage.
+  - Contributing: donated goods earn no gold. Rewards are the small monument decoration plus a few Discovery points,
+    never anything that touches gold or the shared market. Per-player cap per day/week so one big farm can't finish it
+    alone; targets scale with active players; buying goods to donate is allowed (a gold sink). Online farms only.
+    A minimum contribution earns the decoration; a late joiner can still view finished monuments in the gallery.
+  - The small version: a one-tile decoration (like the medals) showing the current stage, staying as the finished
+    model afterwards.
+  - Homestead: a Valley section with a slowly rotating floating monument, progress bar, what's needed this phase,
+    your own total, a contributor roll and a Contribute button. Add a general Homestead notices list with a glowing
+    badge for things players forget (an unfinished monument, an affordable storage upgrade, a waiting weekly
+    report), plus a tutorial goal pointing at it.
+  - Valley view: a button beside See-through opens a diorama scene (plaza, the monument at its stage, scaffolding,
+    banner of contributor names), since the shared build can't sit on a private farm map.
+  - Valley Gallery of finished monuments. Candidates: pyramid first, then mill, lighthouse, stone bridge, clock
+    tower, great barn, fountain square, harvest statue.
+  - Server: projects + contributions tables, per-report caps like record_trade, active-player count for scaling.
 - **Stage 5: The County Fair.** Once a season (end of each season). A special list of Fair orders just for the
   event, a race to fill it: the clock starts when you open the fair. You get a Fair Cart that holds exactly enough
   for the list (doesn't use storage). Fastest complete lists win ribbons for the trophy case; everyone who finishes
