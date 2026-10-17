@@ -663,6 +663,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.49.1', backend: true, at: '2026-10-17 14:30', notes: ['Sales and purchases are reported to the shared market in batches instead of one request each.'] },
   { v: '0.49', backend: true, at: '2026-10-17 14:00', notes: ['Lighter market traffic: one small request every 90 seconds instead of two every 30, and the trade ticker only loads while it is open.'] },
   { v: '0.48.2', at: '2026-10-17 13:10', notes: ['Monument Auto-give now switches itself off when you reach the day’s limit, and tells you so with a message (your allowance resets at 00:00 UTC; turn Auto back on then).'] },
   { v: '0.48.1', at: '2026-10-17 12:40', notes: ['Fixed: Auto-give for the monument could stall. If your goods ran out, a new day’s allowance started, or the monument moved to a phase that wants something new, it kept waiting on old information. It now checks again about once a minute and carries on by itself as soon as there’s something to give.'] },

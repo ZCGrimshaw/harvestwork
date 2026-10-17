@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.49.1 — 2026-10-17 · backend (hidden from the in-game updates log)
+- Batched trade reports. Server migration `record_trades_batch` (additive; record_trade stays): `record_trades(p_player, p_trades jsonb)`
+  runs each {item, qty, side} through record_trade (same price impact, rate limit and feed; bad entries skipped; max 30 per
+  call) and returns {item: new price}. Client queues sales/purchases for 2.5 s, merges the same good and side (split at 50),
+  sends one request, applies the returned prices; flushes when the tab is hidden or closed; one record_trade per entry if
+  the server lacks record_trades (404). The per-player rate limit (40 reports / 10 min) now stretches further, since merged
+  entries count once. Test: t_batch.py. Still not done: trimming old rows from the `trades` table.
+
 ## v0.49 — 2026-10-17 · backend (hidden from the in-game updates log)
 - Market traffic cut ~80%+ per open copy. Server migration `market_sync_and_get_trades` (additive; get_market and presence_ping stay
   for older open copies): `market_sync(p_inst)` returns only prices that differ from 1.0, the clock and the open-copies count,

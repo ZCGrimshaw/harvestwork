@@ -769,12 +769,29 @@
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
   }
+  /* Trade reports are batched: a sale or purchase is added to a queue and sent about 2.5 s later, with the same good and
+     side merged (a stack sold in several quality tiers is one entry) and different goods sent together in one request
+     (record_trades). Older servers without it get one record_trade call per entry. The queue also goes out when the
+     tab is hidden or closed. */
+  const TQ = { q: {}, timer: 0 };
   function reportTrade(item, qty, side) { if (!online()) return;
     if (!NET.ok || D.items[item].cat === 'kit') return;
     NET.trades.unshift({ item, qty, side, created_at: new Date(Date.now() - NET.skew).toISOString(), mine: true }); NET.trades.length = Math.min(NET.trades.length, 40);
     UI.tickDirty = true;
-    rpc('record_trade', { p_player: PLAYER, p_item: item, p_qty: qty, p_side: side }).then(m => { if (typeof m === 'number') { NET.prices[item] = m; dirty(); } }).catch(() => {});
-  }
+    const k = item + '|' + side; TQ.q[k] = (TQ.q[k] || 0) + qty;
+    if (!TQ.timer) TQ.timer = setTimeout(flushTrades, 2500); }
+  function takeTrades() { const o = []; for (const k in TQ.q) { const [item, side] = k.split('|'); let n = TQ.q[k]; while (n > 0) { o.push({ item, qty: Math.min(50, n), side }); n -= 50; } }
+    TQ.q = {}; TQ.timer = 0; return o; }
+  const gotPrices = m => { if (m && typeof m === 'object') { for (const it in m) if (typeof m[it] === 'number') NET.prices[it] = m[it]; dirty(); } };
+  async function flushTrades() { clearTimeout(TQ.timer); const list = takeTrades(); if (!list.length) return;
+    try { if (NET.noBatch) throw new Error('single'); gotPrices(await rpc('record_trades', { p_player: PLAYER, p_trades: list.slice(0, 30) }));
+      if (list.length > 30) gotPrices(await rpc('record_trades', { p_player: PLAYER, p_trades: list.slice(30, 60) })); }
+    catch (e) { if (/HTTP 404/.test(String(e && e.message))) NET.noBatch = true;
+      for (const t of list.slice(0, 20)) { try { const m = await rpc('record_trade', { p_player: PLAYER, p_item: t.item, p_qty: t.qty, p_side: t.side }); if (typeof m === 'number') { NET.prices[t.item] = m; dirty(); } } catch (e2) { } } } }
+  function flushTradesBeacon() { if (!TQ.timer) return; clearTimeout(TQ.timer); const list = takeTrades(); if (!list.length) return;
+    try { fetch(NET.url + 'record_trades', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_player: PLAYER, p_trades: list.slice(0, 30) }) }).catch(() => { }); } catch (e) { } }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flushTradesBeacon(); });
+  window.addEventListener('pagehide', flushTradesBeacon);
   const mult = id => (online() && NET.ok && D.items[id].cat !== 'kit' && NET.prices[id]) || 1; // races use plain local prices
   // Goods you've made at least once can be bought back from the market at a markup (above even the +50% demand sell price).
   const RESALE = 1.75;
@@ -2656,7 +2673,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261017-174216';
+  const BUILD = '20261017-174654';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3013,7 +3030,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
