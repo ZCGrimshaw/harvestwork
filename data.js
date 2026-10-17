@@ -626,6 +626,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.45.1', at: '2026-10-16 20:05', notes: ['Menus now open on top of everything: the progress meters, tips, warning bars and side panels no longer show through or sit over the main menu while it is open.'] },
   { v: '0.45', at: '2026-10-16 19:50', notes: ['On a phone, the race and weekly challenge progress is now a small vertical meter on the left instead of a wide bar across the top, so it no longer covers the map. Races get one column per racer (yours is gold), filling upward; the time sits above and your score below. Tap the meter any time for the full standings. On a computer nothing changes.'] },
   { v: '0.44', at: '2026-10-16 18:30', notes: ['Easier to play on a phone: buttons, tabs and the goal card’s controls are now big enough for a thumb (44 pixels), and on a phone the valley market ticker starts hidden so the map has more room. Turn it back on in Settings → “Show the valley market ticker at the top”. Farms that already had the ticker showing keep it.'] },
   { v: '0.43', at: '2026-10-16 15:40', notes: ['Storage can now be sorted. Open Storage and pick Sort by: Category (the usual headings), A–Z, Most, Fewest, Worth (highest total value first, so you can see what’s worth selling), Best quality, or Newest. The category tabs still filter the list, and your choice is remembered.'] },

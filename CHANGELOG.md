@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.45.1 — 2026-10-16
+- #drawer (main menu and other full-screen menus) gets z-index 30 so racebar, coach, movebar, idlebar, update bar and the panel stay behind it. CSS only.
+
 ## v0.45 — 2026-10-16
 - Race and weekly bars on a phone (isPhone()) render as a vertical meter (vMeter): `#racebar.vm` at the left edge under the top
   bar, one column per racer filling upward (yours wider and gold), time above, your score below; the goal card shifts right
