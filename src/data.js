@@ -76,7 +76,9 @@ window.HW_DATA = {
       { id: 'bronze', name: 'Bronze', pts: 1000,  sell: 0.05, speed: 0,    extra: 0, dp: 1 },
       { id: 'silver', name: 'Silver', pts: 5000,  sell: 0.10, speed: 0.10, extra: 0, dp: 1 },
       { id: 'gold',   name: 'Gold',   pts: 15000, sell: 0.15, speed: 0.10, extra: 4, dp: 1 },
-      { id: 'master', name: 'Master', pts: 40000, sell: 0.20, speed: 0.15, extra: 3, dp: 2 }
+      { id: 'master', name: 'Master', pts: 40000, sell: 0.20, speed: 0.15, extra: 3, dp: 2 },
+      { id: 'legend', name: 'Legend', pts: 400000, sell: 0.25, speed: 0.20, extra: 2, dp: 3 },
+      { id: 'mythic', name: 'Mythic', pts: 2500000, sell: 0.30, speed: 0.25, extra: 2, dp: 5 }
     ]
   },
 
@@ -663,6 +665,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.50', at: '2026-10-17 15:30', notes: ['Mastery has two new tiers above Master: Legend and Mythic. Legend sells for 25% more, speeds that good up by 20% and gives an extra on every second harvest or batch; Mythic goes to 30% and 25%. They are a long way off. Goods you have already mastered keep their perks and will earn Legend when you next make one. Open Mastery from the menu to see your progress.'] },
   { v: '0.49.1', backend: true, at: '2026-10-17 14:30', notes: ['Sales and purchases are reported to the shared market in batches instead of one request each.'] },
   { v: '0.49', backend: true, at: '2026-10-17 14:00', notes: ['Lighter market traffic: one small request every 90 seconds instead of two every 30, and the trade ticker only loads while it is open.'] },
   { v: '0.48.2', at: '2026-10-17 13:10', notes: ['Monument Auto-give now switches itself off when you reach the day’s limit, and tells you so with a message (your allowance resets at 00:00 UTC; turn Auto back on then).'] },

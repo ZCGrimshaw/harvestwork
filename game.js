@@ -186,16 +186,17 @@
     for (let t = was + 1; t <= now; t++) { const T = MAS.tiers[t - 1], nm = D.items[id].name;
       S.dp += T.dp; SND.play('goal'); if (i !== undefined) float(i, `${nm} mastery: ${T.name}!`, '#f6d24a');
       toast(`<b>${esc(nm)} mastery: ${T.name}</b> · +${T.dp} Discovery. ${esc(mastPerkTxt(id, t))}`, 'disc'); } }
+  const extraWord = e => e === 2 ? 'second' : e === 3 ? 'third' : 'fourth';
   function mastPerkTxt(id, t) { if (!t) return 'No perks yet.'; const T = MAS.tiers[t - 1], nm = D.items[id].name, crop = Object.values(D.crops).some(c => c.item === id);
     const o = [`sells for ${Math.round(T.sell * 100)}% more`];
     if (T.speed) o.push(`${crop ? 'grows' : 'is made'} ${Math.round(T.speed * 100)}% faster`);
-    if (T.extra) o.push(`every ${T.extra === 3 ? 'third' : 'fourth'} ${crop ? 'harvest' : 'batch'} gives one extra`);
+    if (T.extra) o.push(`every ${extraWord(T.extra)} ${crop ? 'harvest' : 'batch'} gives one extra`);
     return `${nm} now ${nmList(o)}.`; }
-  const mastBadge = id => { const t = mastTier(id); return t ? `<span class="mtier ${MAS.tiers[t - 1].id}" title="${esc(D.items[id].name)} mastery: ${MAS.tiers[t - 1].name}">${t === 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : ''; };
+  const mastBadge = id => { const t = mastTier(id); return t ? `<span class="mtier ${MAS.tiers[t - 1].id}" title="${esc(D.items[id].name)} mastery: ${MAS.tiers[t - 1].name}">${t >= 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : ''; };
   function mastRow(id, full) { const t = mastTierRaw(id), n = mastN(id), nx = t < MAS.tiers.length ? mastNeed(id, t) : 0;
     const pct = nx ? Math.min(100, Math.round(n / nx * 100)) : 100;
     const line = nx ? `${n.toLocaleString()} / ${nx.toLocaleString()} for ${MAS.tiers[t].name}` : `${n.toLocaleString()} made · fully mastered`;
-    return `<div class="mrow ${t ? MAS.tiers[t - 1].id : 'none'}">${full ? ico(id) : ''}<div class="grow1"><div class="mtop">${full ? `<b>${esc(D.items[id].name)}</b>` : '<b>Mastery</b>'}${t ? `<span class="mtier ${MAS.tiers[t - 1].id}">${t === 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : '<span class="mtier none">No tier yet</span>'}</div>
+    return `<div class="mrow ${t ? MAS.tiers[t - 1].id : 'none'}">${full ? ico(id) : ''}<div class="grow1"><div class="mtop">${full ? `<b>${esc(D.items[id].name)}</b>` : '<b>Mastery</b>'}${t ? `<span class="mtier ${MAS.tiers[t - 1].id}">${t >= 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : '<span class="mtier none">No tier yet</span>'}</div>
       <div class="mbar"><i style="width:${pct}%"></i></div><small>${line}</small>${t ? `<small class="mperk">${esc(mastPerkTxt(id, t))}</small>` : ''}</div></div>`; }
 
   /* ================= progression ================= */
@@ -2267,7 +2268,7 @@
       h = `<div class="phead"><div><h2>Mastery</h2><p class="sub">Every crop and animal good you produce counts toward its mastery. Each tier gives that good a small perk and some Discovery. ${done} of ${MAS.items.length} started.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       if (S.race) h += '<p class="hint">Mastery is off during races and weekly challenges, so every run stays fair. It picks up again on your own farm.</p>';
       h += `<button class="linkish small" data-mhelp>${UI.mhelp ? 'Hide the tiers' : 'What do the tiers give?'}</button>`;
-      if (UI.mhelp) h += `<div class="mhelp">${MAS.tiers.map((T, k) => `<p><span class="mtier ${T.id}">${k === 3 ? '★' : ''}${T.name}</span> sells for ${Math.round(T.sell * 100)}% more${T.speed ? `, grows or is made ${Math.round(T.speed * 100)}% faster` : ''}${T.extra ? `, every ${T.extra === 3 ? 'third' : 'fourth'} harvest or batch gives one extra` : ''} · +${T.dp} Discovery</p>`).join('')}<p class="hint small">Only what you harvest or collect counts; buying and trading don’t. Cheaper goods need more to reach each tier. Perks apply to that good only.</p></div>`;
+      if (UI.mhelp) h += `<div class="mhelp">${MAS.tiers.map((T, k) => `<p><span class="mtier ${T.id}">${k >= 3 ? '★' : ''}${T.name}</span> sells for ${Math.round(T.sell * 100)}% more${T.speed ? `, grows or is made ${Math.round(T.speed * 100)}% faster` : ''}${T.extra ? `, every ${extraWord(T.extra)} harvest or batch gives one extra` : ''} · +${T.dp} Discovery</p>`).join('')}<p class="hint small">Only what you harvest or collect counts; buying and trading don’t. Cheaper goods need more to reach each tier. Perks apply to that good only.</p></div>`;
       const ord = [...MAS.items].sort((a, b) => (S.disc.includes(b) - S.disc.includes(a)) || mastTierRaw(b) - mastTierRaw(a) || mastN(b) * D.items[b].value - mastN(a) * D.items[a].value);
       h += `<div class="mlist">${ord.map(id => S.disc.includes(id) ? mastRow(id, true) : `<div class="mrow locked">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>Not produced on this farm yet. Make one to start.</small></div></div>`).join('')}</div>`;
     } else if (UI.drawer === 'valley') {
@@ -2673,7 +2674,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261017-174654';
+  const BUILD = '20261017-215302';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

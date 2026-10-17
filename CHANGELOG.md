@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.50 — 2026-10-17
+- Mastery gets two tiers above Master (after the top save showed honey at ~74k, far past Master's ~1.8k): Legend (400k points; +25% sell,
+  +20% speed, every second harvest/batch one extra, +3 Discovery) and Mythic (2.5M; +30%, +25%, every second, +5 Discovery).
+  Existing Masters earn Legend on their next harvest/batch (loop awards any skipped tiers). Wording helper `extraWord`, star badge
+  for tier 4+, new badge/bar colours. Test: t_mast.py (extended).
+
 ## v0.49.1 — 2026-10-17 · backend (hidden from the in-game updates log)
 - Batched trade reports. Server migration `record_trades_batch` (additive; record_trade stays): `record_trades(p_player, p_trades jsonb)`
   runs each {item, qty, side} through record_trade (same price impact, rate limit and feed; bad entries skipped; max 30 per
