@@ -455,7 +455,7 @@
   async function monGive(id, n, auto) {
     const m = MONK(); if (!m || UI.monBusy) return;
     n = Math.min(n | 0, count(id)); if (n < 1) { if (!auto) toast(`You have no ${esc(D.items[id].name)} in storage.`, 'warn'); return; }
-    UI.monBusy = id; dirty(); const ph = monTotals(m).phase;
+    UI.monBusy = id; UI.monBusyAt = Date.now(); dirty(); const ph = monTotals(m).phase;
     try { const r = await rpc('mon_give', { p_player: PLAYER, p_name: NET.myName || S.name, p_project: m.id, p_item: id, p_qty: n });
       if (!r || r.error) { const e = r && r.error;
         if (!auto) toast(e === 'cap' ? `<b>That’s your share for today.</b> You’ve given ${(r.today || 0).toLocaleString()} of ${(r.cap || 0).toLocaleString()} points. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}).`
@@ -476,10 +476,16 @@
   /* Auto-give: goods you've ticked go to the monument by themselves, a little at a time (one gift every 20 seconds at
      most), whenever the current phase takes them and today's allowance has room. Per farm, saved with it. */
   const monAutoOn = id => !!(S.monAuto && S.monAuto[id]);
-  function autoMonGive() { const m = MONK(); if (!S || S.race || !online() || !m || UI.monBusy || !S.monAuto) return;
-    const t = monTotals(m); if (t.finished || !monLeftToday(m)) return; const items = (m.phases[t.phase] || {}).items || {};
+  function autoMonGive() { if (!S || S.race || !online() || !S.monAuto || !Object.keys(S.monAuto).length) return;
+    if (UI.monBusy && Date.now() - (UI.monBusyAt || 0) > 30000) UI.monBusy = null; // a gift that never answered must not block the rest
+    const m = MONK(); if (!m || UI.monBusy) return;
+    // Nothing to give right now (allowance used, goods gone, or the phase may have moved on): look again, at most once a minute,
+    // so a new day's allowance or a new phase's goods get picked up even though our copy is old.
+    const stale = () => { if (Date.now() - (NET.monAt || 0) > 60000) fetchMon(); };
+    const t = monTotals(m); if (t.finished) return; if (!monLeftToday(m)) { stale(); return; }
+    const items = (m.phases[t.phase] || {}).items || {};
     const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => count(b) * items[b] - count(a) * items[a])[0];
-    if (id) monGive(id, monMax(id), true); }
+    if (id) monGive(id, monMax(id), true); else stale(); }
   setInterval(() => { try { autoMonGive(); } catch (e) { } }, 20000);
   /* Builder's days: on any UTC day you've given to the monument, your quarries, clay banks, iron seams, woods, reeds,
      flowers and ponds refill twice as fast, and digging doesn't wear deposits down, so giving stone never runs you dry. */
@@ -2991,7 +2997,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
