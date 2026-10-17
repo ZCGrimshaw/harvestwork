@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.48.2 — 2026-10-17
+- When the daily allowance is used up (after a gift, a 'cap' reply, or a refreshed state showing none left), `monAutoCapStop` clears every Auto toggle and shows a warning toast. The auto loop confirms with the valley (refresh) before switching off on old numbers. Test: t_auto2.py.
+
 ## v0.48.1 — 2026-10-17
 - Auto-give stall fix: when nothing can be given (allowance shows used, no ticked good wanted/owned), `autoMonGive` refreshes the monument state at most once a minute, so a new UTC day or new phase is picked up; a gift with no reply for 30 s no longer blocks later ones (UI.monBusyAt). Test: t_auto2.py.
 

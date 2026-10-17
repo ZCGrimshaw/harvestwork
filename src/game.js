@@ -461,6 +461,7 @@
         if (!auto) toast(e === 'cap' ? `<b>That’s your share for today.</b> You’ve given ${(r.today || 0).toLocaleString()} of ${(r.cap || 0).toLocaleString()} points. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}).`
           : e === 'not_needed' ? 'The monument has moved on to its next phase, which needs different goods. Here’s the new list.'
           : e === 'finished' ? `${esc(m.name)} is finished! Nothing more is needed.` : 'The monument couldn’t take that just now. Nothing was taken from storage.', e === 'cap' ? 'info' : 'warn');
+        if (e === 'cap' && S.monAuto && Object.keys(S.monAuto).length) { setMon(Object.assign({}, m, { today: r.today || m.cap, cap: r.cap || m.cap })); monAutoCapStop(); }
         fetchMon(); }
       else { const q = Math.min(r.qty, count(id)); if (q > 0) take(id, q, 0, 'low');
         S.monPh = S.monPh || {}; const got = S.monPh[m.id] = S.monPh[m.id] || [];
@@ -470,11 +471,15 @@
         if (!got.includes(ph)) { got.push(ph); S.dp += 1; toast(`<b>+1 Discovery</b> · your first gift to the ${esc(m.phases[ph].name)} phase`, 'disc'); }
         if ((m.mine || 0) < m.keep_min && (st.mine || 0) >= m.keep_min) toast(`<b>You earned the ${esc(monShort(m.name))} model!</b> Place it on your farm from the Monument Depot or the Homestead. It always shows the monument’s current stage.`, 'goal');
         if (S.green) UI.cart = { t: 0 };
-        SND.play('sell'); setMon(st); save(); } }
+        SND.play('sell'); setMon(st); save(); monAutoCapStop(st); } }
     catch (e) { if (!auto) toast('Couldn’t reach the valley. Nothing was given, so your goods are still in storage.', 'warn'); }
     UI.monBusy = null; dirty(); }
   /* Auto-give: goods you've ticked go to the monument by themselves, a little at a time (one gift every 20 seconds at
      most), whenever the current phase takes them and today's allowance has room. Per farm, saved with it. */
+  // The day's allowance is used up: switch every Auto off and tell the player (they turn them back on after 00:00 UTC)
+  function monAutoCapStop(m) { if (!S || !S.monAuto || !Object.keys(S.monAuto).length || monLeftToday(m || MONK() || {}) > 0) return false;
+    const n = Object.keys(S.monAuto).length; S.monAuto = {}; save(); dirty();
+    toast(`<b>Daily limit reached.</b> You’ve given your full ${((m || MONK()).cap || 0).toLocaleString()} points to the monument today, so Auto-give has been switched off${n > 1 ? ' for all goods' : ''}. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}); turn Auto back on then.`, 'warn'); return true; }
   const monAutoOn = id => !!(S.monAuto && S.monAuto[id]);
   function autoMonGive() { if (!S || S.race || !online() || !S.monAuto || !Object.keys(S.monAuto).length) return;
     if (UI.monBusy && Date.now() - (UI.monBusyAt || 0) > 30000) UI.monBusy = null; // a gift that never answered must not block the rest
@@ -482,7 +487,7 @@
     // Nothing to give right now (allowance used, goods gone, or the phase may have moved on): look again, at most once a minute,
     // so a new day's allowance or a new phase's goods get picked up even though our copy is old.
     const stale = () => { if (Date.now() - (NET.monAt || 0) > 60000) fetchMon(); };
-    const t = monTotals(m); if (t.finished) return; if (!monLeftToday(m)) { stale(); return; }
+    const t = monTotals(m); if (t.finished) return; if (!monLeftToday(m)) { if (Date.now() - (NET.monAt || 0) > 60000) fetchMon(); else monAutoCapStop(m); return; } // confirm with the valley before switching off
     const items = (m.phases[t.phase] || {}).items || {};
     const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => count(b) * items[b] - count(a) * items[a])[0];
     if (id) monGive(id, monMax(id), true); else stale(); }
@@ -2033,7 +2038,7 @@
       h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
         const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} left today, but your last gift can go a little over` : '';
         return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}<button class="autog ${monAutoOn(id) ? 'on' : ''}" data-mon-auto="${id}" aria-pressed="${monAutoOn(id)}" title="Give ${esc(D.items[id].name)} automatically">${monAutoOn(id) ? 'Auto ✓' : 'Auto'}</button></div>`; }).join('')}</div>
-        <p class="hint small"><b>Auto</b> gives that good by itself whenever you have some, a batch every 20 seconds or so, until today’s allowance is used. It gives every one you have, so leave it off for goods you need for building. It works while the game is open.</p>
+        <p class="hint small"><b>Auto</b> gives that good by itself whenever you have some, a batch every 20 seconds or so, until today’s allowance is used. It gives every one you have, so leave it off for goods you need for building. It works while the game is open, and switches itself off (with a heads-up) when today’s allowance is used up.</p>
         <div class="monyou bday">${builderDay() ? '<b>Builder’s day:</b> because you’ve given today, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down. It lasts until 00:00 UTC.' : '<b>Builder’s day:</b> give anything today and, until 00:00 UTC, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down.'}</div>
         <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance (the last item may go a little over), or what’s left of this phase.</p>`;
     } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stays on your Valley Green for good, and the next monument will appear here when it starts.</p>`;
