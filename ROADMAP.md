@@ -52,6 +52,16 @@ Not built yet; picked up when we choose to.
   smithy) sell your goods for you for steady income; roads and a town square. (3) City: industry (bigger versions
   of your stations, factories), districts, more residents wanting finer goods. Watch: scope, art volume, and
   performance on the 36×36 map (may need a separate "town" map).
+- **Race codes as farm words (pinned 2026-10-16):** replace the random 5-character race code (K7QPM) with a real farm word of
+  4 to 5 letters (BARN, WHEAT, HIVE…), picked from a list of about 190 inside create_race. Old races (over 2 days) are deleted
+  so words can be reused; if every word is in use it falls back to a random code. Client: joinRace currently demands exactly
+  5 letters or digits; it should accept 3 to 5 (old codes keep working), with new wording ("Race codes are farm words, like
+  WHEAT"). Watch: a word list is far easier to guess than 31^5, so a stranger could join an open lobby (it only shows names,
+  8 players max). The migration was written but cancelled twice at the approval prompt on 2026-10-16, so nothing changed yet.
+- **Phone-first pass (pinned 2026-10-16):** make the game comfortable on a phone: easier to see, fewer taps. Ideas: tap
+  targets of 44px or more, less chrome above the map (ticker and goal card collapsed), quick-action chips on the selected tile,
+  drag to till/plant/water/harvest many plots, remember the last crop, bottom sheets with peek and full heights, an
+  Add-to-Home-Screen app (manifest, offline), a larger-text option, battery and frame rate checks. Needs a real-device test.
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
 
 ## Late-game loops plan (agreed 2026-10-15)
