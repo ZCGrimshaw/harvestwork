@@ -633,6 +633,10 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .monname { display: block; font-size: 16px; margin-bottom: 2px; }
 .monfloat { width: 120px; height: auto; image-rendering: pixelated; flex: none; animation: monbob 3.2s ease-in-out infinite; } .monfloat.sm { width: 64px; }
 @keyframes monbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.autog { flex: 0 0 auto; margin-left: 6px; min-height: 30px; padding: 4px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: var(--paper-dim); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.autog.on { background: var(--leaf); border-color: var(--leaf); color: #1b2a10; }
+@media (pointer: coarse) { .autog { min-height: 40px; } }
+.monyou.bday { margin-top: 8px; }
 /* mastery */
 .mtier { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; vertical-align: 1px; line-height: 1.5; color: #24160d; }
 .mtier.bronze { background: #d39a63; } .mtier.silver { background: #d9dde2; } .mtier.gold { background: #f6d24a; } .mtier.master { background: linear-gradient(90deg, #f6d24a, #fff3b0, #f6d24a); box-shadow: 0 0 0 1px #c99a1e; }

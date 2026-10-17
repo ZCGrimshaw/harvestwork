@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.48 — 2026-10-17
+- Monument auto-give: per-good Auto toggle in the give list (S.monAuto, saved per farm); `autoMonGive` runs every 20 s,
+  picks one ticked good the current phase takes and gives monMax of it (quiet toast, no error toasts); stops when the
+  day's allowance is used. Online farms only, never in races.
+- Builder's days: `builderDay()` is true when the player has given today (m.today > 0, monument not finished). Gathering
+  tiles regrow 2× (stock regen and forest saplings) and `useDep` doesn't wear deposits. Shown in the monument panel and on
+  deposit lines. Client only. Test: t_auto.py.
+
 ## v0.47 — 2026-10-17
 - Fourth wave of discoveries (client only): winemaking (Press: berry_wine, apple_brandy), glassworks (fishing also gives
   1 sand via gatherOut; new Glass Furnace station `glassworks` + kit + art: glass, glass_jar, stained_glass (needs dyeing)),
