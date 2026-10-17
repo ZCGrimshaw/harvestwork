@@ -750,10 +750,21 @@
   function renderOpen() { const el = $('#online'); if (!el) return; el.hidden = !NET.open; if (!NET.open) return;
     el.innerHTML = `<i></i><b>${NET.open}</b>`; el.title = `${NET.open} cop${NET.open === 1 ? 'y' : 'ies'} of Harvest Valley open right now`; }
   window.addEventListener('pagehide', () => { try { fetch(NET.url + 'presence_leave', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_inst: INST }) }); } catch (e) { } });
+  /* Market polling is kept light: one request (prices that differ from normal, the clock and the open-copies count, with
+     the presence ping folded in) every 90 s while the tab is showing, a bare presence ping every 90 s while it's hidden,
+     and the trade list only when the ticker is open. Older servers without market_sync fall back to get_market. */
+  const MARKET_EVERY = 90000;
+  const tradesWanted = () => !!(S && S.tick && S.tick.open !== false);
   async function pullMarket() {
-    try { const m = await rpc('get_market'); NET.prices = m.prices || {}; NET.trades = m.trades || []; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
-      if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
+    try { let m;
+      try { m = await rpc('market_sync', { p_inst: INST }); if (!m || !m.prices) throw new Error('no sync'); NET.sync = true; }
+      catch (e) { m = await rpc('get_market'); NET.sync = false; }
+      NET.prices = m.prices || {}; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
+      if (m.trades) NET.trades = m.trades;
+      if (typeof m.open === 'number') { NET.open = Math.max(1, m.open); renderOpen(); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now();
+      if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
+      if (NET.sync && tradesWanted()) { try { const t = await rpc('get_trades', { p_limit: 25 }); if (Array.isArray(t)) NET.trades = t; } catch (e) { } }
       if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
@@ -2453,7 +2464,7 @@
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
       if (was === 'upd' && UI.logOpen !== 'upd') { S.seenUpdate = latest().v; save(); } } // closing Updates marks it as read
-    else if ('tickToggle' in ds) { S.tick.open = !S.tick.open; save(); }
+    else if ('tickToggle' in ds) { S.tick.open = !S.tick.open; save(); if (S.tick.open && online() && Date.now() - (NET.at || 0) > 15000) pullMarket(); }
     else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
@@ -2645,7 +2656,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261017-171338';
+  const BUILD = '20261017-174216';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2736,8 +2747,8 @@
       UI.awayAt = null; });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
-    pullMarket(); setInterval(() => { if (!document.hidden) pullMarket(); }, 30000);
-    pingPresence(); setInterval(pingPresence, 30000);
+    pullMarket(); setInterval(() => { if (document.hidden) pingPresence(); else pullMarket(); }, MARKET_EVERY);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (NET.at || 0) > 30000) pullMarket(); });
     let skip = false; try { skip = sessionStorage.getItem('infinifarm.skipTitle') === '1'; sessionStorage.removeItem('infinifarm.skipTitle'); } catch (e) { }
     if (!(snap && snap.tiles) && !skip) { let seen = false; try { seen = localStorage.getItem('infinifarm.seen') === '1'; } catch (e) { } openTitle(seen || UI.hadSave ? 'main' : 'splash'); }
     if (S.tut) startTut(S.tut.n);

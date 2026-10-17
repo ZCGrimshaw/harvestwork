@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.49 — 2026-10-17 · backend (hidden from the in-game updates log)
+- Market traffic cut ~80%+ per open copy. Server migration `market_sync_and_get_trades` (additive; get_market and presence_ping stay
+  for older open copies): `market_sync(p_inst)` returns only prices that differ from 1.0, the clock and the open-copies count,
+  with the presence ping folded in (~1 KB vs 5.5 KB); `get_trades(p_limit)` returns the ticker's trades (25 rows, ~2.6 KB).
+- Client: pullMarket calls market_sync (falls back to get_market on any error) every 90 s while visible (was 30 s) and a bare
+  presence ping every 90 s while hidden; trades are fetched only while the ticker is open (default off on phones);
+  re-sync when a tab becomes visible after 30 s+, and when the ticker is switched on. Test: t_sync.py.
+- Not done yet: batching sells into one record_trade call; trimming the `trades` table (old rows).
+
 ## v0.48.2 — 2026-10-17
 - When the daily allowance is used up (after a gift, a 'cap' reply, or a refreshed state showing none left), `monAutoCapStop` clears every Auto toggle and shows a warning toast. The auto loop confirms with the valley (refresh) before switching off on old numbers. Test: t_auto2.py.
 
