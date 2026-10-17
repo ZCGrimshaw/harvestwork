@@ -62,6 +62,8 @@ Not built yet; picked up when we choose to.
   targets of 44px or more, less chrome above the map (ticker and goal card collapsed), quick-action chips on the selected tile,
   drag to till/plant/water/harvest many plots, remember the last crop, bottom sheets with peek and full heights, an
   Add-to-Home-Screen app (manifest, offline), a larger-text option, battery and frame rate checks. Needs a real-device test.
+  Done so far: v0.44 (44px tap targets, ticker hidden by default on phones). Skipped: quick-action chips (tapping a selected
+  tile again already does its main action). Next: drag to till/plant/water/harvest many plots, Add to Home Screen, larger text.
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
 
 ## Late-game loops plan (agreed 2026-10-15)

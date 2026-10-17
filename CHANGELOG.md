@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.44 — 2026-10-16
+- Phone pass 1 (see ROADMAP "Phone-first pass"). CSS under @media (pointer: coarse): HUD chips 40px tall, top buttons 44×40,
+  goal-card buttons 44×40, close buttons 44, ticker buttons 44×34, chips and toggles 40–44 high; desktop sizes unchanged.
+  New farms on a phone start with the market ticker closed (S.tick.open = !isPhone()); a closed ticker takes no room
+  (body.tick-off hides it and moves the goal card up to 54px). Settings → "Show the valley market ticker at the top"
+  brings it back (data-tick-toggle). Farms that already had a ticker setting keep it. Client only. Test: t_phone2.py.
+
 ## v0.43 — 2026-10-16
 - Storage sorting. A "Sort by" row in the Storage drawer (INV_SORTS): Category (the grouped view, unchanged default),
   A–Z, Most, Fewest, Worth (item value × count; the slot shows the total), Best quality (Excellent, then Good, then

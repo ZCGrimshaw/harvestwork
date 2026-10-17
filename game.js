@@ -117,7 +117,7 @@
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
-    if (!S.tick) S.tick = { open: true, spd: 'slow' };
+    if (!S.tick) S.tick = { open: !isPhone(), spd: 'slow' }; // phones start with the ticker tucked away, for more map
     if (!S.wk) weekStart();
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
@@ -2210,6 +2210,8 @@
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
+        ${online() ? `<button class="toggle ${S.tick && S.tick.open ? 'on' : ''}" data-tick-toggle aria-pressed="${!!(S.tick && S.tick.open)}"><i></i>Show the valley market ticker at the top</button>
+        <p class="hint small">The scrolling list of recent trades. Hiding it gives the map more room, especially on a phone.</p>` : ''}
         ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
         <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p>` : ''}</div>
         <span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p></div>
@@ -2304,8 +2306,9 @@
     return items.length ? items.join('<span class="sep">◆</span>') : 'The valley market is quiet. Sell something to get prices moving.';
   }
   function renderTicker() {
-    const T = S.tick || (S.tick = { open: true, spd: 'slow' }), el = $('#ticker');
-    el.hidden = !online(); if (!online()) { UI.tickShell = null; return; }
+    const T = S.tick || (S.tick = { open: !isPhone(), spd: 'slow' }), el = $('#ticker');
+    el.hidden = !online(); document.body.classList.toggle('tick-off', isPhone() && (!online() || !T.open)); // on a phone a closed ticker takes no room at all
+    if (!online()) { UI.tickShell = null; return; }
     const shell = `${T.open ? '' : 'closed'}|${T.spd}`;
     if (UI.tickShell !== shell) { UI.tickShell = shell; UI.tickText = null;
       el.className = T.open ? 'open' : 'closed';
@@ -2551,7 +2554,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261016-221408';
+  const BUILD = '20261017-005256';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

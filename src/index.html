@@ -647,6 +647,28 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 #coach .cwait { font-size: 12px; color: var(--paper-dim); font-style: italic; }
 #coach .linkish.small { margin: 0; }
 @media (max-width: 760px) { #coach { top: calc(52px + env(safe-area-inset-top, 0px)); } #coach p { font-size: 13px; } }
+
+/* ---------- touch sizing: every tap target at least 44px (v0.44) ---------- */
+@media (pointer: coarse) {
+  .stat { min-height: 40px; align-items: center; }
+  #top .ibtn { height: 40px; }
+  #goals .gbtn { width: 44px; height: 40px; }
+  #goals .gctl { margin-right: -10px; }
+  .close { width: 44px; height: 44px; }
+  .tkb { height: 34px; min-width: 44px; }
+  .tkopen { height: 40px; }
+  .chipf { min-height: 40px; }
+  .btn.sm, .recipe .btn { min-height: 44px; }
+  .toggle { min-height: 44px; }
+  .gtree, .linkish { min-height: 40px; }
+}
+@media (max-width: 760px) and (pointer: coarse) {
+  #top .ibtn { width: 44px; }
+  #ticker { height: 40px; box-sizing: border-box; }
+  #hud { top: 100px; }
+  body.tick-off #ticker { display: none; }
+  body.tick-off #hud { top: 54px; }
+}
 </style>
 
 <div id="app">
