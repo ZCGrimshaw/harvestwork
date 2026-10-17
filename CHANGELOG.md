@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.45 — 2026-10-16
+- Race and weekly bars on a phone (isPhone()) render as a vertical meter (vMeter): `#racebar.vm` at the left edge under the top
+  bar, one column per racer filling upward (yours wider and gold), time above, your score below; the goal card shifts right
+  by the meter's width (body.has-vm, --vmw). Weekly: one column showing the elapsed share of the run. Tapping the meter
+  toasts the standings or the run details. Desktop keeps the horizontal bar. Client only. Test: t_vmeter.py.
+
 ## v0.44 — 2026-10-16
 - Phone pass 1 (see ROADMAP "Phone-first pass"). CSS under @media (pointer: coarse): HUD chips 40px tall, top buttons 44×40,
   goal-card buttons 44×40, close buttons 44, ticker buttons 44×34, chips and toggles 40–44 high; desktop sizes unchanged.

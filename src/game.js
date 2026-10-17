@@ -647,9 +647,17 @@
     UI.rtick = (UI.rtick || 0) - dt;
     if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score) }).catch(() => {}); }
   }
-  function renderWeekBar() { const R = S.race, th = weekTheme(R.week), left = R.done ? 0 : Math.min(runMs(R.week), R.end - Date.now());
+  /* On a phone the race and weekly bars become a small vertical meter on the left edge (v0.45): one column per racer,
+     filling upward, with the time above and your score below. Tap it for the full standings. */
+  function vMeter(o) { const el = $('#racebar'); el.classList.toggle('vm', !!o); document.body.classList.toggle('has-vm', !!o);
+    if (!o) { document.body.style.removeProperty('--vmw'); return false; }
+    setHTML('#racebar', `<div class="vmt">${o.time}</div><div class="vmc" role="img" aria-label="${esc(o.label)}">${o.cols.map(c => `<span class="vcol ${c.me ? 'me' : ''} ${c.done ? 'done' : ''}"><i style="height:${c.pct}%"></i></span>`).join('')}</div><div class="vms">${o.score.toLocaleString()}</div>`);
+    el.title = o.label; document.body.style.setProperty('--vmw', Math.ceil(el.offsetWidth + 8) + 'px'); return true; }
+  function weekFacts() { const R = S.race, th = weekTheme(R.week), left = R.done ? 0 : Math.min(runMs(R.week), R.end - Date.now()); return { R, th, left, pct: (100 - left / runMs(R.week) * 100).toFixed(1), score: Math.floor(S.score) }; }
+  function renderWeekBar() { const { R, th, left, pct, score } = weekFacts();
+    if (vMeter(isPhone() ? { time: fmtTime(left), cols: [{ pct, me: true }], score, label: `${th.name}: ${fmtTime(left)} left, score ${score.toLocaleString()}` } : null)) return;
     setHTML('#racebar', `<div class="rhead"><b>${esc(th.name)}</b><span>${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left</span></div>
-      <div class="rrow me"><span class="rname">Score</span><span class="rtrack"><i style="width:${(100 - left / runMs(R.week) * 100).toFixed(1)}%"></i></span><span class="rsc">${Math.floor(S.score).toLocaleString()}</span></div>`); }
+      <div class="rrow me"><span class="rname">Score</span><span class="rtrack"><i style="width:${pct}%"></i></span><span class="rsc">${score.toLocaleString()}</span></div>`); }
   // every frame during a race: countdown, score reports, everyone's progress, finishing
   function tickRace(dt) { const R = S.race; if (!R) return; if (R.weekly) return tickWeekly(dt);
     if (UI.title === 'racego') { const left = R.start - raceNow(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
@@ -663,13 +671,20 @@
         const me = st.players.find(p => p.me); if (me && me.finished_ms != null && !R.done) { R.done = true; R.time = me.finished_ms; save(); SND.play('contract'); openTitle('raceend'); }
         renderRaceBar(); if (UI.title === 'raceend') renderTitle(); }).catch(() => {}); }
   }
+  function raceFacts() { const R = S.race, ps = (UI.rl && UI.rl.players) || [{ name: S.name, score: Math.floor(S.score), me: true }], t = R.target;
+    return { R, t, ps: ps.map(p => { const sc = p.me ? Math.max(p.score, Math.floor(S.score)) : p.score; return { name: p.name, me: !!p.me, sc, done: p.finished_ms != null, ms: p.finished_ms }; }) }; }
   function renderRaceBar() { const el = $('#racebar'), R = S.race;
-    if (!R || UI.title === 'racego' || UI.title === 'weeklygo') { el.hidden = true; return; } el.hidden = false;
+    if (!R || UI.title === 'racego' || UI.title === 'weeklygo') { el.hidden = true; document.body.classList.remove('has-vm'); return; } el.hidden = false;
     if (R.weekly) return renderWeekBar();
-    const ps = (UI.rl && UI.rl.players) || [{ name: S.name, score: Math.floor(S.score), me: true }], t = R.target;
-    const rows = ps.map(p => { const sc = p.me ? Math.max(p.score, Math.floor(S.score)) : p.score;
-      return `<div class="rrow ${p.me ? 'me' : ''}"><span class="rname">${esc(p.name)}</span><span class="rtrack"><i style="width:${Math.min(100, sc / t * 100).toFixed(1)}%"></i></span><span class="rsc">${p.finished_ms != null ? '✓ ' + fmtTime(p.finished_ms) : sc.toLocaleString()}</span></div>`; }).join('');
+    const { t, ps } = raceFacts(), time = R.done ? fmtTime(R.time) : fmtTime(raceNow() - R.start);
+    if (vMeter(isPhone() ? { time, cols: ps.map(p => ({ pct: Math.min(100, p.sc / t * 100).toFixed(1), me: p.me, done: p.done })), score: (ps.find(p => p.me) || ps[0]).sc,
+      label: `Race ${R.code} to ${t.toLocaleString()}: ${ps.slice().sort((a, b) => b.sc - a.sc).map(p => `${p.me ? 'you' : p.name} ${p.sc.toLocaleString()}`).join(', ')}` } : null)) return;
+    const rows = ps.map(p => `<div class="rrow ${p.me ? 'me' : ''}"><span class="rname">${esc(p.name)}</span><span class="rtrack"><i style="width:${Math.min(100, p.sc / t * 100).toFixed(1)}%"></i></span><span class="rsc">${p.done ? '✓ ' + fmtTime(p.ms) : p.sc.toLocaleString()}</span></div>`).join('');
     setHTML('#racebar', `<div class="rhead"><b>Race ${esc(R.code)}</b><span>to ${t.toLocaleString()} · ${R.done ? 'finished in ' + fmtTime(R.time) : fmtTime(raceNow() - R.start)}</span></div>${rows}`); }
+  // tap the phone meter for the full picture
+  $('#racebar').addEventListener('click', () => { if (!S.race || !$('#racebar').classList.contains('vm')) return;
+    if (S.race.weekly) { const { R, th, left, score } = weekFacts(); toast(`<b>${esc(th.name)}</b> · ${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left · score ${score.toLocaleString()}`, 'info'); return; }
+    const { R, t, ps } = raceFacts(); toast(`<b>Race ${esc(R.code)}</b> to ${t.toLocaleString()}: ${ps.slice().sort((a, b) => b.sc - a.sc).map(p => `${esc(p.me ? 'You' : p.name)} ${p.done ? '✓ ' + fmtTime(p.ms) : p.sc.toLocaleString()}`).join(' · ')}`, 'info'); });
   async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
     if (!NET.ok) { await pullMarket(); }
     if (!NET.ok) { UI.lb = { off: true }; dirty(); return; }

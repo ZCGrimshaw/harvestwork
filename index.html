@@ -545,6 +545,21 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .rtrack { height: 8px; background: var(--wood-lo); border-radius: 4px; overflow: hidden; } .rtrack i { display: block; height: 100%; background: var(--leaf); }
 .rrow.me .rtrack i { background: var(--sun); } .rsc { text-align: right; font-weight: 800; }
 @media (max-width: 760px) { #racebar { top: calc(88px + env(safe-area-inset-top, 0px)); left: 8px; right: 8px; width: auto; transform: none; } }
+
+#racebar[hidden] { display: none; }
+/* phone: the race and weekly bars become a small vertical meter on the left; the goal card makes room */
+#racebar.vm { top: calc(54px + env(safe-area-inset-top, 0px)); left: 8px; right: auto; width: auto; transform: none; padding: 6px 7px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+#racebar.vm[hidden] { display: none; }
+.vmt { max-width: 56px; overflow: hidden; text-overflow: clip; white-space: nowrap; font-size: 11px; font-weight: 800; line-height: 1; color: var(--paper-dim); font-variant-numeric: tabular-nums; }
+.vms { font-size: 12px; font-weight: 800; line-height: 1; color: var(--sun); font-variant-numeric: tabular-nums; }
+.vmc { display: flex; gap: 3px; height: clamp(80px, 20vh, 140px); align-items: stretch; }
+.vcol { position: relative; width: 10px; overflow: hidden; border-radius: 5px; background: var(--wood-lo); }
+.vcol.me { width: 14px; }
+.vcol i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--leaf); transition: height .6s ease; }
+.vcol.me i { background: var(--sun); }
+.vcol.done i { background: var(--sun); }
+body.has-vm #hud { margin-left: var(--vmw, 0px); }
+@media (prefers-reduced-motion: reduce) { .vcol i { transition: none; } }
 .trade.capped { opacity: .8; } .chipf:disabled { opacity: .45; cursor: default; }
 .handcard { margin-top: 12px; padding: 10px 12px; background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: var(--r); }
 .handhead { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; } .handhead b { font-family: var(--f-display); font-size: 16px; }
@@ -709,9 +724,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261017-005256"></script>
-<script src="art.js?v=20261017-005256"></script>
-<script src="sound.js?v=20261017-005256"></script>
-<script src="game.js?v=20261017-005256"></script>
+<script src="data.js?v=20261017-022015"></script>
+<script src="art.js?v=20261017-022015"></script>
+<script src="sound.js?v=20261017-022015"></script>
+<script src="game.js?v=20261017-022015"></script>
 
 </body></html>
