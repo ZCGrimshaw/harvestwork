@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.47 — 2026-10-17
+- Fourth wave of discoveries (client only): winemaking (Press: berry_wine, apple_brandy), glassworks (fishing also gives
+  1 sand via gatherOut; new Glass Furnace station `glassworks` + kit + art: glass, glass_jar, stained_glass (needs dyeing)),
+  seedsaving (every 3rd harvest +1 seed, S.seedN), coldframes (needs glassworks; `hardy(c)` treats every crop as hardy for
+  frost, winter and snow), granary (homeGrowth.granary 100 instead of 60 per level past the listed upgrades, retroactive).
+- New items sand, glass, glass_jar, stained_glass, berry_wine, apple_brandy, glassworks_kit; two new contracts
+  (The Vintner's Cellar, Glassblower's Fair); wine in season in summer, brandy in autumn. Test: t_wave4.py.
+
 ## v0.46 — 2026-10-17
 - Mastery (end-game, client only). `D.mastery`: 13 goods (8 crops + egg, milk, wool, honey, mushrooms) and four tiers with
   targets in points (units × base value, shown as rounded units): Bronze 1k (+5% sell, +1 DP), Silver 5k (+10% sell, 10%

@@ -132,7 +132,7 @@
   const unlocked = id => !id || S.unl.includes(id);
   // Storage = the Homestead's level plus every storage building you've placed.
   const G_ = () => D.homeGrowth, nList = () => D.homeUpgrades.length;
-  const homeCap = l => l < C.capacity.length ? C.capacity[l] : C.capacity[C.capacity.length - 1] + G_().cap * (l - C.capacity.length + 1);
+  const homeCap = l => l < C.capacity.length ? C.capacity[l] : C.capacity[C.capacity.length - 1] + (unlocked('granary') ? G_().granary : G_().cap) * (l - C.capacity.length + 1);
   function homeCost(l) { if (l < nList()) return D.homeUpgrades[l]; const k = l - nList();
     return { gold: Math.round(G_().gold * Math.pow(G_().goldMult, k + 1) / 10) * 10, brick: G_().brick + G_().brickStep * (k + 1), crate: G_().crate + G_().crateStep * (k + 1) }; }
   const homeGate = l => D.homeGate[Math.min(l, D.homeGate.length - 1)];
@@ -233,15 +233,17 @@
   const cropInSeason = (c, d) => !noSeasons() && season(d).crops.includes(c);
   const inSeason = (id, d) => !noSeasons() && (season(d).goods.includes(id) || season(d).crops.some(c => D.crops[c].item === id));
   const seasonSell = id => inSeason(id) ? SR.sell : 1;
-  const snowBlocks = c => wxNow() === 'snow' && !D.crops[c].hardy;
+  // Cold Frames make every crop behave as hardy
+  const hardy = c => !!D.crops[c].hardy || unlocked('coldframes');
+  const snowBlocks = c => wxNow() === 'snow' && !hardy(c);
   function seasonGrow(c) { if (noSeasons()) return 1; const cr = D.crops[c]; let m = 1;
-    if (cropInSeason(c)) m *= SR.grow; else if (season().id === 'winter' && !cr.hardy) m *= SR.winterGrow;
-    if (wxNow() === 'sun') m *= SR.sunGrow; if (frosty() && !cr.hardy) m *= SR.frostGrow; return m; }
+    if (cropInSeason(c)) m *= SR.grow; else if (season().id === 'winter' && !hardy(c)) m *= SR.winterGrow;
+    if (wxNow() === 'sun') m *= SR.sunGrow; if (frosty() && !hardy(c)) m *= SR.frostGrow; return m; }
   // what's changing this crop's growth right now, in words (farm plot panel)
   function growNote(c) { if (noSeasons()) return ''; const cr = D.crops[c], o = [];
-    if (cropInSeason(c)) o.push(`in season: ${Math.round((SR.grow - 1) * 100)}% faster`); else if (season().id === 'winter' && !cr.hardy) o.push(`winter: ${Math.round((1 - SR.winterGrow) * 100)}% slower`);
+    if (cropInSeason(c)) o.push(`in season: ${Math.round((SR.grow - 1) * 100)}% faster`); else if (season().id === 'winter' && !hardy(c)) o.push(`winter: ${Math.round((1 - SR.winterGrow) * 100)}% slower`);
     if (wxNow() === 'sun') o.push(`sunny: ${Math.round((SR.sunGrow - 1) * 100)}% faster`);
-    if (frosty() && !cr.hardy) o.push(`frost: half speed until ${SR.frostEnds}:00`);
+    if (frosty() && !hardy(c)) o.push(`frost: half speed until ${SR.frostEnds}:00`);
     if (raining()) o.push('the rain is watering it');
     if (wxNow() === 'heat') o.push('heat: the soil dries quickly');
     return o.join(' · '); }
@@ -875,7 +877,8 @@
   function around(i, r) { const x = tx(i), y = ty(i), o = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (inB(x + dx, y + dy)) o.push(idx(x + dx, y + dy)); return o; }
   const farmAt = j => { const T = T_(j); return T.o && T.b && T.b.type === 'farm' ? T.b : null; };
   function gatherOut(terrain, act) { const o = Object.assign({}, D.gather[terrain].out), main = Object.keys(o)[0]; o[main] += toolStat(act, 'bonus', 0);
-    if (terrain === 'boulder' && unlocked('prospecting')) o.copper_ore = 1; return o; }
+    if (terrain === 'boulder' && unlocked('prospecting')) o.copper_ore = 1;
+    if (terrain === 'water' && unlocked('glassworks')) o.sand = 1; return o; }
   function waterPlot(b) { b.wet = true; b.dry = 0; b.w[b.half ? 1 : 0] = 1; }
 
   /* station work, shared by the farmer, the farmhand and station automation */
@@ -930,6 +933,7 @@
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
         const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
         addItem(cr.item, yl, q); wk().harvest += yl; float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
+        if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(t.i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
         gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
         if (!q && !S.qTip) { S.qTip = 1; setTimeout(() => toast(`<b>Tip:</b> that harvest was ${QN[0]}. Water a crop at both growth stages for ${QN[1]}, and add fertilizer too for ${QN[2]}. They sell for more. Storage → “How do I make ${QN[1]} and ${QN[2]} goods?” explains it all.`, 'goal'), 1200); } first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
@@ -940,7 +944,7 @@
     replant: { label: () => 'Plant sapling', check: t => T_(t.i).r.st !== 'stump' ? 'Nothing to replant' : count('sapling') < 1 ? 'No sapling' : null,
       run: t => { take('sapling', 1); Object.assign(T_(t.i).r, { st: 'sapling', g: 0 }); gainScore(C.score.replant, t.i); } },
     fish: { label: () => 'Fish', check: t => !unlocked('fishing') ? 'Unlock Fishing first' : T_(t.i).r.stock < 1 ? 'Fish are hiding. Try again soon' : outRoom(gatherOut('water', 'fish')) ? null : FULL,
-      run: t => { const n = gatherOut('water', 'fish').fish; T_(t.i).r.stock--; addItem('fish', n); float(t.i, `+${n} Fish`, '#fff'); gainScore(C.score.fish, t.i, 'fish'); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
+      run: t => { const o = gatherOut('water', 'fish'), n = o.fish; T_(t.i).r.stock--; for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Fish${o.sand ? ' + sand' : ''}`, '#fff'); if (o.sand) first('gather:sand', C.firsts.gather, 'First sand from the pond'); gainScore(C.score.fish, t.i, 'fish'); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
     mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : worked(T_(t.i)) ? 'Quarried out. Reopen it with Deep Quarrying, or change the land' : T_(t.i).r.stock < 1 ? 'No boulders on the surface. More resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
       run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; useDep(T_(t.i)); for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i, 'mine', 'stone'); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
     gather: { label: t => (D.gather[T_(t.i).t] || {}).verb || 'Gather',
@@ -1562,7 +1566,7 @@
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
-            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
+            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter', 'forge', 'glassworks'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
         }
       } else if (T.r) {
         if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a);
@@ -1630,7 +1634,8 @@
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
       if (ss.length) P.push(`<b>In season:</b> ${esc(nmList(ss))}${ck ? `: the crop grows ${g}% faster and sells for ${sp}% more` : `: sells for ${sp}% more`}.`);
-      if (ck && D.crops[ck].hardy) P.push('Hardy: frost doesn’t slow it, winter doesn’t either, and it can be planted on snow days.'); }
+      if (ck && D.crops[ck].hardy) P.push('Hardy: frost doesn’t slow it, winter doesn’t either, and it can be planted on snow days.');
+      else if (ck && hardy(ck)) P.push('Under Cold Frames: frost and winter don’t slow it, and it can be planted on snow days.'); }
     const mastBlk = isMast(id) ? (S.race ? '<p class="hint small">Mastery is off during races and challenges.</p>' : mastRow(id, false)) : '';
     if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
     else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient; a station Quality upgrade adds one tier on top.`);
@@ -2155,7 +2160,8 @@
     h += `<div class="wxrow">${wxBox(S.day, 'Today')}${wxBox(S.day + 1, 'Tomorrow')}</div>`;
     h += `<span class="eyebrow">In season now</span><p class="hint small">Grow ${g}% faster and sell for ${sp}% more:</p>${items(se.crops)}
       <p class="hint small">Sell for ${sp}% more, and the market often wants them:</p>${items(se.goods)}`;
-    if (se.id === 'winter') h += `<p class="hint small">Winter: tender crops (${esc(cropList(Object.keys(D.crops).filter(k => !D.crops[k].hardy)))}) grow ${Math.round((1 - SR.winterGrow) * 100)}% slower. Hardy crops grow as usual.</p>`;
+    if (se.id === 'winter' && unlocked('coldframes')) h += '<p class="hint small">Winter: your Cold Frames keep every crop growing as usual.</p>';
+    else if (se.id === 'winter') h += `<p class="hint small">Winter: tender crops (${esc(cropList(Object.keys(D.crops).filter(k => !D.crops[k].hardy)))}) grow ${Math.round((1 - SR.winterGrow) * 100)}% slower. Hardy crops grow as usual.</p>`;
     h += `<span class="eyebrow">Next: ${esc(nx.name)}, in ${left} day${left === 1 ? '' : 's'}</span><p class="hint small">${esc(nx.blurb)} In season: ${esc(cropList(nx.crops))}, plus ${esc(nameList(nx.goods))}.</p>`;
     h += `<span class="eyebrow">The year</span><div class="yearbar">${D.seasons.map((z, k) => `<div class="ys ${z.id} ${k === si ? 'on' : ''}"><b>${esc(z.name)}</b><small>Days ${k * SR.len + 1}–${(k + 1) * SR.len}</small>${k === si ? `<i style="width:${(seasonDay() - 1 + (S.time % C.dayLength) / C.dayLength) / SR.len * 100}%"></i>` : ''}</div>`).join('')}</div>`;
     h += `<p class="hint small">A year is ${YEAR} days, so each season lines up with a weekly report. Weather comes out the same however often you reload. Rain waters crops for you; heat dries soil out; snow days only let hardy crops be planted; mist and fog are just for looks.</p>`;
@@ -2968,7 +2974,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

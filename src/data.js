@@ -127,9 +127,9 @@ window.HW_DATA = {
     { id: 'spring', name: 'Spring', blurb: 'Blossom, soft showers and morning mist.', crops: ['carrot', 'flax'],
       goods: ['flowers', 'honey', 'honey_cake', 'egg', 'omelette'], wx: { clear: 30, sun: 20, rain: 32, mist: 18 } },
     { id: 'summer', name: 'Summer', blurb: 'Long sunny days, with spells of heat that dry the soil.', crops: ['tomatoes', 'berries', 'wheat'],
-      goods: ['berry_juice', 'jam', 'berry_pie', 'tomato_sauce', 'cooked_fish'], wx: { clear: 25, sun: 32, heat: 28, rain: 15 } },
+      goods: ['berry_juice', 'jam', 'berry_pie', 'tomato_sauce', 'cooked_fish', 'berry_wine'], wx: { clear: 25, sun: 32, heat: 28, rain: 15 } },
     { id: 'autumn', name: 'Autumn', blurb: 'Golden leaves, harvest suppers, fog, and the first frosts late on.', crops: ['pumpkins', 'apples', 'potato'],
-      goods: ['pumpkin_soup', 'pumpkin_pie', 'apple_pie', 'cider', 'bread', 'mushrooms'], wx: { clear: 28, rain: 24, mist: 16, fog: 18, sun: 14 }, late: { frost: 30 } },
+      goods: ['pumpkin_soup', 'pumpkin_pie', 'apple_pie', 'cider', 'bread', 'mushrooms', 'apple_brandy'], wx: { clear: 28, rain: 24, mist: 16, fog: 18, sun: 14 }, late: { frost: 30 } },
     { id: 'winter', name: 'Winter', blurb: 'Snow days and frosty mornings. Tender crops grow slowly; hardy roots do fine.', crops: ['carrot', 'potato'],
       goods: ['veggie_stew', 'baked_potato', 'smoked_fish', 'mead', 'cheese', 'cake', 'yarn', 'blanket'], wx: { clear: 26, snow: 36, frost: 22, fog: 16 } }
   ],
@@ -214,6 +214,13 @@ window.HW_DATA = {
     basket:       { name: 'Basket', cat: 'good', value: 30, icon: ['crate', '#d8b46a', '#9a7a3a'] },
     iron_ingot:   { name: 'Iron Ingot', cat: 'component', value: 60, icon: ['ingot', '#a8adb8', '#6e737e'] },
     iron_tools:   { name: 'Iron Tools', cat: 'good', value: 170, icon: ['tool', '#a8adb8', '#6e737e'] },
+    // fourth wave
+    sand:          { name: 'Sand', cat: 'gathered', value: 3, icon: ['sack', '#ecdcaa', '#b89a5a'] },
+    glass:         { name: 'Glass', cat: 'component', value: 28, icon: ['block', '#d4f0f6', '#7fb8c8'] },
+    glass_jar:     { name: 'Glass Jar', cat: 'good', value: 48, icon: ['jar', '#d4f0f6', '#7fb8c8'] },
+    stained_glass: { name: 'Stained Glass', cat: 'good', value: 190, icon: ['block', '#e86aa8', '#4aa3d8'] },
+    berry_wine:    { name: 'Berry Wine', cat: 'good', value: 165, icon: ['bottle', '#7a1a3a', '#3a5a2a'] },
+    apple_brandy:  { name: 'Apple Brandy', cat: 'good', value: 185, icon: ['bottle', '#c8782a', '#7a4b28'] },
 
     sawmill_kit:  { name: 'Sawmill Kit', cat: 'kit', buy: 50, building: 'sawmill', requires: 'sawmill', icon: ['kit', '#c98a4a', '#9aa0aa'] },
     mill_kit:     { name: 'Flour Mill Kit', cat: 'kit', buy: 70, building: 'mill', requires: 'mill', icon: ['kit', '#c98a4a', '#f2ead8'] },
@@ -250,7 +257,8 @@ window.HW_DATA = {
     smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] },
     dyevat_kit:   { name: 'Dye Vat Kit', cat: 'kit', buy: 130, building: 'dyevat', requires: 'dyeing', icon: ['kit', '#9a4ac8', '#c98a4a'] },
     potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
-    forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] }
+    forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] },
+    glassworks_kit: { name: 'Glass Furnace Kit', cat: 'kit', buy: 220, building: 'glassworks', requires: 'glassworks', icon: ['kit', '#7fb8c8', '#f06a20'] }
   },
 
   // Categories used to sort lists in the market, storage and Discovery screens.
@@ -263,19 +271,19 @@ window.HW_DATA = {
     { id: 'raw', name: 'Raw materials', cats: ['gathered'] },
     { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey', 'butter', 'cheese'] },
     { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake'] },
-    { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead'] },
-    { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket'] },
+    { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead', 'berry_wine', 'apple_brandy'] },
+    { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket', 'glass_jar', 'stained_glass'] },
     { id: 'materials', name: 'Building materials', cats: ['component'] },
     { id: 'kits', name: 'Station kits', cats: ['kit'] },
     { id: 'other', name: 'Other', cats: ['good'] }
   ],
   discoveryBranches: [
     { id: 'gathering', name: 'Gathering', ids: ['woodcutting', 'fishing', 'stonecutting', 'prospecting', 'deepquarry'] },
-    { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin'] },
-    { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse'] },
-    { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering'] },
+    { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin', 'seedsaving', 'coldframes'] },
+    { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking'] },
+    { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery'] },
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery', 'granary'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
@@ -315,7 +323,8 @@ window.HW_DATA = {
     smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' },
     dyevat:    { name: 'Dye Vat', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
     potter:    { name: 'Potter’s Wheel', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
-    forge:     { name: 'Forge', kind: 'station', slots: 2, place: { brick: 8, stone: 6 }, desc: 'Smelts iron ore over charcoal and hammers ingots into tools.' }
+    forge:     { name: 'Forge', kind: 'station', slots: 2, place: { brick: 8, stone: 6 }, desc: 'Smelts iron ore over charcoal and hammers ingots into tools.' },
+    glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' }
   },
 
   // Station upgrade axes. Level costs are indexed by current level.
@@ -339,7 +348,7 @@ window.HW_DATA = {
   homeGate: [null, null, null, 'cellar', 'cellar'],
   // After the listed upgrades, the Homestead keeps growing: each further level adds homeGrowth.cap
   // and costs more than the last (Root Cellar still required).
-  homeGrowth: { cap: 60, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
+  homeGrowth: { cap: 60, granary: 100, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
 
   recipes: {
     glazed_carrots: { station: 'stove', in: { carrot: 1 }, out: { glazed_carrots: 1 }, time: 8 },
@@ -397,7 +406,12 @@ window.HW_DATA = {
     clay_pot:       { station: 'potter', in: { clay: 2 }, out: { clay_pot: 1 }, time: 14 },
     basket:         { station: 'workbench', in: { reeds: 4 }, out: { basket: 1 }, time: 14, requires: 'reedcutting' },
     iron_ingot:     { station: 'forge', in: { iron_ore: 2, charcoal: 1 }, out: { iron_ingot: 1 }, time: 22 },
-    iron_tools:     { station: 'forge', in: { iron_ingot: 2, plank: 1 }, out: { iron_tools: 1 }, time: 26 }
+    iron_tools:     { station: 'forge', in: { iron_ingot: 2, plank: 1 }, out: { iron_tools: 1 }, time: 26 },
+    berry_wine:     { station: 'press', in: { berry_juice: 2, honey: 1 }, out: { berry_wine: 1 }, time: 36, requires: 'winemaking' },
+    apple_brandy:   { station: 'press', in: { cider: 2, charcoal: 1 }, out: { apple_brandy: 1 }, time: 40, requires: 'winemaking' },
+    glass:          { station: 'glassworks', in: { sand: 2, charcoal: 1 }, out: { glass: 1 }, time: 18 },
+    glass_jar:      { station: 'glassworks', in: { glass: 1 }, out: { glass_jar: 1 }, time: 14 },
+    stained_glass:  { station: 'glassworks', in: { glass: 2, dye: 1, plank: 1 }, out: { stained_glass: 1 }, time: 30, requires: 'dyeing' }
   },
 
   // Spend Discovery here. Each states what it enables and where to find it.
@@ -457,7 +471,14 @@ window.HW_DATA = {
     { id: 'pottery', pic: ['grass:1', 'potter', 'clay_pot'], name: 'Pottery', cost: 3, req: ['claydigging', 'kiln'], text: 'Throw clay into pots on a Potter’s Wheel.', where: 'Open Market → Stations.' },
     { id: 'reedcutting', pic: ['reeds:0', 'reedbed:3', 'basket'], name: 'Reed Cutting', cost: 2, req: ['surveying'], text: 'Cut reeds in Marsh areas and weave them into baskets.', where: 'Reed Marsh tiles; Workbench → Basket.' },
     { id: 'ironmining', pic: ['ore:0', 'orevein:3', 'iron_ore'], name: 'Iron Mining', cost: 3, req: ['surveying', 'prospecting'], text: 'Mine iron ore from seams in the Iron Hills.', where: 'Iron Seam tiles.' },
-    { id: 'ironworking', pic: ['grass:0', 'forge', 'iron_tools'], name: 'Ironworking', cost: 4, req: ['ironmining', 'smelter'], text: 'Smelt iron ingots and forge sturdy iron tools.', where: 'Open Market → Stations.' }
+    { id: 'ironworking', pic: ['grass:0', 'forge', 'iron_tools'], name: 'Ironworking', cost: 4, req: ['ironmining', 'smelter'], text: 'Smelt iron ingots and forge sturdy iron tools.', where: 'Open Market → Stations.' },
+
+    // fourth wave: late-game goods and perks
+    { id: 'winemaking', pic: ['grass:1', 'press', 'berry_wine'], name: 'Fruit Wines', cost: 4, req: ['press', 'beekeeping'], text: 'Ferment berry juice with honey into Berry Wine, and distil cider over charcoal into Apple Brandy. Both sell for far more than juice or cider.', where: 'Cider Press → Berry Wine, Apple Brandy.' },
+    { id: 'glassworks', pic: ['water:0', 'glassworks', 'glass'], name: 'Glassworks', cost: 5, req: ['fishing', 'smelter'], text: 'Every catch also brings up sand from the pond bed. Melt it over charcoal into glass at a Glass Furnace, then blow jars, or lead stained glass with dye.', where: 'Fish any Pond; Open Market → Stations → Glass Furnace kit.' },
+    { id: 'seedsaving', pic: ['farm_tilled', 'crop:carrot.2', 'carrot_seed'], name: 'Seed Saving', cost: 4, req: ['compostbin'], text: 'Every third harvest also gives you a seed of the crop you picked, so you buy fewer seeds.', where: 'Any Farm Plot harvest, automatically.' },
+    { id: 'coldframes', pic: ['farm_wet', 'crop:tomatoes.1', 'glass'], name: 'Cold Frames', cost: 4, req: ['glassworks'], text: 'Glass covers for your plots: tender crops grow like hardy ones. Frost and winter don’t slow them, and they can be planted on snow days.', where: 'Every Farm Plot, automatically.' },
+    { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -579,7 +600,9 @@ window.HW_DATA = {
     { name: 'Royal Tailor', land: 'meadow', need: [['dyed_cloth', 3, 1]], gold: 1200, dp: 7, hint: 'Good-quality linen and dye at a tuned Dye Vat.' },
     { name: 'Farm Fresh', land: 'any', need: [['egg', 6, 0], ['milk', 4, 0]], gold: 380, dp: 4, hint: 'Survey a new area, then unlock Chickens and Dairy Cows in Discovery.' },
     { name: 'Cozy Woolens', land: 'any', need: [['yarn', 4, 0], ['blanket', 1, 0]], gold: 560, dp: 5, hint: 'Sheep on a Pasture, then spin yarn and weave a blanket at the Loom.' },
-    { name: 'Country Bakery', land: 'any', need: [['cake', 2, 1], ['cheese', 3, 0]], gold: 820, dp: 6, hint: 'Butter and cheese at the Creamery, cake in the Oven. Good feed makes Good eggs and milk.' }
+    { name: 'Country Bakery', land: 'any', need: [['cake', 2, 1], ['cheese', 3, 0]], gold: 820, dp: 6, hint: 'Butter and cheese at the Creamery, cake in the Oven. Good feed makes Good eggs and milk.' },
+    { name: 'The Vintner’s Cellar', need: [['berry_wine', 3, 0], ['apple_brandy', 2, 0]], gold: 1400, dp: 7, hint: 'Unlock Fruit Wines in Discovery; press juice and cider, then wine and brandy at the Cider Press.' },
+    { name: 'Glassblower’s Fair', need: [['glass_jar', 6, 0], ['stained_glass', 2, 0]], gold: 1600, dp: 8, hint: 'Unlock Glassworks; fish for sand, build a Glass Furnace. Stained glass also needs dye from the Dye Works.' }
   ],
 
   startOrders: [
@@ -640,6 +663,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.47', at: '2026-10-17 11:20', notes: ['Five new discoveries for seasoned farms. Fruit Wines: the Cider Press makes Berry Wine (berry juice and honey) and Apple Brandy (cider over charcoal). Glassworks: every catch from a pond also brings up sand; melt it into glass at the new Glass Furnace, then blow Glass Jars or make Stained Glass with dye. Seed Saving: every third harvest gives you a seed back. Cold Frames (after Glassworks): tender crops grow like hardy ones, untouched by frost and winter, and can be planted on snow days. Granary: every Homestead storage level past the first five holds 100 instead of 60, including levels you already have.', 'Two new contracts on the Order Board use the new goods: The Vintner’s Cellar and the Glassblower’s Fair.'] },
   { v: '0.46', at: '2026-10-17 10:30', notes: ['New: Mastery. Every crop (carrots, wheat, pumpkins and the rest) and every animal good (eggs, milk, wool, honey, mushrooms) now counts how many you’ve produced on your farm. Reach Bronze, Silver, Gold and finally Master to give that good its own perks: it sells for up to 20% more, grows or is made up to 15% faster, and from Gold some harvests and batches give one extra. Each tier also gives Discovery.', 'Find it in Menu → Mastery. An item’s info card shows its progress, and storage shows a badge for each mastered good. Only what you harvest or collect counts (not buying or trading), and cheaper goods need more to reach each tier. Counting starts now for every farm.', 'Mastery is switched off in races and weekly challenges, so every run stays fair.'] },
   { v: '0.45.1', at: '2026-10-16 20:05', notes: ['Menus now open on top of everything: the progress meters, tips, warning bars and side panels no longer show through or sit over the main menu while it is open.'] },
   { v: '0.45', at: '2026-10-16 19:50', notes: ['On a phone, the race and weekly challenge progress is now a small vertical meter on the left instead of a wide bar across the top, so it no longer covers the map. Races get one column per racer (yours is gold), filling upward; the time sits above and your score below. Tap the meter any time for the full standings. On a computer nothing changes.'] },
