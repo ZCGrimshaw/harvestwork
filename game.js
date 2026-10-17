@@ -167,7 +167,36 @@
   function costTxt(cost) { return Object.entries(cost).map(([k, n]) => k === 'gold' ? `${n}g` : `${n} ${D.items[k].name}`).join(' + ') || 'Free'; }
   // Seeds and supplies sell back for half their market price.
   const baseValue = id => D.items[id].value || Math.max(1, Math.floor((D.items[id].buy || 2) / 2));
-  function sellPrice(id, q) { const d = S.market.demand; return Math.max(1, Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1) * mult(id) * wrule('sell', 1) * seasonSell(id))); }
+  function sellPrice(id, q) { const d = S.market.demand; return Math.max(1, Math.round(baseValue(id) * QM[q] * (d && d.item === id ? 1 + d.pct / 100 : 1) * mult(id) * wrule('sell', 1) * seasonSell(id) * (1 + mastPerk(id, 'sell')))); }
+  /* ================= mastery =================
+     Each crop and animal good counts what this farm has produced. Targets are points (units × base value), shown
+     as units rounded to friendly numbers. Off in races and weekly challenges (no counting, no perks). */
+  const MAS = D.mastery, isMast = id => MAS.items.includes(id);
+  const niceN = n => n < 100 ? Math.max(5, Math.round(n / 5) * 5) : n < 1000 ? Math.round(n / 10) * 10 : Math.round(n / 100) * 100;
+  const mastNeed = (id, t) => niceN(MAS.tiers[t].pts / (D.items[id].value || 1));
+  const mastN = id => (S.mast && S.mast[id]) || 0;
+  function mastTierRaw(id) { const n = mastN(id); let t = 0; while (t < MAS.tiers.length && n >= mastNeed(id, t)) t++; return t; }
+  const mastTier = id => S.race || !isMast(id) ? 0 : mastTierRaw(id);
+  const mastPerk = (id, k) => { const t = mastTier(id); return t ? MAS.tiers[t - 1][k] : 0; };
+  // every Nth harvest/batch from Gold up gives one more, if storage has room
+  function mastExtra(id, roomFor) { const e = mastPerk(id, 'extra'); if (!e) return 0; S.mastX = S.mastX || {};
+    S.mastX[id] = (S.mastX[id] || 0) + 1; return S.mastX[id] % e === 0 && roomFor ? 1 : 0; }
+  function mastAdd(id, n, i) { if (S.race || !isMast(id) || n <= 0) return; S.mast = S.mast || {};
+    const was = mastTierRaw(id); S.mast[id] = mastN(id) + n; const now = mastTierRaw(id);
+    for (let t = was + 1; t <= now; t++) { const T = MAS.tiers[t - 1], nm = D.items[id].name;
+      S.dp += T.dp; SND.play('goal'); if (i !== undefined) float(i, `${nm} mastery: ${T.name}!`, '#f6d24a');
+      toast(`<b>${esc(nm)} mastery: ${T.name}</b> · +${T.dp} Discovery. ${esc(mastPerkTxt(id, t))}`, 'disc'); } }
+  function mastPerkTxt(id, t) { if (!t) return 'No perks yet.'; const T = MAS.tiers[t - 1], nm = D.items[id].name, crop = Object.values(D.crops).some(c => c.item === id);
+    const o = [`sells for ${Math.round(T.sell * 100)}% more`];
+    if (T.speed) o.push(`${crop ? 'grows' : 'is made'} ${Math.round(T.speed * 100)}% faster`);
+    if (T.extra) o.push(`every ${T.extra === 3 ? 'third' : 'fourth'} ${crop ? 'harvest' : 'batch'} gives one extra`);
+    return `${nm} now ${nmList(o)}.`; }
+  const mastBadge = id => { const t = mastTier(id); return t ? `<span class="mtier ${MAS.tiers[t - 1].id}" title="${esc(D.items[id].name)} mastery: ${MAS.tiers[t - 1].name}">${t === 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : ''; };
+  function mastRow(id, full) { const t = mastTierRaw(id), n = mastN(id), nx = t < MAS.tiers.length ? mastNeed(id, t) : 0;
+    const pct = nx ? Math.min(100, Math.round(n / nx * 100)) : 100;
+    const line = nx ? `${n.toLocaleString()} / ${nx.toLocaleString()} for ${MAS.tiers[t].name}` : `${n.toLocaleString()} made · fully mastered`;
+    return `<div class="mrow ${t ? MAS.tiers[t - 1].id : 'none'}">${full ? ico(id) : ''}<div class="grow1"><div class="mtop">${full ? `<b>${esc(D.items[id].name)}</b>` : '<b>Mastery</b>'}${t ? `<span class="mtier ${MAS.tiers[t - 1].id}">${t === 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : '<span class="mtier none">No tier yet</span>'}</div>
+      <div class="mbar"><i style="width:${pct}%"></i></div><small>${line}</small>${t ? `<small class="mperk">${esc(mastPerkTxt(id, t))}</small>` : ''}</div></div>`; }
 
   /* ================= progression ================= */
   /* Weekly challenge rules (see weeklyThemes in data.js). Outside a weekly run every rule is neutral. */
@@ -862,13 +891,15 @@
     // Excellent). Master Crafting's second level adds a bonus item to every third batch instead.
     q = Math.min(2, q + D.upgrades.quality.effect[b.lv.quality]);
     let bonus = false; if (b.lv.quality >= 2) { b.qn = (b.qn || 0) + 1; bonus = b.qn % 3 === 0; }
-    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1), qual: q, done: false, bonus });
+    const ok = Object.keys(R.out)[0];
+    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1) / (1 + mastPerk(ok, 'speed')), qual: q, done: false, bonus });
     emit('load', { st: b.type }); }
   function collectErr(i) { const b = T_(i).b; const done = b && b.q ? b.q.filter(x => x.done) : [];
     if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k]; }); return room() >= n ? null : FULL; }
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
     done.forEach(x => { const out = Object.assign({}, D.recipes[x.r].out); if (x.bonus) { const k0 = Object.keys(out)[0]; if (D.items[k0].cat !== 'kit') out[k0]++; } for (const k in out) {
-      addItem(k, out[k], x.qual); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
+      if (isMast(k)) out[k] += mastExtra(k, room() > out[k]);
+      addItem(k, out[k], x.qual); mastAdd(k, out[k], i); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i, 'craft', k);
       first('craft:' + k, C.firsts.craft, `First ${D.items[k].name} made`);
@@ -897,7 +928,8 @@
     harvest: { label: () => 'Harvest', check: t => { const b = T_(t.i).b; if (!b || b.st !== 'ready') return 'Not ready yet'; return room() >= D.crops[b.crop].yield ? null : FULL; },
       run: t => { const b = T_(t.i).b, cr = D.crops[b.crop];
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
-        addItem(cr.item, cr.yield, q); wk().harvest += cr.yield; float(t.i, `+${cr.yield} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff');
+        const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
+        addItem(cr.item, yl, q); wk().harvest += yl; float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
         gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
         if (!q && !S.qTip) { S.qTip = 1; setTimeout(() => toast(`<b>Tip:</b> that harvest was ${QN[0]}. Water a crop at both growth stages for ${QN[1]}, and add fertilizer too for ${QN[2]}. They sell for more. Storage → “How do I make ${QN[1]} and ${QN[2]} goods?” explains it all.`, 'goal'), 1200); } first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
@@ -1157,7 +1189,7 @@
       if (b && b.type === 'farm' && b.st === 'growing') {
         if (rain && !b.wet) { waterPlot(b); dirty(); }
         else if (heat && b.wet && (b.dry = (b.dry || 0) + dt) >= SR.heatDry) { b.wet = false; b.dry = 0; dirty(); }
-        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1) * wrule('grow', 1) * seasonGrow(b.crop);
+        const cr = D.crops[b.crop]; b.g += dt * (b.wet ? 1 : .45) * (b.fert ? C.fertGrowth : 1) * wrule('grow', 1) * seasonGrow(b.crop) * (1 + mastPerk(cr.item, 'speed'));
         if (!b.half && b.g >= cr.grow / 2) { b.half = true; b.wet = false; dirty(); }
         if (b.g >= cr.grow) { b.st = 'ready'; float(i, 'Ready!', '#b8f08a'); SND.play('ready'); dirty(); }
       } else if (b && b.q) {
@@ -1599,11 +1631,12 @@
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
       if (ss.length) P.push(`<b>In season:</b> ${esc(nmList(ss))}${ck ? `: the crop grows ${g}% faster and sells for ${sp}% more` : `: sells for ${sp}% more`}.`);
       if (ck && D.crops[ck].hardy) P.push('Hardy: frost doesn’t slow it, winter doesn’t either, and it can be planted on snow days.'); }
+    const mastBlk = isMast(id) ? (S.race ? '<p class="hint small">Mastery is off during races and challenges.</p>' : mastRow(id, false)) : '';
     if (crop) P.push(`<b>Quality:</b> water it at both growth stages for ${QN[1]}; add fertilizer too for ${QN[2]}.`);
     else if (Object.values(D.recipes).some(r => r.out[id]) && it.cat !== 'kit') P.push(`<b>Quality:</b> as good as its lowest-quality ingredient; a station Quality upgrade adds one tier on top.`);
     const price = [it.value ? `sells for ${sellPrice(id, 0)}g` : '', it.buy ? `the market sells it for ${buyPrice(id)}g` : ''].filter(Boolean).join(' · ');
     return `<div class="ihead">${ico(id)}<div><b>${esc(it.name)}</b><small>${cats[it.cat] || ''}${price ? ' · ' + price : ''}</small></div></div>
-      ${P.map(t => `<p>${t}</p>`).join('')}${disc && !unlocked(disc.id) ? `<p class="need">Needs <b>${esc(disc.name)}</b> in Discovery.</p>` : ''}`; }
+      ${P.map(t => `<p>${t}</p>`).join('')}${mastBlk}${disc && !unlocked(disc.id) ? `<p class="need">Needs <b>${esc(disc.name)}</b> in Discovery.</p>` : ''}`; }
   function infoTarget(t) { for (let n = t, k = 0; n && k < 5 && n !== document.body; n = n.parentElement, k++) {
       if (n.dataset && n.dataset.info && D.items[n.dataset.info]) return n.dataset.info;
       if (n.dataset && 'task' in n.dataset) { const a = n.dataset.a, p = n.dataset.p;
@@ -2152,7 +2185,7 @@
       if (ids.length) h += chips('inv', groupCounts(ids, count));
       const sortK = INV_SORTS.some(s => s[0] === UI.cat.invsort) ? UI.cat.invsort : 'cat', worth = id => (D.items[id].value || 0) * count(id);
       if (ids.length > 1) h += `<div class="chips sortbar" role="group" aria-label="Sort storage"><span class="sortlbl">Sort by</span>${INV_SORTS.map(([k, nm, tip]) => `<button class="chipf ${sortK === k ? 'on' : ''}" data-cat="invsort:${k}" aria-pressed="${sortK === k}" title="${esc(tip)}">${esc(nm)}</button>`).join('')}</div>`;
-      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
+      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}${mastBadge(id)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
       if (!ids.length) h += '<p class="hint">Storage is empty.</p>';
       else if (sortK === 'cat') h += grouped(ids, 'inv', slot, 'invgrid');
       else { const sel = catSel('inv'), nm = id => D.items[id].name, order = Object.keys(S.inv), inv = id => S.inv[id];
@@ -2169,6 +2202,14 @@
         if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
+    } else if (UI.drawer === 'mastery') {
+      const done = MAS.items.filter(id => mastTierRaw(id) > 0).length;
+      h = `<div class="phead"><div><h2>Mastery</h2><p class="sub">Every crop and animal good you produce counts toward its mastery. Each tier gives that good a small perk and some Discovery. ${done} of ${MAS.items.length} started.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      if (S.race) h += '<p class="hint">Mastery is off during races and weekly challenges, so every run stays fair. It picks up again on your own farm.</p>';
+      h += `<button class="linkish small" data-mhelp>${UI.mhelp ? 'Hide the tiers' : 'What do the tiers give?'}</button>`;
+      if (UI.mhelp) h += `<div class="mhelp">${MAS.tiers.map((T, k) => `<p><span class="mtier ${T.id}">${k === 3 ? '★' : ''}${T.name}</span> sells for ${Math.round(T.sell * 100)}% more${T.speed ? `, grows or is made ${Math.round(T.speed * 100)}% faster` : ''}${T.extra ? `, every ${T.extra === 3 ? 'third' : 'fourth'} harvest or batch gives one extra` : ''} · +${T.dp} Discovery</p>`).join('')}<p class="hint small">Only what you harvest or collect counts; buying and trading don’t. Cheaper goods need more to reach each tier. Perks apply to that good only.</p></div>`;
+      const ord = [...MAS.items].sort((a, b) => (S.disc.includes(b) - S.disc.includes(a)) || mastTierRaw(b) - mastTierRaw(a) || mastN(b) * D.items[b].value - mastN(a) * D.items[a].value);
+      h += `<div class="mlist">${ord.map(id => S.disc.includes(id) ? mastRow(id, true) : `<div class="mrow locked">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>Not produced on this farm yet. Make one to start.</small></div></div>`).join('')}</div>`;
     } else if (UI.drawer === 'valley') {
       h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
@@ -2242,7 +2283,7 @@
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race && S.race.weekly ? `<div class="demand"><span><b>${esc(weekTheme(S.race.week).name)}</b> · ${S.race.ranked ? 'ranked run' : 'practice run'}, ${fmtTime(Math.max(0, S.race.end - Date.now()))} left. ${esc(weekTheme(S.race.week).blurb)}</span></div><div class="menu"><button class="btn" data-week-end>End this run now<small>${S.race.ranked ? 'Your score so far counts' : 'Practice doesn’t count'}</small></button></div>`
         : S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -2443,6 +2484,7 @@
       try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); } return; }
     else if ('raceOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; UI.rerr = null; openTitle('race'); return; }
     else if ('qhelp' in ds) { UI.qhelp = !UI.qhelp; }
+    else if ('mhelp' in ds) { UI.mhelp = !UI.mhelp; }
     else if (ds.rexpN) { UI.rexpN = +ds.rexpN; }
     else if (ds.errand) { const [i, rid, n] = ds.errand.split(':'); sendErrand(+i, rid, +n); }
     else if ('qhelpPanel' in ds) { UI.qhelpP = !UI.qhelpP; }
@@ -2569,7 +2611,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261017-023723';
+  const BUILD = '20261017-163901';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -2926,7 +2968,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

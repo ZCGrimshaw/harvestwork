@@ -66,6 +66,20 @@ window.HW_DATA = {
 
   /* Valley Monuments: built together by every online farm (see the monument rules on the server). The server decides
      the phases, the goods each phase takes and their points; this is how each kind looks and reads in the game. */
+  /* Mastery: every crop and animal good counts how many you've produced on this farm (harvests and collected batches;
+     buying, trading and gifts don't count). Tier targets are in points = units × the good's base value, so cheap goods
+     need more units. Perks apply to that good only and are off in races and weekly challenges. extra: every Nth
+     harvest or batch gives one more (if there's room). */
+  mastery: {
+    items: ['carrot', 'potato', 'wheat', 'berries', 'tomato', 'pumpkin', 'apple', 'flax', 'egg', 'milk', 'wool', 'honey', 'mushrooms'],
+    tiers: [
+      { id: 'bronze', name: 'Bronze', pts: 1000,  sell: 0.05, speed: 0,    extra: 0, dp: 1 },
+      { id: 'silver', name: 'Silver', pts: 5000,  sell: 0.10, speed: 0.10, extra: 0, dp: 1 },
+      { id: 'gold',   name: 'Gold',   pts: 15000, sell: 0.15, speed: 0.10, extra: 4, dp: 1 },
+      { id: 'master', name: 'Master', pts: 40000, sell: 0.20, speed: 0.15, extra: 3, dp: 2 }
+    ]
+  },
+
   monuments: {
     pyramid: { name: 'The Great Pyramid',
       stages: ['Surveyed plot', 'Foundation', 'Body', 'Detail', 'Complete'],
@@ -626,6 +640,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.46', at: '2026-10-17 10:30', notes: ['New: Mastery. Every crop (carrots, wheat, pumpkins and the rest) and every animal good (eggs, milk, wool, honey, mushrooms) now counts how many you’ve produced on your farm. Reach Bronze, Silver, Gold and finally Master to give that good its own perks: it sells for up to 20% more, grows or is made up to 15% faster, and from Gold some harvests and batches give one extra. Each tier also gives Discovery.', 'Find it in Menu → Mastery. An item’s info card shows its progress, and storage shows a badge for each mastered good. Only what you harvest or collect counts (not buying or trading), and cheaper goods need more to reach each tier. Counting starts now for every farm.', 'Mastery is switched off in races and weekly challenges, so every run stays fair.'] },
   { v: '0.45.1', at: '2026-10-16 20:05', notes: ['Menus now open on top of everything: the progress meters, tips, warning bars and side panels no longer show through or sit over the main menu while it is open.'] },
   { v: '0.45', at: '2026-10-16 19:50', notes: ['On a phone, the race and weekly challenge progress is now a small vertical meter on the left instead of a wide bar across the top, so it no longer covers the map. Races get one column per racer (yours is gold), filling upward; the time sits above and your score below. Tap the meter any time for the full standings. On a computer nothing changes.'] },
   { v: '0.44', at: '2026-10-16 18:30', notes: ['Easier to play on a phone: buttons, tabs and the goal card’s controls are now big enough for a thumb (44 pixels), and on a phone the valley market ticker starts hidden so the map has more room. Turn it back on in Settings → “Show the valley market ticker at the top”. Farms that already had the ticker showing keep it.'] },

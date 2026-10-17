@@ -75,6 +75,7 @@ Built in stages; each stage ships on its own.
   leaves, snow). Gentle weather, no storms: rain (waters every crop), sunny spells, heat (soil dries faster), fog
   and morning mist (cosmetic), first frost in late autumn, snow days in winter (some crops can't be planted outside).
   Each season gets its own music, ambience and colour palette. Client only.
+- ~~**Mastery tiers**~~ (done in v0.46, crops and animal goods). Next: crafted goods, Master variants as Almanac entries.
 - **Stage 2: Supply contracts.** Standing deals on the Order Board ("10 bread a day for 5 days"): steady daily
   deliveries for a big bonus and Discovery; missing a day ends the deal early with partial pay. Seasonal ones use
   in-season crops. Client only.

@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.46 — 2026-10-17
+- Mastery (end-game, client only). `D.mastery`: 13 goods (8 crops + egg, milk, wool, honey, mushrooms) and four tiers with
+  targets in points (units × base value, shown as rounded units): Bronze 1k (+5% sell, +1 DP), Silver 5k (+10% sell, 10%
+  faster, +1 DP), Gold 15k (+15%, 10% faster, every 4th harvest/batch +1, +1 DP), Master 40k (+20%, 15% faster, every 3rd
+  +1, +2 DP). Counts in `S.mast` from harvests and station collects only (`mastAdd`); extras only when storage has room
+  (`S.mastX` counters). Perks: `sellPrice`, crop growth, station batch time. Off in races/weekly (no counting, no perks).
+- UI: Menu → Mastery drawer (list, progress bars, tier help), mastery block on item info cards, tier badges in storage.
+- Existing farms start at zero (no lifetime production history existed). Test: t_mast.py.
+
 ## v0.45.1 — 2026-10-16
 - #drawer (main menu and other full-screen menus) gets z-index 30 so racebar, coach, movebar, idlebar, update bar and the panel stay behind it. CSS only.
 
