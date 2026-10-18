@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.51 — 2026-10-18
+- Valley Green can move onto an already-surveyed corner area if no tile there has a building (a farmer with all four corners surveyed could
+  not move it at all). `greenSpot(k, swap)` accepts empty surveyed areas for moves only (first placement still prefers unsurveyed land);
+  `moveGreen` asks for a second tap within 15 s (UI.greenAsk), then replaces the area, lowers S.surveys by one (the old spot is unsurveyed
+  again, so the area count stays right), drops queued tasks on those tiles. `greenWhy` gives the locked-corner reason. Test: t_corner.py (extended).
+
 ## v0.50 — 2026-10-17
 - Mastery gets two tiers above Master (after the top save showed honey at ~74k, far past Master's ~1.8k): Legend (400k points; +25% sell,
   +20% speed, every second harvest/batch one extra, +3 Discovery) and Mythic (2.5M; +30%, +25%, every second, +5 Discovery).

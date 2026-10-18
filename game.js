@@ -419,9 +419,16 @@
   const greenT = i => !!(D.terrain[T_(i).t] && D.terrain[T_(i).t].green);
   const GREEN_CORNERS = [['back', 'Back corner', -1, -1], ['right', 'Right corner', 1, -1], ['left', 'Left corner', -1, 1], ['front', 'Front corner', 1, 1]];
   // the area diagonal to a corner of your starting land, or -1 if it's off the map or you've already surveyed it
-  function greenSpot(k) { const R = RW(), home = S.regions.map((g, r) => g.theme === 'home' ? r : -1).filter(r => r >= 0), c = GREEN_CORNERS.find(g => g[0] === k); if (!home.length || !c) return -1;
+  // swap: also accept a corner area you've already surveyed, if nothing at all is built on it (its land is replaced by the Green)
+  const regionEmpty = r => regionTiles(r).every(i => !S.tiles[i].b);
+  const greenSwapOk = r => r >= 0 && S.regions[r].open && S.regions[r].theme !== 'green';
+  function greenSpot(k, swap) { const R = RW(), home = S.regions.map((g, r) => g.theme === 'home' ? r : -1).filter(r => r >= 0), c = GREEN_CORNERS.find(g => g[0] === k); if (!home.length || !c) return -1;
     const xs = home.map(r => r % R), ys = home.map(r => r / R | 0), x = c[2] < 0 ? Math.min(...xs) - 1 : Math.max(...xs) + 1, y = c[3] < 0 ? Math.min(...ys) - 1 : Math.max(...ys) + 1;
-    if (x < 0 || y < 0 || x >= R || y >= R) return -1; const r = y * R + x, g = S.regions[r]; return !g.open || g.theme === 'green' ? r : -1; }
+    if (x < 0 || y < 0 || x >= R || y >= R) return -1; const r = y * R + x, g = S.regions[r]; return !g.open || g.theme === 'green' || (swap && regionEmpty(r)) ? r : -1; }
+  // why a corner can't be used, in words for the button
+  function greenWhy(k) { const R = RW(), home = S.regions.map((g, r) => g.theme === 'home' ? r : -1).filter(r => r >= 0), c = GREEN_CORNERS.find(g => g[0] === k);
+    const xs = home.map(r => r % R), ys = home.map(r => r / R | 0), x = c[2] < 0 ? Math.min(...xs) - 1 : Math.max(...xs) + 1, y = c[3] < 0 ? Math.min(...ys) - 1 : Math.max(...ys) + 1;
+    return x < 0 || y < 0 || x >= R || y >= R ? 'Not available: that corner is off the edge of the map' : 'Not available: that area is part of your land and has something built on it'; }
   // lay the plaza, the monument site and the Depot over area r
   function paveGreen(r, meta) { const R = C.worldRegions, x0 = (r % R) * RS(), y0 = (r / R | 0) * RS(), ctr = idx(x0 + 2, y0 + 2), dep = idx(x0 + 5, y0 + 2); // the Depot sits 3 tiles from the centre, so it never ties the monument's front corner for draw order
     S.regions[r] = { open: true, theme: 'green' };
@@ -438,16 +445,20 @@
     S.green = { r, c: p.c, d: p.d, day: S.day, k }; UI.live = null; save();
     if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
   // move the Green to another corner: the old area goes back to being unsurveyed land
-  function moveGreen(k) { if (!S.green || S.race) return; const r = greenSpot(k); if (r < 0 || r === S.green.r) return;
-    const o = S.tiles[S.green.c].b || {}, old = S.green.r;
+  function moveGreen(k) { if (!S.green || S.race) return; const r = greenSpot(k, true); if (r < 0 || r === S.green.r) return;
+    const swap = greenSwapOk(r), ask = UI.greenAsk;
+    if (swap && !(ask && ask.k === k && Date.now() - ask.t < 15000)) { UI.greenAsk = { k, t: Date.now() }; dirty(); return; } // surveyed land is replaced: ask first
+    UI.greenAsk = null;
+    const o = S.tiles[S.green.c].b || {}, old = S.green.r, set = new Set(regionTiles(r));
+    if (swap) { S.surveys = Math.max(0, (S.surveys || 0) - 1); S.queue = (S.queue || []).filter(q => !set.has(q.i)); UI.bounds = null; } // one less surveyed area: the old Green spot is unsurveyed again
     regionTiles(old).forEach(i => { S.tiles[i] = { t: 'void', o: false, b: null, r: null, v: 0 }; });
     S.regions[old] = { open: false, theme: themeAt(old % RW(), old / RW() | 0) };
     const p = paveGreen(r, { p: o.p, kind: o.kind }); S.green = { r, c: p.c, d: p.d, day: S.green.day, k }; UI.live = null; save();
     showGreen(); toast(`<b>Valley Green moved</b> to the ${esc(GREEN_CORNERS.find(g => g[0] === k)[1].toLowerCase())} of your farm.`, 'goal'); }
   function greenMoveHTML() { if (!S.green || S.race) return '';
     return `<span class="eyebrow">Where it sits</span><p class="hint small">The Valley Green is tucked against one corner of your farm. Move it to any corner you haven’t built land on. It’s free, and you can change it back any time. Corners are named as the map first appears.</p>
-      <div class="modepick">${GREEN_CORNERS.map(([k, nm]) => { const here = S.green.k === k, ok = here || greenSpot(k) >= 0;
-        return `<button class="modeopt ${here ? 'on' : ''}" data-green-move="${k}" ${ok ? '' : 'disabled'}><b>${nm}</b><small>${here ? 'Here now' : ok ? 'Move it here' : 'Not available: that area is already part of your land'}</small></button>`; }).join('')}</div>`; }
+      <div class="modepick">${GREEN_CORNERS.map(([k, nm]) => { const here = S.green.k === k, sp = greenSpot(k, true), ok = here || sp >= 0, swap = !here && greenSwapOk(sp), asking = swap && UI.greenAsk && UI.greenAsk.k === k && Date.now() - UI.greenAsk.t < 15000;
+        return `<button class="modeopt ${here ? 'on' : ''}${asking ? ' warn' : ''}" data-green-move="${k}" ${ok ? '' : 'disabled'}><b>${nm}</b><small>${here ? 'Here now' : !ok ? greenWhy(k) : asking ? 'Tap again to confirm: this empty area of your land is replaced by the Green, and the old spot goes back to unsurveyed land' : swap ? 'Empty surveyed land: it will be replaced by the Green. Tap to move' : 'Move it here'}</small></button>`; }).join('')}</div>`; }
   const monTiles = () => S.green ? S.tiles.map((T, i) => T.b && T.b.type === 'mon_site' && T.b.c === S.green.c ? i : -1).filter(i => i >= 0) : [];
   function showGreen() { if (!S.green) return; UI.drawer = null; UI.title && closeTitle(); centerOn(S.green.c); clampCam(); UI.sel = S.green.d; dirty(); }
   // Give goods. Lowest quality goes first, since quality doesn't count here.
@@ -2674,7 +2685,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261017-215302';
+  const BUILD = '20261018-160340';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
