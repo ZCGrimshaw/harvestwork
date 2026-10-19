@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.54 — 2026-10-19
+- Daily Puzzle on the main screen: a "Puzzle n/m ▾" button in the Activity/Updates row (`dqBarBtn`, logOpen 'dq'; red dot while a fresh
+  puzzle is untouched; tick when solved; hidden before the tutorial ends, in races and when no puzzle can be built) and a dropdown
+  (`dqDrop`) with the clue, hints, Hand in / hint buttons, solved clues, streak and time left. The active-step markup is shared with the
+  drawer (`dqNowHTML`). Test: t_dqbar.py (desktop and phone).
+
 ## v0.53.2 — 2026-10-19
 - Scroll jump fix. `setHTML` replaced a container's markup on every change (a count, a progress tick), which clamped its scrollTop to 0.
   It now saves the scroll of the element and of `.dbox` and restores it when the same drawer (UI.drawer) or the same tile (UI.sel) is

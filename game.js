@@ -304,6 +304,17 @@
   const dqMenuSub = () => { if (S.race) return 'Off during races and challenges'; if (S.goal < D.goals.length) return 'Opens after the tutorial'; const P = dqToday();
     return !P ? 'Make a few more goods to unlock it' : P.done ? `Solved today${dqStreak() > 1 ? ` · ${dqStreak()}-day streak` : ''}` : `Step ${P.at + 1} of ${P.steps.length}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}`; };
   function dqLeft() { const n = new Date(Date.now() - (NET.monSkew || 0)), m = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - n.getTime(), h = Math.floor(m / 36e5), mi = Math.floor(m % 36e5 / 6e4); return h ? `${h}h ${mi}m` : `${mi}m`; }
+  // the step being solved: clue, hints, buttons and the answer picker (used by the drawer and the main-screen dropdown)
+  function dqNowHTML(P, wrap) {
+    const k = P.at, st = P.steps[k], lv = P.hints[k], have = count(st.id, st.minQ); let h = wrap ? `<li class="dqstep now">` : `<div class="dqnow">`;
+    h += `<p class="dqclue">${esc(st.text)}</p>`;
+    for (let j = 0; j < lv; j++) h += `<p class="dqhint">Hint: ${dqHintText(st, j + 1)}</p>`;
+    if (lv >= 2) h += `<p class="hint small">You have ${have} of ${st.q}.</p>`;
+    h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
+    if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
+      h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
+        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
+    return h + (wrap ? '</li>' : '</div>'); }
   function dqDrawer() {
     let h = `<div class="phead"><div><h2>Daily Puzzle</h2><p class="sub">A new riddle chain every day at 00:00 UTC. Solve a clue by handing in the goods it points to; each answer reveals the next clue.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
     if (S.race) return h + '<p class="hint">The Daily Puzzle is off during races and weekly challenges. It waits for you on your own farm.</p>';
@@ -314,22 +325,23 @@
     h += `<p class="dqmeta">${P.done ? 'Solved' : `Step <b>${P.at + 1}</b> of ${P.steps.length}`} · ${sk ? `streak <b>${sk}</b> day${sk === 1 ? '' : 's'}` : 'no streak yet'} · new puzzle in ${dqLeft()}</p><ol class="dqlist">`;
     P.steps.forEach((st, k) => {
       if (k < P.at) h += `<li class="dqstep done"><p class="dqclue">${esc(st.text)}</p><div class="dqans">${ico(st.id)} <b>${esc(D.items[st.id].name)}</b> ×${st.q} <span class="ok">✓ +${dqStepGold(st)}g</span></div></li>`;
-      else if (k === P.at && !P.done) {
-        const lv = P.hints[k], have = count(st.id, st.minQ);
-        h += `<li class="dqstep now"><p class="dqclue">${esc(st.text)}</p>`;
-        for (let j = 0; j < lv; j++) h += `<p class="dqhint">Hint: ${dqHintText(st, j + 1)}</p>`;
-        if (lv >= 2) h += `<p class="hint small">You have ${have} of ${st.q}.</p>`;
-        h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
-        if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
-          h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
-            <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
-        h += `</li>`; }
+      else if (k === P.at && !P.done) h += dqNowHTML(P, true);
       else h += `<li class="dqstep later"><p class="dqclue muted">Solve the clue above to reveal this one.</p></li>`;
     });
     h += '</ol>';
     if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g and ${P.dp || 0} Discovery today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
     h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for ${DQ.reward.dp} Discovery (less after naming an answer or three wrong guesses), plus ${DQ.reward.streakDp} more every ${DQ.reward.streakEvery} days in a row.</p>`;
     return h; }
+  // main-screen button label and dropdown (Activity / Updates / Puzzle row)
+  function dqBarBtn() { if (!S || S.race || S.goal < D.goals.length) return ''; const P = dqToday(); if (!P) return '';
+    const fresh = !P.done && P.at === 0;
+    return `<button class="ibtn lg ${UI.logOpen === 'dq' ? 'on' : ''}" data-log="dq" aria-expanded="${UI.logOpen === 'dq'}">Puzzle ${P.done ? '✓' : `${P.at + 1}/${P.steps.length}`} ▾${fresh ? '<i class="dot"></i>' : ''}</button>`; }
+  function dqDrop() { const P = dqToday(); let h = `<div class="lphead"><b>Daily Puzzle</b><span class="muted">${P ? (P.done ? 'Solved' : `Step ${P.at + 1} of ${P.steps.length}`) : ''}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}</span><button class="close" data-log="dq" aria-label="Close">×</button></div>`;
+    if (!P) return h + '<p class="hint">No puzzle right now.</p>';
+    if (P.done) h += `<div class="dqdone"><b>Solved today!</b> You earned ${P.gold}g and ${P.dp || 0} Discovery. Next puzzle in ${dqLeft()}.</div>`;
+    else h += `<p class="dqmeta">New puzzle in ${dqLeft()} · finish for ${DQ.reward.dp} Discovery</p>` + dqNowHTML(P, false);
+    if (P.at > 0) h += `<details class="dqprev"><summary>Solved clues (${P.at})</summary>${P.steps.slice(0, P.at).map(st => `<p class="dqclue muted">${esc(st.text)}<br><b>${esc(D.items[st.id].name)}</b> ×${st.q}</p>`).join('')}</details>`;
+    return h + `<button class="linkish small" data-drawer="daily">Open the full puzzle</button>`; }
   // once a day, a nudge when a fresh puzzle is waiting
   function dqNotice() { if (!S || S.race || UI.title) return; const P = dqToday(); if (!P || P.done || P.at > 0) return;
     const k = 'harvestworks.dqseen', d = utcDay(); if (lsGet(k, '') === d + '|' + (S.fid || '')) return; lsSet(k, d + '|' + (S.fid || ''));
@@ -2552,7 +2564,7 @@
     return `${mon} ${dd}, ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'} PT`; }
   function renderLogs() {
     setHTML('#logbar', `<button class="ibtn lg ${UI.logOpen === 'act' ? 'on' : ''}" data-log="act" aria-expanded="${UI.logOpen === 'act'}">Activity ▾</button>
-      <button class="ibtn lg ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>`);
+      <button class="ibtn lg ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>${dqBarBtn()}`);
     const el = $('#logpanel');
     if (!UI.logOpen) { el.hidden = true; UI.html['#logpanel'] = ''; return; }
     el.hidden = false;
@@ -2561,6 +2573,8 @@
       h = `<div class="lphead"><b>Activity</b><span class="muted">Newest first · last ${S.log.length}</span><button class="close" data-log="act" aria-label="Close">×</button></div>`;
       h += S.log.length ? `<ol class="loglist">${S.log.map(e => `<li><span class="when">Day ${e.d} ${e.c}</span><span class="what">${e.who === 'hand' ? '<em>Farmhand</em> ' : e.who === 'auto' ? '<em>Auto</em> ' : ''}${esc(e.text)}</span></li>`).join('')}</ol>`
         : `<p class="hint">Nothing yet. Everything you and your farmhand finish will be listed here.</p>`;
+    } else if (UI.logOpen === 'dq') {
+      h = dqDrop();
     } else {
       h = `<div class="lphead"><b>Updates</b><span class="muted">What changed in the game</span><button class="close" data-log="upd" aria-label="Close">×</button></div>`;
       h += `<ol class="loglist upd">${PUB.map((u, k) => `<li><span class="when">v${u.v} · ${fmtAt(u.at)}${k === 0 && unseen() ? ' <span class="new">new</span>' : ''}</span><ul>${u.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></li>`).join('')}</ol>`;
@@ -2835,7 +2849,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261019-191428';
+  const BUILD = '20261019-191724';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
