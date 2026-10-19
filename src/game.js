@@ -1858,7 +1858,7 @@
   }
   function farmPanel(i, b) {
     let h = head('Farm Plot', 'Till → plant → water → harvest. Re-till after each harvest.');
-    if (b.st === 'raw') h += `<p class="state">Untilled soil.</p>` + btn({ a: 'till', i }, 'Till soil', { cls: 'pri' }) + btn({ a: 'clearplot', i }, 'Clear plot', { cls: 'ghost', sub: 'Turns it back into grass you can build on. No refund.' });
+    if (b.st === 'raw') h += `<p class="state">Untilled soil.</p>` + btn({ a: 'till', i }, 'Till soil', { cls: 'pri' }) + `<div class="more">` + btn({ a: 'clearplot', i }, 'Clear plot', { cls: 'ghost', sub: 'Turns it back into grass you can build on. No refund.' }) + `</div>`;
     else if (b.st === 'tilled') {
       h += `<p class="state">Tilled and ready for seeds.</p><p class="hint small">For ${QN[1]} crops, water at both growth stages. Add fertilizer too for ${QN[2]}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
       if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
@@ -2027,9 +2027,9 @@
   function reshapeSection(i) {
     const T = T_(i), opts = Object.keys(D.landShape).filter(k => k.startsWith(T.t + '>'));
     if (!opts.length) return '';
-    return `<span class="eyebrow">Change this land</span>` + opts.map(k => { const L = D.landShape[k], to = k.split('>')[1];
+    return `<div class="more"><span class="eyebrow">Change this land</span>` + opts.map(k => { const L = D.landShape[k], to = k.split('>')[1];
       const back = Object.entries(L.back).filter(([id, n]) => n && !(T.t === 'forest' && id === 'log' && T.r && T.r.st !== 'tree'));
-      return btn({ a: 'reshape', i, p: k }, `${esc(L.verb)} → ${esc(D.terrain[to].name)}`, { cls: 'ghost', sub: `${costTxt(L.cost)}${back.length ? ' · get back ' + costTxt(Object.fromEntries(back)) : ''}. ${esc(L.note)}` }); }).join('');
+      return btn({ a: 'reshape', i, p: k }, `${esc(L.verb)} → ${esc(D.terrain[to].name)}`, { cls: 'ghost', sub: `${costTxt(L.cost)}${back.length ? ' · get back ' + costTxt(Object.fromEntries(back)) : ''}. ${esc(L.note)}` }); }).join('')+ '</div>';
   }
   function storagePanel(i) {
     const B = D.buildings[T_(i).b.type];
@@ -2128,7 +2128,7 @@
   function moveSection(i) {
     const b = T_(i).b; if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return '';
     if (!unlocked('rollers')) return '';
-    return `<span class="eyebrow">Move this building</span><p class="hint">Keeps its upgrades, batches and farmhand jobs. Costs ${costTxt(moveCost(b.type))}${(S.moveHeat || 0) > 0 ? ' (higher after recent moves; the surcharge eases every few days)' : ''}.</p><button class="btn ghost" data-move-start="${i}">Pick a new spot</button>`;
+    return `<div class="more"><span class="eyebrow">Move this building</span><p class="hint">Keeps its upgrades, batches and farmhand jobs. Costs ${costTxt(moveCost(b.type))}${(S.moveHeat || 0) > 0 ? ' (higher after recent moves; the surcharge eases every few days)' : ''}.</p><button class="btn ghost" data-move-start="${i}">Pick a new spot</button></div>`;
   }
   function lockedPanel(i, T) {
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
@@ -2191,8 +2191,10 @@
     const i = UI.sel; const el = $('#panel');
     document.body.classList.toggle('sheet-open', i >= 0);
     if (i < 0) { el.hidden = true; UI.html['#panel'] = ''; return; }
-    if (UI.lastSel !== i) { const a = document.activeElement; if (a && el.contains(a)) a.blur(); UI.lastSel = i; } // new tile: let the panel redraw
     el.hidden = false; const T = S.tiles[i];
+    if (UI.lastSel !== i) { const a = document.activeElement; if (a && el.contains(a)) a.blur(); UI.lastSel = i; // new tile: let the panel redraw
+      const bk = T.b && D.buildings[T.b.type] ? D.buildings[T.b.type].kind : ''; UI.pfull = ['station', 'market', 'home', 'storage', 'board'].includes(bk) || (T.b && T.b.type === 'board'); } // phone sheet: short by default, tools that are mostly lists open full
+    el.classList.toggle('full', !!UI.pfull);
     let h;
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
@@ -2202,7 +2204,7 @@
     else if (T.r) h = gatherPanel(i, T);
     else if (greenT(i)) h = greenPanel(i);
     else h = emptyPanel(i);
-    setHTML('#panel', h);
+    setHTML('#panel', `<button class="pmore" data-pmore aria-label="${UI.pfull ? 'Show less' : 'Show more'}">${UI.pfull ? '▴ Less' : '▾ More'}</button>` + h);
   }
   // Your player name: locked to this player (not a farm) and used on the leaderboard, the weekly challenge and medals.
   function nameHTML() { const c = UI.claim || {};
@@ -2557,6 +2559,7 @@
     else if ('raceOpen' in ds) { if (!S.race) save(); UI.drawer = null; UI.hadSave = true; UI.rerr = null; openTitle('race'); return; }
     else if ('qhelp' in ds) { UI.qhelp = !UI.qhelp; }
     else if ('mhelp' in ds) { UI.mhelp = !UI.mhelp; }
+    else if ('pmore' in ds) { UI.pfull = !UI.pfull; dirty(); }
     else if (ds.rexpN) { UI.rexpN = +ds.rexpN; }
     else if (ds.errand) { const [i, rid, n] = ds.errand.split(':'); sendErrand(+i, rid, +n); }
     else if ('qhelpPanel' in ds) { UI.qhelpP = !UI.qhelpP; }

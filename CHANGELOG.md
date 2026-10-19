@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.52 — 2026-10-18
+- Phone bottom sheet (portrait / narrow) is compact by default: max-height 42% (was 56%); `#panel:not(.full)` hides the subtitle, hints (not
+  errors), tips and `.more` sections (Change this land, Move this building, Clear plot). A 40px "More/Less" handle (`.pmore`, `data-pmore`,
+  UI.pfull) toggles `.full` (58%). Stations, market, home, storage and the board open full by default; every new selection resets it. The
+  handle only shows when something is folded (`:has`). Desktop and landscape side panel unchanged. Test: t_sheet.py (built page, 390px).
+  t_phone2.py already fails on 3 old assertions (ticker hidden, goal card height, ticker toggle); not caused by this.
+
 ## v0.51 — 2026-10-18
 - Valley Green can move onto an already-surveyed corner area if no tile there has a building (a farmer with all four corners surveyed could
   not move it at all). `greenSpot(k, swap)` accepts empty surveyed areas for moves only (first placement still prefers unsurveyed land);

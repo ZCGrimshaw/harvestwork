@@ -665,6 +665,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.52', at: '2026-10-18 17:45', notes: ['Phones: the tile menu at the bottom is much shorter. It now shows just the name, the key numbers and the main buttons, and leaves the long descriptions and tips folded away. Tap “More” at the top of the menu to see everything, “Less” to fold it back. Lists like stations, the market and your home still open full.'] },
   { v: '0.51', at: '2026-10-18 09:30', notes: ['The Valley Green can now move onto a corner area you have already surveyed, as long as nothing is built on it. Open the Valley Green or the Monument Depot, pick the corner, and tap again to confirm: that empty area is replaced by the Green, and the old spot goes back to unsurveyed land. Corners with buildings stay locked, and the button now says why.'] },
   { v: '0.50', at: '2026-10-17 15:30', notes: ['Mastery has two new tiers above Master: Legend and Mythic. Legend sells for 25% more, speeds that good up by 20% and gives an extra on every second harvest or batch; Mythic goes to 30% and 25%. They are a long way off. Goods you have already mastered keep their perks and will earn Legend when you next make one. Open Mastery from the menu to see your progress.'] },
   { v: '0.49.1', backend: true, at: '2026-10-17 14:30', notes: ['Sales and purchases are reported to the shared market in batches instead of one request each.'] },
