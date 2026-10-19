@@ -1863,7 +1863,12 @@
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
     if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
+    // keep the reader's place: replacing the markup would otherwise snap a scrolled menu back to the top whenever a number changes
+    const key = sel === '#drawer' ? 'd:' + UI.drawer : sel === '#panel' ? 'p:' + UI.sel : '', scr = [el, ...(key ? el.querySelectorAll('.dbox') : [])].map(e => e.scrollTop);
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
+    UI.scrollKey = UI.scrollKey || {};
+    if (key && UI.scrollKey[sel] === key) [el, ...el.querySelectorAll('.dbox')].forEach((e, k) => { if (scr[k]) e.scrollTop = scr[k]; });
+    UI.scrollKey[sel] = key;
   }
   function btn(t, label, opts = {}) {
     const e = opts.err !== undefined ? opts.err : checkTask(t);
@@ -2830,7 +2835,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261019-184538';
+  const BUILD = '20261019-191428';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

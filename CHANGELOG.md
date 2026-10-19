@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.53.2 — 2026-10-19
+- Scroll jump fix. `setHTML` replaced a container's markup on every change (a count, a progress tick), which clamped its scrollTop to 0.
+  It now saves the scroll of the element and of `.dbox` and restores it when the same drawer (UI.drawer) or the same tile (UI.sel) is
+  redrawn; a different drawer or tile still starts at the top. Applies to every drawer and the tile panel. Test: t_scroll.py (phone and
+  desktop; fails 5 checks without the fix).
+
 ## v0.53.1 — 2026-10-19
 - Daily Puzzle hint prices: max(step-reward share 30%/60%, 1%/3% of gold held), rounded to two significant figures (`niceG`).
   Config `daily.reward.hintGold`. At 9M gold: ~90k / 270k; at 500g the step-based price still applies.
