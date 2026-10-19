@@ -82,6 +82,42 @@ window.HW_DATA = {
     ]
   },
 
+  /* Daily Puzzle: one riddle chain a day (UTC), built from goods this farm can already make. The first step is one of
+     these riddles; later clues are written from the recipes that link one answer to the next. made: how a good changes
+     at each station, for clues that hide the station's name ("what your Wheat becomes when it is ground"). */
+  daily: {
+    riddles: {
+      carrot: ['My green top waves in the sun while the part you want hides in the soil, orange and pointed.', 'Rabbits dream of me. I grow upside down: leaves up, orange root down.'],
+      potato: ['I have eyes but cannot see. Dig me out of the dirt in lumpy brown bunches.', 'Bake me, boil me or stew me; I come out of the ground in lumps.'],
+      wheat: ['I stand tall and golden and sway in the wind. Grind me and I am the start of every loaf.', 'Hens peck at me, cows chew me as hay, and the mill turns me to dust.'],
+      berries: ['Small, red and sweet, I grow on a bush. Birds love me, and so does the jam jar.'],
+      tomato: ['Fruit or vegetable? Nobody agrees. I am red, round and juicy, and I end up in sauce.'],
+      pumpkin: ['I am big, round and orange, I sprawl on a vine, and in autumn I end up in soup or pie.'],
+      apple: ['I grow on a tree, I keep the doctor away, and three of me make a jug of cider.'],
+      flax: ['My blue flowers fade, but my stems hide threads you can weave into linen.'],
+      egg: ['I come from a hen and break if you drop me. A cook needs two of me for an omelette.'],
+      milk: ['White and fresh from the barn in a pail; churn me long enough and I turn to butter.'],
+      wool: ['I keep the sheep warm all winter, and in spring it is my turn to be shorn.'],
+      honey: ['Golden and sticky, I am made by thousands of busy wings.'],
+      mushrooms: ['I grow in the dark on old logs, I come up overnight, and I am not a plant at all.'],
+      log: ['I was a tree until your axe found me. Saw me and I become planks.'],
+      stone: ['Grey and heavy, I am broken from boulders and stacked into walls.'],
+      fish: ['I swim in your pond until a line and a little patience bring me out.'],
+      copper_ore: ['A reddish rock that turns up when you break boulders; the smelter makes it shine.'],
+      flowers: ['Pick me in the meadow. Bees visit me, and the dyer boils me for colour.'],
+      clay: ['Dig me wet and red from the bank. Fire me and I hold water or keep out the rain.'],
+      reeds: ['I grow tall and hollow by the water, and you can weave me into a basket.'],
+      iron_ore: ['Dark, heavy rock from the hills. The forge melts me down for tools.'],
+      sand: ['Fine and golden, I come up with your fishing line. Melt me and you can see right through me.']
+    },
+    made: { stove: 'cooked on the stove', mill: 'ground at the mill', sawmill: 'sawn', preserver: 'preserved', kiln: 'fired in a kiln',
+      oven: 'baked', press: 'pressed', loom: 'woven', creamery: 'churned or aged', smokehouse: 'smoked', smelter: 'smelted',
+      dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace',
+      coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
+    steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
+    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [0.3, 0.6] }
+  },
+
   monuments: {
     pyramid: { name: 'The Great Pyramid',
       stages: ['Surveyed plot', 'Foundation', 'Body', 'Detail', 'Complete'],
@@ -665,6 +701,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.53', at: '2026-10-19 12:00', notes: ['New: the Daily Puzzle (Menu → Daily Puzzle). Every day brings a riddle chain of 3 to 5 steps. Work out which good the riddle describes, make it, and hand it in; each answer reveals the next clue, which usually leads on from what you just made: what it goes into, what it comes from, or what else the same station makes. Every clue fits exactly one good your farm can make today.', 'Each step pays gold, and finishing gives up to 3 Discovery, plus 3 more for every 7 days in a row. Stuck? Buy a hint, or have the answer named. Wrong guesses take nothing, but three or more lower the Discovery reward. A new puzzle arrives at 00:00 UTC. It opens after the tutorial and is off during races and weekly challenges.'] },
   { v: '0.52', at: '2026-10-18 17:45', notes: ['Phones: the tile menu at the bottom is much shorter. It now shows just the name, the key numbers and the main buttons, and leaves the long descriptions and tips folded away. Tap “More” at the top of the menu to see everything, “Less” to fold it back. Lists like stations, the market and your home still open full.'] },
   { v: '0.51', at: '2026-10-18 09:30', notes: ['The Valley Green can now move onto a corner area you have already surveyed, as long as nothing is built on it. Open the Valley Green or the Monument Depot, pick the corner, and tap again to confirm: that empty area is replaced by the Green, and the old spot goes back to unsurveyed land. Corners with buildings stay locked, and the button now says why.'] },
   { v: '0.50', at: '2026-10-17 15:30', notes: ['Mastery has two new tiers above Master: Legend and Mythic. Legend sells for 25% more, speeds that good up by 20% and gives an extra on every second harvest or batch; Mythic goes to 30% and 25%. They are a long way off. Goods you have already mastered keep their perks and will earn Legend when you next make one. Open Mastery from the menu to see your progress.'] },

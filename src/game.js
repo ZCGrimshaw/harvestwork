@@ -199,6 +199,141 @@
     return `<div class="mrow ${t ? MAS.tiers[t - 1].id : 'none'}">${full ? ico(id) : ''}<div class="grow1"><div class="mtop">${full ? `<b>${esc(D.items[id].name)}</b>` : '<b>Mastery</b>'}${t ? `<span class="mtier ${MAS.tiers[t - 1].id}">${t >= 4 ? '★' : ''}${MAS.tiers[t - 1].name}</span>` : '<span class="mtier none">No tier yet</span>'}</div>
       <div class="mbar"><i style="width:${pct}%"></i></div><small>${line}</small>${t ? `<small class="mperk">${esc(mastPerkTxt(id, t))}</small>` : ''}</div></div>`; }
 
+  /* ================= daily puzzle =================
+     One riddle chain a day (UTC day), built only from goods this farm can make right now, so every step is solvable.
+     Farms that can make the same goods get the same puzzle. The first clue is a riddle (data.js daily.riddles); each
+     later clue is written from a recipe that links the last answer to the next, and is only used if exactly one good
+     this farm can make fits it. Handing in the right goods reveals the next clue. Off in races and weekly challenges. */
+  const DQ = D.daily, DQ_CATS = ['crop', 'gathered', 'good', 'component'], DQ_ANIM = ['coop', 'dairy', 'pasture', 'hive', 'shed'];
+  const dqAns = id => !!D.items[id] && DQ_CATS.includes(D.items[id].cat);
+  const dqDayBefore = d => new Date(Date.parse(d + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
+  // what this farm can make: origin per good, and the recipes it can run (station built, recipe unlocked, inputs makeable)
+  function dqGraph() {
+    const P = {}, has = (f) => S.tiles.some(f);
+    Object.values(D.crops).forEach(c => { const sd = D.items[c.seed]; if (!sd.requires || unlocked(sd.requires)) P[c.item] = 'crop'; });
+    Object.entries(D.gather).forEach(([t, G]) => { if (unlocked(G.needs) && has(T => T.o && T.t === t)) Object.keys(gatherOut(t, G.action)).forEach(k => { if (k !== 'sapling' && !P[k]) P[k] = 'gathered'; }); });
+    const recs = Object.entries(D.recipes).filter(([, R]) => unlocked(R.requires) && has(T => T.b && T.b.type === R.station));
+    let grew = true;
+    while (grew) { grew = false; recs.forEach(([, R]) => { if (Object.keys(R.in).every(k => P[k])) Object.keys(R.out).forEach(k => { if (!P[k]) { P[k] = DQ_ANIM.includes(R.station) ? 'animal' : 'made'; grew = true; } }); }); }
+    const RL = recs.filter(([, R]) => Object.keys(R.in).every(k => P[k])).map(([rid, R]) => ({ rid, st: R.station, ins: Object.keys(R.in), out: Object.keys(R.out)[0] })).filter(r => dqAns(r.out));
+    return { P, RL, A: Object.keys(P).filter(dqAns).sort() };
+  }
+  const dqQty = id => Math.max(2, Math.min(10, Math.round(80 / (D.items[id].value || 5))));
+  const ORIGIN = { crop: 'a crop from your fields', gathered: 'something you gather from the land', animal: 'something your animals give you', made: 'something made at a station' };
+  // every clue that leads from good a to good b; each has a test so we can keep only clues with one possible answer
+  function dqLinks(a, G) {
+    const N = id => D.items[id].name, SN = s => D.buildings[s].name, L = G.RL, out = [];
+    const makesAt = (x, s) => L.some(r => r.out === x && r.st === s);
+    const onlyMaker = x => { const st = [...new Set(L.filter(r => r.out === x).map(r => r.st))]; return st.length === 1 && L.filter(r => r.st === st[0]).every(r => r.out === x) ? st[0] : null; };
+    // up: b is made from a
+    L.filter(r => r.ins.includes(a)).forEach(r => { const b = r.out, o = r.ins.filter(k => k !== a), q = dqQty(b), lead = `Your ${N(a)} is only the beginning.`;
+      out.push({ b, kind: 'up', st: r.st, text: `${lead} Take it to the ${SN(r.st)}${o.length ? ` with ${nmList(o.map(N))}` : ''} and bring me ${q} of what comes out.`, test: x => L.some(s => s.out === x && s.st === r.st && s.ins.includes(a) && o.every(k => s.ins.includes(k))) });
+      if (o.length) {
+        out.push({ b, kind: 'up', st: r.st, hard: 1, text: `Carry your ${N(a)} to the ${SN(r.st)}. Bring me ${q} of something it helps make there.`, test: x => L.some(s => s.out === x && s.st === r.st && s.ins.includes(a)) });
+        out.push({ b, kind: 'up', st: r.st, text: `Put your ${N(a)} together with ${nmList(o.map(N))}. Bring me ${q} of what you get.`, test: x => L.some(s => s.out === x && s.ins.includes(a) && o.every(k => s.ins.includes(k))) });
+        if (o.length === 1) { const m = onlyMaker(o[0]); if (m) out.push({ b, kind: 'up', st: r.st, hard: 1, text: `Your ${N(a)} needs a partner: whatever the ${SN(m)} makes. Bring them together and bring me ${q} of the result.`, test: x => L.some(s => s.out === x && s.ins.includes(a) && s.ins.some(k => k !== a && makesAt(k, m))) }); }
+      } else if (DQ.made[r.st]) out.push({ b, kind: 'up', st: r.st, hard: 1, text: `Bring me ${q} of what your ${N(a)} becomes when it is ${DQ.made[r.st]}.`, test: x => L.some(s => s.out === x && s.st === r.st && s.ins.includes(a)) });
+    });
+    // down: b goes into a
+    L.filter(r => r.out === a).forEach(r => r.ins.forEach(b => { const q = dqQty(b), o = r.ins.filter(k => k !== b), og = G.P[b];
+      out.push({ b, kind: 'down', st: null, hard: 1, text: `Go back to where your ${N(a)} started. It is made from ${ORIGIN[og]}. Bring me ${q} of that.`, test: x => G.P[x] === og && L.some(s => s.out === a && s.ins.includes(x)) });
+      if (o.length) out.push({ b, kind: 'down', st: null, text: `What else does the ${SN(r.st)} need to make ${N(a)}, besides ${nmList(o.map(N))}? Bring me ${q}.`, test: x => !o.includes(x) && L.some(s => s.out === a && s.st === r.st && s.ins.includes(x) && o.every(k => s.ins.includes(k))) });
+    }));
+    // side: b is made at the same station as a, from something else
+    L.filter(r => r.out === a).forEach(ra => L.filter(r => r.st === ra.st && r.out !== a).forEach(r => { const b = r.out, q = dqQty(b), same = s => s.ins.length === r.ins.length && r.ins.every(k => s.ins.includes(k));
+      out.push({ b, kind: 'side', st: r.st, text: `The ${SN(r.st)} that makes your ${N(a)} has another trick: it turns ${nmList(r.ins.map(N))} into something else. Bring me ${q} of it.`, test: x => x !== a && L.some(s => s.out === x && s.st === r.st && same(s)) });
+      out.push({ b, kind: 'side', st: r.st, hard: 1, text: `Whatever made your ${N(a)} can also turn ${nmList(r.ins.map(N))} into something. Bring me ${q} of it.`, test: x => x !== a && L.some(s => s.out === x && makesAt(a, s.st) && same(s)) });
+    }));
+    return out.filter(l => dqAns(l.b));
+  }
+  function dqMake(day) {
+    const G = dqGraph(); if (G.A.length < 6) return null;
+    const rnd = raceRng('daily|' + day + '|' + G.A.join(',')), pick = a => a[Math.floor(rnd() * a.length)];
+    const n = G.A.length >= DQ.steps.bigAt ? DQ.steps.big : DQ.steps.small;
+    const starts = G.A.filter(id => DQ.riddles[id] && G.RL.some(r => r.ins.includes(id)));
+    if (!starts.length) return null;
+    let best = null;
+    for (let tries = 0; tries < 60 && !(best && best.length >= n); tries++) {
+      const a0 = pick(starts), chain = [{ id: a0, q: dqQty(a0), text: `${pick(DQ.riddles[a0])} Bring me ${dqQty(a0)}.`, st: null }];
+      while (chain.length < n) {
+        const a = chain[chain.length - 1].id, used = chain.map(c => c.id), last = chain.length === n - 1;
+        // keep clues that point to exactly one good; lean toward making things (up), toward harder wording, and toward
+        // finer goods for the last step
+        const ok = dqLinks(a, G).filter(l => !used.includes(l.b)).filter(l => { const c = G.A.filter(l.test); return c.length === 1 && c[0] === l.b; })
+          .map(l => { const prev = chain[chain.length - 1], kinds = chain.map(c => c.kind);
+            return { l, w: rnd() + (l.kind === 'up' ? .8 : l.kind === 'side' ? .1 : .2) + (l.hard ? .35 : 0) // making things, harder wording
+              + (last ? (D.items[l.b].value || 0) / 120 : G.RL.some(r => r.ins.includes(l.b)) ? .4 : 0) // finer goods last; otherwise keep the chain going
+              - (l.st && l.st === prev.st ? .7 : 0) - (kinds.includes(l.kind) && l.kind !== 'up' ? .9 : 0) }; }) // move between stations; at most one side and one down step
+          .sort((x, y) => y.w - x.w);
+        if (!ok.length) break;
+        const l = ok[0].l; chain.push({ id: l.b, q: dqQty(l.b), text: l.text, st: l.st, kind: l.kind });
+      }
+      if (!best || chain.length > best.length) best = chain;
+    }
+    if (!best || best.length < 3) return null;
+    const lastStep = best[best.length - 1];
+    if (S.maxQ >= 1 && rnd() < .5) { lastStep.minQ = 1; lastStep.text += ` They must be ${QN[1]} quality or better.`; }
+    return { day, steps: best.map(c => ({ id: c.id, q: c.q, minQ: c.minQ || 0, text: c.text, st: c.st })), at: 0, wrong: 0, hints: best.map(() => 0), gold: 0, done: false };
+  }
+  // today's puzzle, made the first time it's asked for each UTC day (and then fixed for the day)
+  function dqToday() {
+    if (!S || S.race || S.goal < D.goals.length) return null;
+    const day = utcDay(); if (S.daily && S.daily.day === day) return S.daily.none ? null : S.daily;
+    S.daily = dqMake(day) || { day, none: true }; save(); return S.daily.none ? null : S.daily;
+  }
+  const dqStreak = () => { const s = S.dqStreak; if (!s) return 0; const d = utcDay(); return s.last === d || s.last === dqDayBefore(d) ? s.n : 0; };
+  const dqStepGold = st => Math.round((D.items[st.id].value || 5) * st.q * DQ.reward.stepGold * (st.minQ ? 1.5 : 1));
+  const dqHintCost = (st, lv) => Math.max(10, Math.ceil(dqStepGold(st) * DQ.reward.hint[lv]));
+  function dqHintText(st, lv) { const og = dqGraph().P[st.id];
+    if (lv >= 2) return `The answer is <b>${esc(D.items[st.id].name)}</b>.`;
+    return st.st ? `It is made at the ${esc(D.buildings[st.st].name)}.` : og === 'crop' ? 'It grows in your fields.' : og === 'gathered' ? 'You gather it from the land.' : og === 'animal' ? 'Your animals make it.' : 'It is made at one of your stations.'; }
+  function dqHint() { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at], lv = P.hints[P.at]; if (lv >= 2) return;
+    const c = dqHintCost(st, lv); if (S.gold < c) { toast(`A hint costs <b>${c}g</b>.`, 'warn'); return; }
+    S.gold -= c; P.hints[P.at] = lv + 1; save(); dirty(); }
+  function dqGive(id) { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at];
+    if (id !== st.id) { P.wrong++; UI.dqPick = false; save(); SND.play('warn'); toast(`<b>${esc(D.items[id].name)}</b> isn’t it. Nothing was taken. Read the clue again${P.hints[P.at] < 2 ? ' or buy a hint' : ''}.`, 'warn'); dirty(); return; }
+    if (count(id, st.minQ) < st.q) { toast(`Right answer, but you need ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} ${esc(D.items[id].name)} and have ${count(id, st.minQ)}.`, 'warn'); return; }
+    take(id, st.q, st.minQ, 'low'); const g = dqStepGold(st); S.gold += g; P.gold += g; P.at++; UI.dqPick = false; SND.play('goal');
+    if (P.at < P.steps.length) toast(`<b>Daily Puzzle: step ${P.at} solved!</b> +${g}g. A new clue is waiting.`, 'goal');
+    else { P.done = true; const name2 = P.hints.some(h => h >= 2), dp = Math.max(1, DQ.reward.dp - (name2 ? 1 : 0) - (P.wrong >= 3 ? 1 : 0));
+      const d = utcDay(), s = S.dqStreak || { n: 0, last: null }; s.n = s.last === dqDayBefore(d) ? s.n + 1 : s.last === d ? s.n : 1; s.last = d; S.dqStreak = s;
+      const bonus = s.n % DQ.reward.streakEvery === 0 ? DQ.reward.streakDp : 0; S.dp += dp + bonus; P.dp = dp + bonus; gainScore(P.gold);
+      SND.play('contract'); toast(`<b>Daily Puzzle solved!</b> +${dp} Discovery${bonus ? ` and +${bonus} for a ${s.n}-day streak` : ''}. ${s.n > 1 ? `Streak: ${s.n} days.` : 'Come back tomorrow for a new one.'}`, 'disc'); }
+    save(); dirty(); }
+  const dqMenuSub = () => { if (S.race) return 'Off during races and challenges'; if (S.goal < D.goals.length) return 'Opens after the tutorial'; const P = dqToday();
+    return !P ? 'Make a few more goods to unlock it' : P.done ? `Solved today${dqStreak() > 1 ? ` · ${dqStreak()}-day streak` : ''}` : `Step ${P.at + 1} of ${P.steps.length}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}`; };
+  function dqLeft() { const n = new Date(Date.now() - (NET.monSkew || 0)), m = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - n.getTime(), h = Math.floor(m / 36e5), mi = Math.floor(m % 36e5 / 6e4); return h ? `${h}h ${mi}m` : `${mi}m`; }
+  function dqDrawer() {
+    let h = `<div class="phead"><div><h2>Daily Puzzle</h2><p class="sub">A new riddle chain every day at 00:00 UTC. Solve a clue by handing in the goods it points to; each answer reveals the next clue.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+    if (S.race) return h + '<p class="hint">The Daily Puzzle is off during races and weekly challenges. It waits for you on your own farm.</p>';
+    if (S.goal < D.goals.length) return h + '<p class="hint">Finish the tutorial goals first; the Daily Puzzle opens after that.</p>';
+    const P = dqToday();
+    if (!P) return h + '<p class="hint">Your farm needs a few more goods it can make before a puzzle can be built for it. Build another station or two and check back.</p>';
+    const sk = dqStreak();
+    h += `<p class="dqmeta">${P.done ? 'Solved' : `Step <b>${P.at + 1}</b> of ${P.steps.length}`} · ${sk ? `streak <b>${sk}</b> day${sk === 1 ? '' : 's'}` : 'no streak yet'} · new puzzle in ${dqLeft()}</p><ol class="dqlist">`;
+    P.steps.forEach((st, k) => {
+      if (k < P.at) h += `<li class="dqstep done"><p class="dqclue">${esc(st.text)}</p><div class="dqans">${ico(st.id)} <b>${esc(D.items[st.id].name)}</b> ×${st.q} <span class="ok">✓ +${dqStepGold(st)}g</span></div></li>`;
+      else if (k === P.at && !P.done) {
+        const lv = P.hints[k], have = count(st.id, st.minQ);
+        h += `<li class="dqstep now"><p class="dqclue">${esc(st.text)}</p>`;
+        for (let j = 0; j < lv; j++) h += `<p class="dqhint">Hint: ${dqHintText(st, j + 1)}</p>`;
+        if (lv >= 2) h += `<p class="hint small">You have ${have} of ${st.q}.</p>`;
+        h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv)}g</small></button>` : ''}</div>`;
+        if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
+          h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
+            <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
+        h += `</li>`; }
+      else h += `<li class="dqstep later"><p class="dqclue muted">Solve the clue above to reveal this one.</p></li>`;
+    });
+    h += '</ol>';
+    if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g and ${P.dp || 0} Discovery today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
+    h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for ${DQ.reward.dp} Discovery (less after naming an answer or three wrong guesses), plus ${DQ.reward.streakDp} more every ${DQ.reward.streakEvery} days in a row.</p>`;
+    return h; }
+  // once a day, a nudge when a fresh puzzle is waiting
+  function dqNotice() { if (!S || S.race || UI.title) return; const P = dqToday(); if (!P || P.done || P.at > 0) return;
+    const k = 'harvestworks.dqseen', d = utcDay(); if (lsGet(k, '') === d + '|' + (S.fid || '')) return; lsSet(k, d + '|' + (S.fid || ''));
+    toast('<b>A new Daily Puzzle is ready.</b> Open it from the Menu.', 'goal'); }
+
   /* ================= progression ================= */
   /* Weekly challenge rules (see weeklyThemes in data.js). Outside a weekly run every rule is neutral. */
   const wrule = (k, d) => (S && S.race && S.race.rules && S.race.rules[k] != null) ? S.race.rules[k] : d;
@@ -504,6 +639,7 @@
     const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => count(b) * items[b] - count(a) * items[a])[0];
     if (id) monGive(id, monMax(id), true); else stale(); }
   setInterval(() => { try { autoMonGive(); } catch (e) { } }, 20000);
+  setTimeout(() => { try { dqNotice(); } catch (e) { } }, 6000); setInterval(() => { try { dqNotice(); } catch (e) { } }, 60000);
   /* Builder's days: on any UTC day you've given to the monument, your quarries, clay banks, iron seams, woods, reeds,
      flowers and ponds refill twice as fast, and digging doesn't wear deposits down, so giving stone never runs you dry. */
   const builderDay = () => { const m = S && !S.race && online() && MONK(); return !!m && !monTotals(m).finished && (m.today || 0) > 0; };
@@ -2276,6 +2412,8 @@
         if (!done && Object.keys(tot).length) h += `<span class="eyebrow">Raw materials still to get</span><div class="shop">${Object.entries(tot).map(([id, n]) => `<div class="need">${ico(id)}<span>${n}× ${esc(D.items[id].name)}</span></div>`).join('')}</div>`;
         h += `<span class="eyebrow">Production tree</span><ul class="ptree">${roots.map(r => `<li>${treeHTML(r)}</li>`).join('')}</ul>`;
         h += `<p class="hint">Reward: +${m.gold}g · +${m.dp} Discovery.</p>`; }
+    } else if (UI.drawer === 'daily') {
+      h = dqDrawer();
     } else if (UI.drawer === 'mastery') {
       const done = MAS.items.filter(id => mastTierRaw(id) > 0).length;
       h = `<div class="phead"><div><h2>Mastery</h2><p class="sub">Every crop and animal good you produce counts toward its mastery. Each tier gives that good a small perk and some Discovery. ${done} of ${MAS.items.length} started.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -2357,7 +2495,7 @@
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race && S.race.weekly ? `<div class="demand"><span><b>${esc(weekTheme(S.race.week).name)}</b> · ${S.race.ranked ? 'ranked run' : 'practice run'}, ${fmtTime(Math.max(0, S.race.end - Date.now()))} left. ${esc(weekTheme(S.race.week).blurb)}</span></div><div class="menu"><button class="btn" data-week-end>End this run now<small>${S.race.ranked ? 'Your score so far counts' : 'Practice doesn’t count'}</small></button></div>`
         : S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
+        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button><button class="btn" data-drawer="daily">Daily Puzzle<small>${dqMenuSub()}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -2560,6 +2698,9 @@
     else if ('qhelp' in ds) { UI.qhelp = !UI.qhelp; }
     else if ('mhelp' in ds) { UI.mhelp = !UI.mhelp; }
     else if ('pmore' in ds) { UI.pfull = !UI.pfull; dirty(); }
+    else if ('dqPick' in ds) { UI.dqPick = !UI.dqPick; }
+    else if ('dqHint' in ds) { dqHint(); }
+    else if (ds.dqGive) { dqGive(ds.dqGive); }
     else if (ds.rexpN) { UI.rexpN = +ds.rexpN; }
     else if (ds.errand) { const [i, rid, n] = ds.errand.split(':'); sendErrand(+i, rid, +n); }
     else if ('qhelpPanel' in ds) { UI.qhelpP = !UI.qhelpP; }
@@ -3045,7 +3186,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

@@ -649,6 +649,20 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .monyou.bday { margin-top: 8px; }
 /* the show-more handle only exists in the phone bottom sheet */
 .pmore { display: none; }
+/* daily puzzle */
+.dqmeta { margin: 4px 0 8px; color: var(--paper-dim); font-size: 13px; }
+.dqlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: dq; }
+.dqstep { position: relative; padding: 10px 12px 10px 40px; border-radius: var(--r); background: rgba(0,0,0,.2); counter-increment: dq; }
+.dqstep::before { content: counter(dq); position: absolute; left: 10px; top: 10px; width: 22px; height: 22px; border-radius: 11px; background: var(--wood-hi); color: var(--paper); font-weight: 800; font-size: 12.5px; line-height: 22px; text-align: center; }
+.dqstep.now { background: rgba(246,210,74,.10); box-shadow: inset 0 0 0 2px rgba(246,210,74,.55); } .dqstep.now::before { background: var(--sun); color: #24160d; }
+.dqstep.done::before { content: "✓"; background: var(--leaf); color: #1b2a10; } .dqstep.later { opacity: .6; }
+.dqclue { margin: 0; font-size: 14.5px; line-height: 1.45; } .dqstep.now .dqclue { font-weight: 600; }
+.dqans { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; } .dqans .ico { width: 22px; height: 22px; }
+.dqhint { margin: 6px 0 0; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,.25); font-size: 13px; color: var(--sun); }
+.dqbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; } .dqbtns .btn { flex: 1 1 140px; margin: 0; }
+.dqpick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .dqpick .chipf { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; }
+.dqpick .chipf .ico { width: 20px; height: 20px; } .dqpick .chipf small { color: var(--paper-dim); }
+.dqdone { margin-top: 10px; padding: 10px 12px; border-radius: var(--r); background: rgba(127,190,80,.16); box-shadow: inset 0 0 0 2px rgba(127,190,80,.5); }
 /* mastery */
 .mtier { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; vertical-align: 1px; line-height: 1.5; color: #24160d; }
 .mtier.bronze { background: #d39a63; } .mtier.silver { background: #d9dde2; } .mtier.gold { background: #f6d24a; } .mtier.master { background: linear-gradient(90deg, #f6d24a, #fff3b0, #f6d24a); box-shadow: 0 0 0 1px #c99a1e; }
@@ -753,9 +767,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261019-003558"></script>
-<script src="art.js?v=20261019-003558"></script>
-<script src="sound.js?v=20261019-003558"></script>
-<script src="game.js?v=20261019-003558"></script>
+<script src="data.js?v=20261019-183903"></script>
+<script src="art.js?v=20261019-183903"></script>
+<script src="sound.js?v=20261019-183903"></script>
+<script src="game.js?v=20261019-183903"></script>
 
 </body></html>

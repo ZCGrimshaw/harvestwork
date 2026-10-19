@@ -3,6 +3,17 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.53 — 2026-10-19
+- Daily Puzzle (Menu → Daily Puzzle; drawer 'daily'). `dqGraph` lists what this farm can make (unlocked crops, gather outputs of owned
+  terrain, recipes at built stations whose inputs are makeable); `dqMake(day)` seeds raceRng with the UTC day + that good list, so farms
+  that can make the same goods share a puzzle. Step 1 is a hand-written riddle (data.js `daily.riddles`); later clues come from `dqLinks`
+  (up: made from the last answer; down: goes into it; side: same station), each with a test, kept only if exactly one makeable good fits.
+  Weights favour making things, harder wording, station changes and a finer last good; 5 steps at 22+ goods, else 4 (min 3, min 6 goods).
+  Last step may need Good quality. Stored in S.daily for the day; S.dqStreak {n, last}. Rewards: 1.5× value per step in gold, 3 Discovery
+  (−1 after a named answer, −1 at 3+ wrong guesses, min 1), +3 every 7-day streak; hints cost 30%/60% of the step's gold. Daily toast
+  (localStorage harvestworks.dqseen). Off before the tutorial ends and in races/weekly challenges. Test: t_dq.py, t_dq_gen.py (Joel's save,
+  60 days: 50+ distinct 5-step chains, every clue unique).
+
 ## v0.52 — 2026-10-18
 - Phone bottom sheet (portrait / narrow) is compact by default: max-height 42% (was 56%); `#panel:not(.full)` hides the subtitle, hints (not
   errors), tips and `.more` sections (Change this land, Move this building, Clear plot). A 40px "More/Less" handle (`.pmore`, `data-pmore`,
