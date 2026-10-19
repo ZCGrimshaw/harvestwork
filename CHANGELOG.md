@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.53.1 — 2026-10-19
+- Daily Puzzle hint prices: max(step-reward share 30%/60%, 1%/3% of gold held), rounded to two significant figures (`niceG`).
+  Config `daily.reward.hintGold`. At 9M gold: ~90k / 270k; at 500g the step-based price still applies.
+
 ## v0.53 — 2026-10-19
 - Daily Puzzle (Menu → Daily Puzzle; drawer 'daily'). `dqGraph` lists what this farm can make (unlocked crops, gather outputs of owned
   terrain, recipes at built stations whose inputs are makeable); `dqMake(day)` seeds raceRng with the UTC day + that good list, so farms

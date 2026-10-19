@@ -115,7 +115,7 @@ window.HW_DATA = {
       dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace',
       coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
     steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
-    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [0.3, 0.6] }
+    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [0.3, 0.6], hintGold: [0.01, 0.03] } // a hint costs a share of the step's reward or of the gold you hold, whichever is more
   },
 
   monuments: {
@@ -701,6 +701,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.53.1', at: '2026-10-19 12:00', notes: ['Daily Puzzle hints now cost a share of the gold you hold (1% for a hint, 3% to name the answer) when that is more than the usual price, so they always mean something, however rich your farm is.'] },
   { v: '0.53', at: '2026-10-19 12:00', notes: ['New: the Daily Puzzle (Menu → Daily Puzzle). Every day brings a riddle chain of 3 to 5 steps. Work out which good the riddle describes, make it, and hand it in; each answer reveals the next clue, which usually leads on from what you just made: what it goes into, what it comes from, or what else the same station makes. Every clue fits exactly one good your farm can make today.', 'Each step pays gold, and finishing gives up to 3 Discovery, plus 3 more for every 7 days in a row. Stuck? Buy a hint, or have the answer named. Wrong guesses take nothing, but three or more lower the Discovery reward. A new puzzle arrives at 00:00 UTC. It opens after the tutorial and is off during races and weekly challenges.'] },
   { v: '0.52', at: '2026-10-18 17:45', notes: ['Phones: the tile menu at the bottom is much shorter. It now shows just the name, the key numbers and the main buttons, and leaves the long descriptions and tips folded away. Tap “More” at the top of the menu to see everything, “Less” to fold it back. Lists like stations, the market and your home still open full.'] },
   { v: '0.51', at: '2026-10-18 09:30', notes: ['The Valley Green can now move onto a corner area you have already surveyed, as long as nothing is built on it. Open the Valley Green or the Monument Depot, pick the corner, and tap again to confirm: that empty area is replaced by the Green, and the old spot goes back to unsurveyed land. Corners with buildings stay locked, and the button now says why.'] },

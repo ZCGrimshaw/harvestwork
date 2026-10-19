@@ -283,12 +283,13 @@
   }
   const dqStreak = () => { const s = S.dqStreak; if (!s) return 0; const d = utcDay(); return s.last === d || s.last === dqDayBefore(d) ? s.n : 0; };
   const dqStepGold = st => Math.round((D.items[st.id].value || 5) * st.q * DQ.reward.stepGold * (st.minQ ? 1.5 : 1));
-  const dqHintCost = (st, lv) => Math.max(10, Math.ceil(dqStepGold(st) * DQ.reward.hint[lv]));
+  const niceG = n => { if (n < 100) return Math.ceil(n); const p = Math.pow(10, Math.floor(Math.log10(n)) - 1); return Math.ceil(n / p) * p; }; // two significant figures
+  const dqHintCost = (st, lv) => niceG(Math.max(10, dqStepGold(st) * DQ.reward.hint[lv], Math.max(0, S.gold) * DQ.reward.hintGold[lv]));
   function dqHintText(st, lv) { const og = dqGraph().P[st.id];
     if (lv >= 2) return `The answer is <b>${esc(D.items[st.id].name)}</b>.`;
     return st.st ? `It is made at the ${esc(D.buildings[st.st].name)}.` : og === 'crop' ? 'It grows in your fields.' : og === 'gathered' ? 'You gather it from the land.' : og === 'animal' ? 'Your animals make it.' : 'It is made at one of your stations.'; }
   function dqHint() { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at], lv = P.hints[P.at]; if (lv >= 2) return;
-    const c = dqHintCost(st, lv); if (S.gold < c) { toast(`A hint costs <b>${c}g</b>.`, 'warn'); return; }
+    const c = dqHintCost(st, lv); if (S.gold < c) { toast(`A hint costs <b>${c.toLocaleString()}g</b>.`, 'warn'); return; }
     S.gold -= c; P.hints[P.at] = lv + 1; save(); dirty(); }
   function dqGive(id) { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at];
     if (id !== st.id) { P.wrong++; UI.dqPick = false; save(); SND.play('warn'); toast(`<b>${esc(D.items[id].name)}</b> isn’t it. Nothing was taken. Read the clue again${P.hints[P.at] < 2 ? ' or buy a hint' : ''}.`, 'warn'); dirty(); return; }
@@ -318,7 +319,7 @@
         h += `<li class="dqstep now"><p class="dqclue">${esc(st.text)}</p>`;
         for (let j = 0; j < lv; j++) h += `<p class="dqhint">Hint: ${dqHintText(st, j + 1)}</p>`;
         if (lv >= 2) h += `<p class="hint small">You have ${have} of ${st.q}.</p>`;
-        h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv)}g</small></button>` : ''}</div>`;
+        h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
         if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
           h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
             <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
