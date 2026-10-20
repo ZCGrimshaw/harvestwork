@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.58.2 — 2026-10-20
+- Station recipe formulas show the count of each output good in white brackets (`.formula .out small`, `count(k)` over all qualities),
+  next to the existing ingredient counts. Test: t_outcount.py.
+
 ## v0.58.1 — 2026-10-20
 - Daily Puzzle hint prices: `DQ.reward.hint` [1, 2] (× step reward), `hintGold` [0.08, 0.15] (share of gold held), new `hintCap` 0.25
   (never more than a quarter of gold), 10g minimum, rounded up to 2 significant figures. Was [0.3, 0.6] and [0.01, 0.03].

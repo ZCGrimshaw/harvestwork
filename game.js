@@ -2096,7 +2096,7 @@
     h += recs.map(([id, R]) => {
       if (!unlocked(R.requires)) { const d = D.discoveries.find(d => d.id === R.requires); return `<div class="recipe locked" data-info="${Object.keys(R.out)[0]}"><span>${ico(Object.keys(R.out)[0], 'dim')} ${esc(D.items[Object.keys(R.out)[0]].name)}</span><small>Unlock “${esc(d.name)}” in Discovery</small></div>`; }
       const ins = Object.entries(R.in).map(([k, n]) => `<span class="in ${count(k) >= n ? '' : 'short'}">${ico(k)}${n}<small>(${count(k)})</small></span>`).join('<span class="plus">+</span>');
-      const outs = Object.entries(R.out).map(([k, n]) => `${ico(k)}${n > 1 ? n : ''}`).join('');
+      const outs = Object.entries(R.out).map(([k, n]) => `<span class="out">${ico(k)}${n > 1 ? n : ''}<small>(${count(k)})</small></span>`).join('');
       const le = checkTask({ a: 'load', i, p: id });
       const ex = UI.rexp === i + ':' + id;
       return `<div class="recipe ${ex ? 'open' : ''}" data-info="${Object.keys(R.out)[0]}" data-rid="${id}" data-st="${i}"><div class="grow1"><b class="rname">${esc(R.label || D.items[Object.keys(R.out)[0]].name)} <span class="rexp">${ex ? '▾' : '▸'}</span></b><div class="formula">${ins}<span class="arrow">→</span>${outs}<span class="muted">${Math.round(R.time * D.upgrades.speed.effect[b.lv.speed])}s</span></div>${le ? `<small class="why">${esc(le)}</small>` : ''}${unlocked('repeat') ? `<div class="reprow"><button class="toggle sm ${b.rep === id ? 'on' : ''}" data-rep="${i}:${id}" aria-pressed="${b.rep === id}"><i></i>Repeat</button>${b.rep === id ? `<select class="repn" data-repn="${i}" aria-label="How many times to repeat">${REP_OPTS.map(n => `<option value="${n}" ${(b.repN || 0) === n ? 'selected' : ''}>${n ? n + ' times' : 'Forever'}</option>`).join('')}</select><small class="muted">${b.repN ? `${Math.min(b.repDone || 0, b.repN)} of ${b.repN} done` : `${b.repDone || 0} so far`}</small>` : ''}</div>` : ''}</div><div class="ldb">${btn({ a: 'load', i, p: id }, 'Load', { err: le })}${(() => { const n = fillCount(i, id); return n > 1 ? btn({ a: 'load', i, p: id, n }, `Fill ×${n}`, { cls: 'ghost' }) : ''; })()}</div></div>${ex ? errandBox(i, id) : ''}`;
@@ -2922,7 +2922,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261020-231827';
+  const BUILD = '20261020-232228';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
