@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.57.1 — 2026-10-20 · backend (hidden from the in-game updates log)
+- `HW_DATA.site.url` is now https://zerocrunch.ca/harvest-valley (Spread the word and website button).
+
 ## v0.57 — 2026-10-20
 - Menu → Game: "Spread the word" (`data-spread`: Web Share with title, text and URL, else copies the text and link via `copyText`) and a
   "Harvest Valley website" link button (`HW_DATA.site.url`). ROADMAP: pinned Homestead decor line, Inside a factory, Time on work.

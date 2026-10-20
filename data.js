@@ -719,8 +719,9 @@ window.HW_DATA = {
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
-window.HW_DATA.site = { url: 'https://zcgrimshaw.github.io/harvestwork/', title: 'Harvest Valley', text: 'I’m growing a farm in Harvest Valley, a free farming game you can play right in your browser. Come join me!' };
+window.HW_DATA.site = { url: 'https://zerocrunch.ca/harvest-valley', title: 'Harvest Valley', text: 'I’m growing a farm in Harvest Valley, a free farming game you can play right in your browser. Come join me!' };
 window.HW_DATA.updates = [
+  { v: '0.57.1', backend: true, at: '2026-10-20 15:15', notes: ['Spread the word and the website button now use zerocrunch.ca/harvest-valley.'] },
   { v: '0.57', at: '2026-10-20 15:30', notes: ['Menu → Game has two new buttons: Spread the word shares Harvest Valley with friends (or copies the link if sharing isn’t available), and Harvest Valley website opens the game’s home page.'] },
   { v: '0.56', at: '2026-10-20 12:30', notes: ['New storage buildings, each unlocked in Discovery → Upgrades: the Silo holds crops, the Cold Cellar holds eggs, milk and everything cooked, baked, preserved or brewed, and the Material Yard holds logs, stone, ore, clay, wool and building parts. Goods fill their own building first and only the rest takes space in main storage. Buy the kits at the Open Market → Stations (one of each per area). Select one to expand it, up to four times.', 'Auto-sell: turn it on in Storage (or Settings → Selling), then tap a good’s “Auto-sell off” button to choose how many to keep: Sell all, or keep 10, 50, 100, 250, 500 or 1,000. Anything above that sells at the market by itself, lowest quality first. Goods you haven’t set are never sold.', 'The main menu is tidier: it is grouped into Your farm, Play together, Save and backup, Game and Controls. Tap a heading to fold or unfold it; the game remembers your choice.'] },
   { v: '0.55.1', backend: true, at: '2026-10-20 12:00', notes: ['The shared market keeps only the last 7 days of trade history, trimmed once a day.'] },
