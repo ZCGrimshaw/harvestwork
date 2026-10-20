@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.58.1 — 2026-10-20
+- Daily Puzzle hint prices: `DQ.reward.hint` [1, 2] (× step reward), `hintGold` [0.08, 0.15] (share of gold held), new `hintCap` 0.25
+  (never more than a quarter of gold), 10g minimum, rounded up to 2 significant figures. Was [0.3, 0.6] and [0.01, 0.03].
+  Example: 2,600 gold → 210g first hint (was 32g); 20,000 gold → 1,600g. t_dq.py updated.
+
 ## v0.58 — 2026-10-20
 - Menu → Game: Spread the word opens drawer 'spread' (`spreadHTML`: invite text, selectable `D.site.share` address, Copy button
   `data-spread-copy` with a 2.5 s "Copied!" state). The website button is now "Zero Crunch website" (`D.site.home`). `HW_DATA.site` is

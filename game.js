@@ -316,7 +316,7 @@
   const dqStreak = () => { const s = S.dqStreak; if (!s) return 0; const d = utcDay(); return s.last === d || s.last === dqDayBefore(d) ? s.n : 0; };
   const dqStepGold = st => Math.round((D.items[st.id].value || 5) * st.q * DQ.reward.stepGold * (st.minQ ? 1.5 : 1));
   const niceG = n => { if (n < 100) return Math.ceil(n); const p = Math.pow(10, Math.floor(Math.log10(n)) - 1); return Math.ceil(n / p) * p; }; // two significant figures
-  const dqHintCost = (st, lv) => niceG(Math.max(10, dqStepGold(st) * DQ.reward.hint[lv], Math.max(0, S.gold) * DQ.reward.hintGold[lv]));
+  const dqHintCost = (st, lv) => { const g = Math.max(0, S.gold); return niceG(Math.max(10, Math.min(Math.max(dqStepGold(st) * DQ.reward.hint[lv], g * DQ.reward.hintGold[lv]), g * DQ.reward.hintCap))); };
   function dqHintText(st, lv) { const og = dqGraph().P[st.id];
     if (lv >= 2) return `The answer is <b>${esc(D.items[st.id].name)}</b>.`;
     return st.st ? `It is made at the ${esc(D.buildings[st.st].name)}.` : og === 'crop' ? 'It grows in your fields.' : og === 'gathered' ? 'You gather it from the land.' : og === 'animal' ? 'Your animals make it.' : 'It is made at one of your stations.'; }
@@ -2922,7 +2922,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261020-231354';
+  const BUILD = '20261020-231827';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

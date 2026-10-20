@@ -115,7 +115,7 @@ window.HW_DATA = {
       dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace',
       coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
     steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
-    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [0.3, 0.6], hintGold: [0.01, 0.03] } // a hint costs a share of the step's reward or of the gold you hold, whichever is more
+    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
   },
 
   monuments: {
@@ -721,6 +721,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.58.1', at: '2026-10-20 16:30', notes: ['Daily Puzzle hints now cost much more: about 8% of your gold for the first hint and 15% for the second (never more than a quarter of your gold). Hints used to be a rounding error, so solving the puzzle yourself is now worth more.'] },
   { v: '0.58', at: '2026-10-20 16:30', notes: ['Menu → Game: Spread the word now opens a small box with “Enjoying the game? Share it for free with a friend.”, the game’s address you can select, and a Copy button. The website button now opens the Zero Crunch website.'] },
   { v: '0.57.1', backend: true, at: '2026-10-20 15:15', notes: ['Spread the word and the website button now use zerocrunch.ca/harvest-valley.'] },
   { v: '0.57', at: '2026-10-20 15:30', notes: ['Menu → Game has two new buttons: Spread the word shares Harvest Valley with friends (or copies the link if sharing isn’t available), and Harvest Valley website opens the game’s home page.'] },
