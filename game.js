@@ -1318,7 +1318,9 @@
   // A routine step names a place and a kind of job; this picks the concrete task it needs right now.
   function resolveStep(st) {
     const T = T_(st.i), b = T.b; let t = null;
-    if (st.s === 'tend' && b && b.type === 'farm') t = b.st === 'raw' ? { a: 'till' } : b.st === 'tilled' ? { a: 'plant', p: st.p, f: 0 } : b.st === 'growing' && !b.wet ? { a: 'water' } : b.st === 'ready' ? { a: 'harvest' } : null;
+    if (st.s === 'tend' && b && b.type === 'farm') t = b.st === 'raw' ? { a: 'till' } : b.st === 'tilled' ? { a: 'plant', p: st.p, f: S.helper && S.helper.fert && count('fertilizer') > 0 ? 1 : 0 }
+      : b.st === 'growing' && S.helper && S.helper.fert && !b.fert && count('fertilizer') > 0 ? { a: 'fertilize' } // fertilizer first, then water (both lift quality)
+      : b.st === 'growing' && !b.wet ? { a: 'water' } : b.st === 'ready' ? { a: 'harvest' } : null;
     else if (st.s === 'station' && b && b.q) t = b.q.some(x => x.done) ? { a: 'collect' } : { a: 'load', p: st.p };
     else if (st.s === 'forest' && T.r) t = T.r.st === 'tree' ? { a: 'chop' } : T.r.st === 'stump' ? { a: 'replant' } : null;
     else if (st.s === 'fish' || st.s === 'mine' || st.s === 'gather') t = { a: st.s };
@@ -2463,6 +2465,8 @@
         h += `<div class="handcard"><div class="handhead"><b>Farmhand ${n + 1}</b><span class="muted">${status}</span></div>
           <div class="handctl"><button class="toggle ${F.on ? 'on' : ''}" data-fh-toggle aria-pressed="${F.on}"><i></i>${F.on ? 'Working' : 'Paused'}</button>
           <div class="chips">${D.farmhand.speeds.map(sp => `<button class="chipf ${(F.spd || 1) === sp ? 'on' : ''}" data-fh-setspd="${sp}">${sp}×</button>`).join('')}</div></div>
+          ${unlocked('compost') || count('fertilizer') > 0 ? `<button class="toggle ${F.fert ? 'on' : ''}" data-fh-fert aria-pressed="${!!F.fert}"><i></i>Use fertilizer on the plots they tend (${count('fertilizer')} in storage)</button>
+          <p class="hint small">${F.fert ? 'They fertilize each crop they plant or find growing, one Fertilizer per plot, for faster growth and +1 quality. When storage has none, they carry on without it.' : 'Off: the farmhand plants, waters and harvests without fertilizer, so your stock is saved for you.'}</p>` : ''}
           <span class="eyebrow">Jobs ${F.steps.length}/${fhMax()}</span>`;
         h += F.steps.length ? `<ol class="routine jobs">${F.steps.map((st, k) => `<li class="${F.cur && F.cur.si === k ? 'now' : ''}"><button class="linkish" data-goto="${st.i}" title="Show on the map">${esc(stepLabel(st))}</button>
             <span class="jobbtns"><button class="x mv" data-fh-up="${k}" ${k ? '' : 'disabled'} aria-label="Move up">↑</button><button class="x mv" data-fh-down="${k}" ${k < F.steps.length - 1 ? '' : 'disabled'} aria-label="Move down">↓</button><button class="x" data-fh-del="${k}" aria-label="Remove job">×</button></span></li>`).join('')}</ol>`
@@ -2488,6 +2492,7 @@
       h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <span class="eyebrow">Pausing</span><div class="opts">
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while the Menu or Settings is open</button>
+        <button class="toggle ${S.fullPause ? 'on' : ''}" data-fullpause aria-pressed="${!!S.fullPause}"><i></i>Pause the game when storage is full</button>
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p>
         <span class="optlabel">Pause when I haven’t done anything for</span>
@@ -2681,6 +2686,7 @@
       if (!UI.fhClear) { UI.fhClear = true; clearTimeout(UI.fhClearT); UI.fhClearT = setTimeout(() => { UI.fhClear = false; dirty(); }, 3000); }
       else { UI.fhClear = false; clearTimeout(UI.fhClearT); S.helper.steps = []; S.helper.cur = null; S.helper.k = 0; S.helper.path = []; toast('Farmhand jobs cleared. Add new ones from any plot, station or resource tile.', 'info'); save(); } }
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
+    else if ('fhFert' in ds) { if (S.helper) { S.helper.fert = !S.helper.fert; save(); } }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }
     else if (ds.goto !== undefined) { UI.sel = +ds.goto; centerOn(+ds.goto); }
     else if (ds.shirt !== undefined) S.shirt = +ds.shirt;
@@ -2689,6 +2695,7 @@
     else if ('goalMin' in ds) { S.goalMin = true; save(); }
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
+    else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
     else if ('goPrivate' in ds) { if (!UI.goPrivate) { UI.goPrivate = true; clearTimeout(UI.goPrivT); UI.goPrivT = setTimeout(() => { UI.goPrivate = false; dirty(); }, 4000); }
@@ -2817,8 +2824,14 @@
   UI.lastInput = performance.now();
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { UI.lastInput = performance.now(); if (UI.idle) { UI.idle = false; $('#idlebar').hidden = true; dirty(); } }, { capture: true, passive: true }));
   function checkIdle(now) { if (S.race || UI.idle || !idleSecs() || UI.title || UI.catchup) return;
-    if (now - UI.lastInput > idleSecs() * 1000) { UI.idle = true; save(); const el = $('#idlebar'); el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
+    if (now - UI.lastInput > idleSecs() * 1000) { UI.idle = true; save(); const el = $('#idlebar'); el.dataset.k = 'idle'; el.innerHTML = `<span><b>Paused while you were away.</b> Tap anywhere or press any key to carry on.</span>`; el.hidden = false; dirty(); } }
+  // Optional (Settings → Pausing): the game holds still while storage is full, until you sell, use or make room.
+  function checkFull() { const f = !!S.fullPause && !S.race && !UI.title && !UI.catchup && room() <= 0, el = $('#idlebar');
+    if (f !== !!UI.fullHold) { UI.fullHold = f; dirty(); if (f) { SND.play('warn'); toast('<b>Storage is full.</b> The game is paused until you make some room.', 'warn'); save(); } }
+    if (UI.idle) return;
+    if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
+    else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -2830,7 +2843,7 @@
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
-    tickCatchUp(); SND.setHour(hour()); checkIdle(now); tickRace(dt);
+    tickCatchUp(); SND.setHour(hour()); checkIdle(now); checkFull(); tickRace(dt);
     { const sc = (noSeasons() ? 'spring' : season().id) + '|' + wxNow() + '|' + raining(); if (sc !== UI.sndScene || (SND.ready && !UI.sndReady)) { UI.sndScene = sc; UI.sndReady = SND.ready; SND.setScene(...sc.split('|').map((v, k) => k === 2 ? v === 'true' : v)); } }
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
     else if (UI.monWelcome && !UI.title && !UI.catchup && !S.race) { UI.monWelcome = false; openTitle('monwelcome'); }
@@ -2849,7 +2862,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261019-191724';
+  const BUILD = '20261020-162953';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3206,7 +3219,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

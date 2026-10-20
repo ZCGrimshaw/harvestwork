@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.55 — 2026-10-20
+- Pause when storage is full: Settings toggle S.fullPause (default off). `checkFull()` each frame sets UI.fullHold when room() <= 0 (not in
+  races, title screens or catch-up); `paused()` includes it; banner in #idlebar (dataset.k 'full'/'idle' so the idle message and this one
+  don't clash); one toast and warn sound on the transition. Actions that free space (selling, upgrades) still work while paused.
+- Farmhand fertilizer: S.helper.fert (Farmhands screen toggle, default off). `resolveStep` 'tend': plant with f:1 when fertilizer is in
+  storage, fertilize a growing unfertilized plot before watering; falls back to no fertilizer when none is left.
+  Hooks: HW.resolve, HW.room. Test: t_fullfert.py (incl. a 7 s farmhand run: 2 of 3 fertilizer used).
+
 ## v0.54 — 2026-10-19
 - Daily Puzzle on the main screen: a "Puzzle n/m ▾" button in the Activity/Updates row (`dqBarBtn`, logOpen 'dq'; red dot while a fresh
   puzzle is untouched; tick when solved; hidden before the tutorial ends, in races and when no puzzle can be built) and a dropdown
