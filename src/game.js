@@ -2490,6 +2490,8 @@
       h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
       h = seasonDrawer();
+    } else if (UI.drawer === 'spread') {
+      h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${spreadHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'support') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${supportHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'medals') {
@@ -2594,7 +2596,7 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         `, false, !!(UI.fileInfo || UI.fileErr || UI.importOpen || UI.exportCode || UI.cloudBusy))}
-        ${msec('game', 'Game', 'Settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-spread>Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.url)}" target="_blank" rel="noopener">Harvest Valley website<small>Opens the game’s home page ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
+        ${msec('game', 'Game', 'Settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
         ${msec('controls', 'Controls', isTouch() ? 'Taps, drags and pinches' : 'Mouse and keyboard', `${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>`, false)}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
@@ -2605,6 +2607,10 @@
   // Main menu sections: a header you tap to fold or unfold; which are open is remembered on this device.
   function msec(id, title, sub, body, open0, force) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), open = force || (f[id] != null ? f[id] : open0);
     return `<section class="msec ${open ? 'open' : ''}"><button class="msech" data-msec="${id}" aria-expanded="${open}"><span><b>${esc(title)}</b><small>${sub}</small></span><i aria-hidden="true">${open ? '▾' : '▸'}</i></button>${open ? `<div class="msecb">${body}</div>` : ''}</section>`; }
+  // Spread the word: a short invite with a selectable address and a Copy button.
+  const spreadHTML = () => `<h2>Spread the word</h2>
+    <p class="sub">Enjoying the game? Share it for free with a friend.</p>
+    <div class="coderow"><span class="codechip sharelink">${esc(D.site.share)}</span><button class="btn pri" data-spread-copy>${UI.spreadCopied ? 'Copied!' : 'Copy'}</button></div>`;
   // Show your support: a big QR code to scan with a phone, and a link that opens Ko-fi.
   const supportHTML = () => `<h2>Show your support</h2>
     <p class="sub">Harvest Valley is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
@@ -2768,9 +2774,7 @@
     else if ('save' in ds) { save(); toast('Saved.', 'info'); }
     else if ('downloadSave' in ds) { downloadSave(); }
     else if ('shareSave' in ds) { shareSave(); return; }
-    else if ('spread' in ds) { const W = D.site;
-      if (navigator.share) navigator.share({ title: W.title, text: W.text, url: W.url }).catch(() => { });
-      else copyText(`${W.text} ${W.url}`, () => toast('Link copied. Paste it to a friend!', 'info')); return; }
+    else if ('spreadCopy' in ds) { copyText(D.site.share, () => { UI.spreadCopied = true; dirty(); clearTimeout(UI.spreadCopiedT); UI.spreadCopiedT = setTimeout(() => { UI.spreadCopied = false; dirty(); }, 2500); }); return; }
     else if ('cloudBackup' in ds) { cloudBackup(true); return; }
     else if ('cloudAuto' in ds) { S.cloud.auto = S.cloud.auto === false; save(); }
     else if ('copyCloud' in ds) { const t = fmtCode(S.cloud.code), done = () => { UI.cloudCopied = true; dirty(); clearTimeout(UI.cloudCopiedT); UI.cloudCopiedT = setTimeout(() => { UI.cloudCopied = false; dirty(); }, 2500); };

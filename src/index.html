@@ -244,6 +244,7 @@ small.use { display: block; color: var(--sun); font-size: 11.5px; margin-top: 2p
 .menu .btn { width: auto; }
 .help { margin: 0; padding-left: 18px; line-height: 1.6; color: var(--paper-dim); }
 .code { box-sizing: border-box; width: 100%; padding: 8px 10px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; color: var(--paper); background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: var(--r); resize: vertical; word-break: break-all; }
+.supportbox .coderow { justify-content: center; margin: 14px 0; }
 .hint.err { color: #e88a8a; }
 .help.desk { display: none; } /* desktop controls, hidden on touch screens */
 .linkish.small { display: inline-block; margin: 8px 0 2px; font-size: 12.5px; color: var(--paper-dim); text-decoration: underline; text-underline-offset: 3px; }
@@ -532,6 +533,7 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .coderow { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; flex-wrap: wrap; }
 .coderow .codechip { cursor: text; user-select: all; font-size: 17px; padding: 7px 10px; }
 .coderow .btn { width: auto; margin: 0; }
+.coderow .sharelink { cursor: text; user-select: text; -webkit-user-select: text; font-size: 16px; text-transform: none; letter-spacing: 0; font-family: var(--f-body, inherit); font-weight: 700; word-break: break-all; }
 .optlabel { font-weight: 700; font-size: 13.5px; margin-top: 6px; }
 .updatebar.idlebar { top: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 15; text-align: center; border-color: var(--sky); }
 .slots { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; text-align: left; }

@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.58 — 2026-10-20
+- Menu → Game: Spread the word opens drawer 'spread' (`spreadHTML`: invite text, selectable `D.site.share` address, Copy button
+  `data-spread-copy` with a 2.5 s "Copied!" state). The website button is now "Zero Crunch website" (`D.site.home`). `HW_DATA.site` is
+  `{ home, share }`; the Web Share path from v0.57 is gone.
+
 ## v0.57.1 — 2026-10-20 · backend (hidden from the in-game updates log)
 - `HW_DATA.site.url` is now https://zerocrunch.ca/harvest-valley (Spread the word and website button).
 
