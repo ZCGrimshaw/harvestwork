@@ -721,6 +721,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.58.3', at: '2026-10-20 17:00', notes: ['Daily Puzzle: when the next step is made from the good you just handed in, you now keep those goods instead of having to make them again. A message tells you when this happens.'] },
   { v: '0.58.2', at: '2026-10-20 16:45', notes: ['Station recipes now show how many of the finished good you already have, in white brackets after it, so you can see at a glance what you’re running low on.'] },
   { v: '0.58.1', at: '2026-10-20 16:30', notes: ['Daily Puzzle hints now cost much more: about 8% of your gold for the first hint and 15% for the second (never more than a quarter of your gold). Hints used to be a rounding error, so solving the puzzle yourself is now worth more.'] },
   { v: '0.58', at: '2026-10-20 16:30', notes: ['Menu → Game: Spread the word now opens a small box with “Enjoying the game? Share it for free with a friend.”, the game’s address you can select, and a Copy button. The website button now opens the Zero Crunch website.'] },

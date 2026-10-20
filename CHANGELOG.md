@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.58.3 — 2026-10-20
+- Daily Puzzle `dqGive`: the handed-in goods are no longer taken when the next step's answer has a recipe that uses them
+  (`D.recipes` out has next id, in has this id); the toast says they stay. Other steps and the last step still take them. The picker
+  note explains it. Test: t_dqkeep.py.
+
 ## v0.58.2 — 2026-10-20
 - Station recipe formulas show the count of each output good in white brackets (`.formula .out small`, `count(k)` over all qualities),
   next to the existing ingredient counts. Test: t_outcount.py.

@@ -326,8 +326,9 @@
   function dqGive(id) { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at];
     if (id !== st.id) { P.wrong++; UI.dqPick = false; save(); SND.play('warn'); toast(`<b>${esc(D.items[id].name)}</b> isn’t it. Nothing was taken. Read the clue again${P.hints[P.at] < 2 ? ' or buy a hint' : ''}.`, 'warn'); dirty(); return; }
     if (count(id, st.minQ) < st.q) { toast(`Right answer, but you need ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} ${esc(D.items[id].name)} and have ${count(id, st.minQ)}.`, 'warn'); return; }
-    take(id, st.q, st.minQ, 'low'); const g = dqStepGold(st); S.gold += g; P.gold += g; P.at++; UI.dqPick = false; SND.play('goal');
-    if (P.at < P.steps.length) toast(`<b>Daily Puzzle: step ${P.at} solved!</b> +${g}g. A new clue is waiting.`, 'goal');
+    const nx = P.steps[P.at + 1], keep = !!nx && Object.values(D.recipes).some(r => r.out[nx.id] && r.in[id]); // the next answer is made from this good: you keep it
+    if (!keep) take(id, st.q, st.minQ, 'low'); const g = dqStepGold(st); S.gold += g; P.gold += g; P.at++; UI.dqPick = false; SND.play('goal');
+    if (P.at < P.steps.length) toast(`<b>Daily Puzzle: step ${P.at} solved!</b> +${g}g.${keep ? ` Your ${esc(D.items[id].name)} stay in storage; the next step is made from them.` : ''} A new clue is waiting.`, 'goal');
     else { P.done = true; const name2 = P.hints.some(h => h >= 2), dp = Math.max(1, DQ.reward.dp - (name2 ? 1 : 0) - (P.wrong >= 3 ? 1 : 0));
       const d = utcDay(), s = S.dqStreak || { n: 0, last: null }; s.n = s.last === dqDayBefore(d) ? s.n + 1 : s.last === d ? s.n : 1; s.last = d; S.dqStreak = s;
       const bonus = s.n % DQ.reward.streakEvery === 0 ? DQ.reward.streakDp : 0; S.dp += dp + bonus; P.dp = dp + bonus; gainScore(P.gold);
@@ -345,7 +346,7 @@
     h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
     if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
       h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
-        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
+        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. Handing in takes the goods, unless the next step is made from them; then they stay in storage. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
     return h + (wrap ? '</li>' : '</div>'); }
   function dqDrawer() {
     let h = `<div class="phead"><div><h2>Daily Puzzle</h2><p class="sub">A new riddle chain every day at 00:00 UTC. Solve a clue by handing in the goods it points to; each answer reveals the next clue.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -2922,7 +2923,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261020-232228';
+  const BUILD = '20261020-232846';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
