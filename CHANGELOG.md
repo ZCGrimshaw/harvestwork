@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.59 — 2026-10-20
+- Sprinkler pick-up: task `pickup` (check: a sprinkler is there, room() >= 1; run: clears the building, S.built-1, kit back via
+  `addItem`, `S.recycled[kit]++`). The `place` task skips build score/first-time award while `S.recycled[kit] > 0` (then decrements)
+  so pick-up/place loops can't farm score. Button in `sprinklerPanel`. Test: t_pickup.py.
+
 ## v0.58.3 — 2026-10-20
 - Daily Puzzle `dqGive`: the handed-in goods are no longer taken when the next step's answer has a recipe that uses them
   (`D.recipes` out has next id, in has this id); the toast says they stay. Other steps and the last step still take them. The picker

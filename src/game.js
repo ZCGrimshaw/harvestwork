@@ -1246,8 +1246,14 @@
       check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; const bt = D.items[t.p].building;
         if (builtCount(bt) >= capFor(bt)) return capMsg(bt); return canPay(D.buildings[bt].place); },
       run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1;
-        gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`);
+        if (S.recycled && S.recycled[t.p] > 0) S.recycled[t.p]--; else { gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`); }
         toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].hold ? `It holds ${D.buildings[bt].hold.base} ${SK[D.buildings[bt].hold.cls].name} apart from main storage.` : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
+    pickup: { label: t => { const b = T_(t.i).b; return `Pick up ${b ? D.buildings[b.type].name : 'sprinkler'}`; },
+      check: t => { const b = T_(t.i).b; if (!b || D.buildings[b.type].kind !== 'sprinkler') return 'No sprinkler here'; if (room() < 1) return 'Storage is full';
+        return Object.keys(D.items).some(k => D.items[k].building === b.type) ? null : 'No kit for this'; },
+      run: t => { const b = T_(t.i).b, bt = b.type, kit = Object.keys(D.items).find(k => D.items[k].building === bt);
+        T_(t.i).b = null; HC.at = -1; S.built = Math.max(0, (S.built || 0) - 1); addItem(kit, 1); S.recycled = S.recycled || {}; S.recycled[kit] = (S.recycled[kit] || 0) + 1; // placing it again later earns no build score
+        float(t.i, 'Picked up', '#b8f08a'); toast(`${esc(D.buildings[bt].name)} picked up. The kit is back in storage.`, 'info'); } },
     expand: { label: t => `Buy ${D.terrain[T_(t.i).t].name}`,
       check: t => { if (T_(t.i).o) return 'Already yours'; if (!nbrs(t.i).some(n => T_(n).o && !greenT(n))) return 'Expand closer first'; return canPay(expCost(t.i)); },
       run: t => { const T = T_(t.i); pay(expCost(t.i)); T.o = true; S.exp++; gainScore(C.score.expand, t.i);
@@ -2298,7 +2304,7 @@
       ${fin ? '' : '<button class="btn" data-drawer="valley">Open the monument<small>Give goods and watch it grow</small></button>'}<button class="btn ghost" data-mon-away="${i}">Put it away</button><p class="hint small">Place it again any time from the Monument Depot or Menu → Valley Monument.</p>`; }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
-    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + moveSection(i);
+    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + btn({ a: 'pickup', i }, `Pick up this ${esc(B.name.toLowerCase())}`, { sub: 'Free · the kit goes back to storage, ready to place again' }) + moveSection(i);
   }
   function emptyPanel(i) {
     let h = head('Empty grassland', 'Build a farm plot or place a station kit here.');
