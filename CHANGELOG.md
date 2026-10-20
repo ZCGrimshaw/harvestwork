@@ -3,6 +3,19 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.56 — 2026-10-20
+- Special stores: Silo, Cold Cellar, Material Yard (kind 'storage' with `hold: {cls, base, step, max}`; kits silo_kit, coldcellar_kit,
+  yard_kit; Discoveries silo, coldcellar, yard in Upgrades). `storeKinds` maps goods to a store (crops; cat 'good' + egg, milk; cats
+  'gathered', 'component' + wool). `used()` counts each kind against its stores first, only overflow against cap(); `holdCaps()` (tile
+  scan cached 100 ms, reset on place/expand), `holdUsed()`. Expansion task `storeup` (b.lvl, cost `storeUp`: gold 500×1.7^l, bricks
+  8+6l, crates 2+2l). Store panel shows capacity, overflow, next expansion; Storage drawer lists each kind. Sprites silo, coldcellar, yard.
+- Auto-sell (opt-in, S.autoSell): keep amounts S.keep[id] cycled by a chip on each sellable good in Storage (off → Sell all → 10 → 50 →
+  100 → 250 → 500 → 1,000 → off). `autoSellTick` every 20 s (not paused, not in races) sells the excess lowest quality first at
+  sellPrice, reports trades, adds gold/score/weekly sold; one summary toast per 2 minutes. Settings → Selling toggle too.
+- Main menu: foldable sections via `msec()` (Your farm, Play together, Save and backup (folded, status in header; forced open while a
+  file/import/export/backup is in progress), Game, Controls (folded)); folds remembered in localStorage harvestworks.mfold; buttons in
+  an even grid. Tests: t_store.py (stores, auto-sell, menu), t_storeart.py.
+
 ## v0.55.1 — 2026-10-20 · backend (hidden from the in-game updates log)
 - Trade history trimmed daily. Server migration `trim_old_trades_daily`: enables pg_cron; `trim_trades()` (security
   definer, not callable by anon/authenticated) deletes trades older than 7 days; job `trim_trades_daily` runs at 03:17 UTC. Readers

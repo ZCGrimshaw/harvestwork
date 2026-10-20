@@ -292,6 +292,9 @@ window.HW_DATA = {
     smokehouse_kit:{ name: 'Smokehouse Kit', cat: 'kit', buy: 110, building: 'smokehouse', requires: 'smokehouse', icon: ['kit', '#6e4425', '#9aa0aa'] },
     barn_kit:     { name: 'Storage Barn Kit', cat: 'kit', buy: 60, building: 'barn', requires: 'sawmill', icon: ['kit', '#c8483a', '#f2ead8'] },
     warehouse_kit:{ name: 'Warehouse Kit', cat: 'kit', buy: 220, building: 'warehouse', requires: 'warehouse', icon: ['kit', '#8a8a94', '#b5523b'] },
+    silo_kit:     { name: 'Silo Kit', cat: 'kit', buy: 280, building: 'silo', requires: 'silo', icon: ['kit', '#d8d0b4', '#8a6a3a'] },
+    coldcellar_kit:{ name: 'Cold Cellar Kit', cat: 'kit', buy: 360, building: 'coldcellar', requires: 'coldcellar', icon: ['kit', '#8fa4b8', '#5a4a3a'] },
+    yard_kit:     { name: 'Material Yard Kit', cat: 'kit', buy: 240, building: 'yard', requires: 'yard', icon: ['kit', '#a8844e', '#8a8a94'] },
     smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] },
     dyevat_kit:   { name: 'Dye Vat Kit', cat: 'kit', buy: 130, building: 'dyevat', requires: 'dyeing', icon: ['kit', '#9a4ac8', '#c98a4a'] },
     potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
@@ -321,7 +324,7 @@ window.HW_DATA = {
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'mastery', 'granary'] },
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
@@ -358,6 +361,10 @@ window.HW_DATA = {
     smokehouse:{ name: 'Smokehouse', kind: 'station', slots: 2, place: { brick: 4, plank: 2 }, desc: 'Smokes fish over charcoal.' },
     barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, perArea: 2, place: { plank: 4 }, desc: 'Adds 40 storage. Two per area you own.' },
     warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. One per area you own.' },
+    // special stores: hold one kind of goods apart from main storage (hold.cls, see storeKinds); expandable up to hold.max times
+    silo:       { name: 'Silo', kind: 'storage', hold: { cls: 'silo', base: 250, step: 150, max: 4 }, place: { plank: 8, stone: 6 }, desc: 'Holds your crops apart from main storage. One per area you own.' },
+    coldcellar: { name: 'Cold Cellar', kind: 'storage', hold: { cls: 'coldcellar', base: 200, step: 120, max: 4 }, place: { brick: 12, stone: 8 }, desc: 'Keeps eggs, milk and everything cooked, baked, preserved or brewed apart from main storage. One per area you own.' },
+    yard:       { name: 'Material Yard', kind: 'storage', hold: { cls: 'yard', base: 250, step: 150, max: 4 }, place: { plank: 10, fence_kit: 2 }, desc: 'Stacks logs, stone, ore, clay, wool and building parts apart from main storage. One per area you own.' },
     smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' },
     dyevat:    { name: 'Dye Vat', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
     potter:    { name: 'Potter’s Wheel', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
@@ -386,6 +393,15 @@ window.HW_DATA = {
   homeGate: [null, null, null, 'cellar', 'cellar'],
   // After the listed upgrades, the Homestead keeps growing: each further level adds homeGrowth.cap
   // and costs more than the last (Root Cellar still required).
+  /* Special stores (Silo, Cold Cellar, Material Yard): which goods each kind holds, and what each expansion costs
+     (level l → l+1: gold × goldMult^l, bricks and crates rising each time). Goods fill their store first; any more go
+     to main storage. */
+  storeKinds: {
+    silo: { name: 'crops', crops: true },
+    coldcellar: { name: 'food and drink', cats: ['good'], ids: ['egg', 'milk'] },
+    yard: { name: 'materials', cats: ['gathered', 'component'], ids: ['wool'] }
+  },
+  storeUp: { gold: 500, goldMult: 1.7, brick: 8, brickStep: 6, crate: 2, crateStep: 2 },
   homeGrowth: { cap: 60, granary: 100, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
 
   recipes: {
@@ -516,6 +532,9 @@ window.HW_DATA = {
     { id: 'glassworks', pic: ['water:0', 'glassworks', 'glass'], name: 'Glassworks', cost: 5, req: ['fishing', 'smelter'], text: 'Every catch also brings up sand from the pond bed. Melt it over charcoal into glass at a Glass Furnace, then blow jars, or lead stained glass with dye.', where: 'Fish any Pond; Open Market → Stations → Glass Furnace kit.' },
     { id: 'seedsaving', pic: ['farm_tilled', 'crop:carrot.2', 'carrot_seed'], name: 'Seed Saving', cost: 4, req: ['compostbin'], text: 'Every third harvest also gives you a seed of the crop you picked, so you buy fewer seeds.', where: 'Any Farm Plot harvest, automatically.' },
     { id: 'coldframes', pic: ['farm_wet', 'crop:tomatoes.1', 'glass'], name: 'Cold Frames', cost: 4, req: ['glassworks'], text: 'Glass covers for your plots: tender crops grow like hardy ones. Frost and winter don’t slow them, and they can be planted on snow days.', where: 'Every Farm Plot, automatically.' },
+    { id: 'silo', pic: ['grass:0', 'silo', 'wheat'], name: 'Silos', cost: 3, req: ['cellar'], text: 'A tall Silo that holds 250 crops apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 8 planks and 6 stone to place. One per area you own.' },
+    { id: 'coldcellar', pic: ['grass:0', 'coldcellar', 'jam'], name: 'Cold Cellars', cost: 4, req: ['cellar', 'preserver'], text: 'A Cold Cellar that holds 200 eggs, milk, dishes, preserves, bakes and drinks apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 12 bricks and 8 stone to place. One per area you own.' },
+    { id: 'yard', pic: ['grass:0', 'yard', 'log'], name: 'Material Yards', cost: 3, req: ['cellar', 'workbench'], text: 'A Material Yard that holds 250 logs, stone, ore, clay, wool and building parts apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 10 planks and 2 Land Kits to place. One per area you own.' },
     { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' }
   ],
 
@@ -701,6 +720,7 @@ window.HW_DATA = {
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.updates = [
+  { v: '0.56', at: '2026-10-20 12:30', notes: ['New storage buildings, each unlocked in Discovery → Upgrades: the Silo holds crops, the Cold Cellar holds eggs, milk and everything cooked, baked, preserved or brewed, and the Material Yard holds logs, stone, ore, clay, wool and building parts. Goods fill their own building first and only the rest takes space in main storage. Buy the kits at the Open Market → Stations (one of each per area). Select one to expand it, up to four times.', 'Auto-sell: turn it on in Storage (or Settings → Selling), then tap a good’s “Auto-sell off” button to choose how many to keep: Sell all, or keep 10, 50, 100, 250, 500 or 1,000. Anything above that sells at the market by itself, lowest quality first. Goods you haven’t set are never sold.', 'The main menu is tidier: it is grouped into Your farm, Play together, Save and backup, Game and Controls. Tap a heading to fold or unfold it; the game remembers your choice.'] },
   { v: '0.55.1', backend: true, at: '2026-10-20 12:00', notes: ['The shared market keeps only the last 7 days of trade history, trimmed once a day.'] },
   { v: '0.55', at: '2026-10-20 09:45', notes: ['New setting: “Pause the game when storage is full” (Menu → Settings → Pausing). Turn it on and the game holds still, with a banner, whenever storage is full. It carries on by itself as soon as you sell, use or give away something, or upgrade storage. It is off by default and never applies in races or weekly challenges.', 'Your farmhand can now use fertilizer. In Menu → Farmhands, switch on “Use fertilizer on the plots they tend”. They then fertilize each crop they plant, and any growing crop that has none, one Fertilizer per plot from storage. When storage has none left they carry on without it. It is off by default so your stock is not used up by surprise.'] },
   { v: '0.54', at: '2026-10-19 13:00', notes: ['The Daily Puzzle now has its own button on the main screen, next to Activity and Updates. It shows which step you are on (like “Puzzle 2/4”), and a red dot when a fresh puzzle is waiting. Tap it to drop down today’s clue, buy a hint, hand in an answer, and see your streak and time left, without opening the menu. It shows a tick once you have solved today’s.'] },

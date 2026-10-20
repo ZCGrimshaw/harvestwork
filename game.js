@@ -137,12 +137,44 @@
     return { gold: Math.round(G_().gold * Math.pow(G_().goldMult, k + 1) / 10) * 10, brick: G_().brick + G_().brickStep * (k + 1), crate: G_().crate + G_().crateStep * (k + 1) }; }
   const homeGate = l => D.homeGate[Math.min(l, D.homeGate.length - 1)];
   const extraCap = () => S.tiles.reduce((n, t) => n + (t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage || 0), 0);
+  /* Special stores (Silo, Cold Cellar, Material Yard) hold one kind of goods each, outside main storage: goods of that
+     kind fill their stores first and only the overflow counts against cap(). */
+  const SK = D.storeKinds, CROP_IDS = new Set(Object.values(D.crops).map(c => c.item));
+  const storeKind = (() => { const m = {}, named = new Set(Object.values(SK).flatMap(K => K.ids || [])); Object.keys(D.items).forEach(id => { const it = D.items[id];
+    for (const k in SK) { const K = SK[k]; if ((K.ids || []).includes(id) || (!named.has(id) && ((K.crops && CROP_IDS.has(id)) || (K.cats || []).includes(it.cat)))) { m[id] = k; break; } } }); return id => m[id] || null; })();
+  const holdOf = b => { const H = D.buildings[b.type].hold; return H ? H.base + H.step * (b.lvl || 0) : 0; };
+  let HC = { at: -1, S: null, v: null }; // used() runs often; the tile scan is cached for a tenth of a second
+  function holdCaps() { const now = performance.now(); if (HC.S === S && now - HC.at < 100) return HC.v;
+    const o = {}; S.tiles.forEach(t => { const B = t.b && D.buildings[t.b.type]; if (B && B.hold) o[B.hold.cls] = (o[B.hold.cls] || 0) + holdOf(t.b); }); HC = { at: now, S, v: o }; return o; }
+  function holdUsed() { const o = {}; for (const k in S.inv) { const c = storeKind(k); if (c) o[c] = (o[c] || 0) + S.inv[k][0] + S.inv[k][1] + S.inv[k][2]; } return o; }
+  /* Auto-sell (opt-in): goods with a keep amount (S.keep[id]) sell everything above it at the market, lowest quality
+     first, every 20 seconds while the game runs. Nothing without a keep amount is ever sold. */
+  const KEEP_STEPS = [0, 10, 50, 100, 250, 500, 1000];
+  const sellable = id => !!D.items[id] && !!D.items[id].value && ['crop', 'gathered', 'good', 'component'].includes(D.items[id].cat);
+  const keepTxt = id => { const k = S.keep && S.keep[id]; return k == null ? 'Auto-sell off' : k === 0 ? 'Sell all' : `Keep ${k.toLocaleString()}`; };
+  function cycleKeep(id) { S.keep = S.keep || {}; const k = S.keep[id], i = k == null ? -1 : KEEP_STEPS.indexOf(k);
+    if (i >= KEEP_STEPS.length - 1) delete S.keep[id]; else S.keep[id] = KEEP_STEPS[i + 1]; save(); }
+  function autoSellTick() { if (!S || !S.autoSell || S.race || !S.keep || paused()) return; let gold = 0; const sold = [];
+    for (const id in S.keep) { if (!sellable(id) || !S.inv[id]) continue; let n = count(id) - S.keep[id]; if (n <= 0) continue; let k0 = 0;
+      for (let q = 0; q < 3 && n > 0; q++) { const k = Math.min(S.inv[id][q], n); if (!k) continue; const g = sellPrice(id, q) * k; S.inv[id][q] -= k; n -= k; k0 += k; gold += g; reportTrade(id, k, 'sell'); }
+      if (k0) sold.push([id, k0]); }
+    if (!gold) return; S.gold += gold; wk().sold += gold; gainScore(gold / C.score.sellPer, undefined, 'sell'); emit('sell');
+    S.autoSold = (S.autoSold || 0) + gold; UI.autoLast = { at: Date.now(), gold, sold };
+    const A = UI.autoAcc = UI.autoAcc || { gold: 0, n: {} }; A.gold += gold; sold.forEach(([id, k]) => A.n[id] = (A.n[id] || 0) + k);
+    if (Date.now() - (UI.autoToastAt || 0) > 120000) { const L = Object.entries(A.n).sort((a, b) => b[1] - a[1]); UI.autoToastAt = Date.now(); UI.autoAcc = null; // at most one note every two minutes
+      toast(`<b>Auto-sold</b> ${esc(nmList(L.slice(0, 3).map(([id, k]) => `${k.toLocaleString()} ${D.items[id].name}`)))}${L.length > 3 ? ` and ${L.length - 3} more` : ''} for <b>${A.gold.toLocaleString()}g</b>.`, 'info'); }
+    save(); dirty(); }
+  function storeCost(l) { const U = D.storeUp; return { gold: Math.round(U.gold * Math.pow(U.goldMult, l) / 50) * 50, brick: U.brick + U.brickStep * l, crate: U.crate + U.crateStep * l }; }
   const cap = () => homeCap(S.home) + extraCap();
 
   /* ================= inventory ================= */
   const storable = id => D.items[id].cat !== 'kit';
   function count(id, minQ = 0) { const a = S.inv[id]; if (!a) return 0; let n = 0; for (let q = minQ; q < 3; q++) n += a[q]; return n; }
-  function used() { let n = 0; for (const k in S.inv) if (storable(k)) n += S.inv[k][0] + S.inv[k][1] + S.inv[k][2]; return n; }
+  function used() { const hc = holdCaps(), per = {}; let n = 0;
+    for (const k in S.inv) { if (!storable(k)) continue; const c = S.inv[k][0] + S.inv[k][1] + S.inv[k][2], sk = hc[storeKind(k)] ? storeKind(k) : null;
+      if (sk) per[sk] = (per[sk] || 0) + c; else n += c; }
+    for (const k in per) n += Math.max(0, per[k] - hc[k]); // only what doesn't fit in its store takes main space
+    return n; }
   const room = () => cap() - used();
   function addItem(id, n, q = 0, silent) {
     (S.inv[id] = S.inv[id] || [0, 0, 0])[q] += n;
@@ -652,7 +684,7 @@
     const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => count(b) * items[b] - count(a) * items[a])[0];
     if (id) monGive(id, monMax(id), true); else stale(); }
   setInterval(() => { try { autoMonGive(); } catch (e) { } }, 20000);
-  setTimeout(() => { try { dqNotice(); } catch (e) { } }, 6000); setInterval(() => { try { dqNotice(); } catch (e) { } }, 60000);
+  setInterval(() => { try { autoSellTick(); } catch (e) { } }, 20000); setTimeout(() => { try { dqNotice(); } catch (e) { } }, 6000); setInterval(() => { try { dqNotice(); } catch (e) { } }, 60000);
   /* Builder's days: on any UTC day you've given to the monument, your quarries, clay banks, iron seams, woods, reeds,
      flowers and ponds refill twice as fast, and digging doesn't wear deposits down, so giving stone never runs you dry. */
   const builderDay = () => { const m = S && !S.race && online() && MONK(); return !!m && !monTotals(m).finished && (m.today || 0) > 0; };
@@ -1190,6 +1222,9 @@
         if (bt && builtCount(bt) + count(t.p) + t.n > capFor(bt)) return builtCount(bt) >= capFor(bt) ? capMsg(bt) : 'You already have a kit waiting to be placed';
         if (S.gold < c) return `Needs ${c}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
       run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; wk().spent += c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
+    storeup: { label: t => `Expand the ${D.buildings[T_(t.i).b.type].name}`,
+      check: t => { const b = T_(t.i).b, B = b && D.buildings[b.type]; if (!B || !B.hold) return 'Not a store'; if ((b.lvl || 0) >= B.hold.max) return 'Fully expanded'; return canPay(storeCost(b.lvl || 0)); },
+      run: t => { const b = T_(t.i).b; pay(storeCost(b.lvl || 0)); b.lvl = (b.lvl || 0) + 1; HC.at = -1; float(t.i, `Holds ${holdOf(b)}`, '#f6e27a'); gainScore(C.score.build, t.i); emit('build', { st: b.type }); } },
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
       run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i, 'sell'); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
@@ -1209,9 +1244,9 @@
     place: { label: t => `Place ${D.buildings[D.items[t.p].building].name}`,
       check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; const bt = D.items[t.p].building;
         if (builtCount(bt) >= capFor(bt)) return capMsg(bt); return canPay(D.buildings[bt].place); },
-      run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++;
+      run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1;
         gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`);
-        toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
+        toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].hold ? `It holds ${D.buildings[bt].hold.base} ${SK[D.buildings[bt].hold.cls].name} apart from main storage.` : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
     expand: { label: t => `Buy ${D.terrain[T_(t.i).t].name}`,
       check: t => { if (T_(t.i).o) return 'Already yours'; if (!nbrs(t.i).some(n => T_(n).o && !greenT(n))) return 'Expand closer first'; return canPay(expCost(t.i)); },
       run: t => { const T = T_(t.i); pay(expCost(t.i)); T.o = true; S.exp++; gainScore(C.score.expand, t.i);
@@ -1836,7 +1871,8 @@
     if (B) { P.push(esc(B.desc));
       if (B.kind === 'sprinkler') P.push(`That’s the ${(B.radius * 2 + 1) ** 2 - 1} tiles around it, so no more watering by hand there. Plots it waters still earn Good quality.`);
       if (B.kind === 'station') { const rs = Object.values(D.recipes).filter(r => r.station === it.building).map(r => D.items[Object.keys(r.out)[0]].name); if (rs.length) P.push(`Makes ${esc(nmList(rs))}.`); }
-      if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
+      if (B.hold) P.push(`Holds ${B.hold.base} ${SK[B.hold.cls].name} outside main storage, up to ${B.hold.base + B.hold.step * B.hold.max} when fully expanded.`);
+      else if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
       P.push(`Place the kit on empty grass you own${B.place && Object.keys(B.place).length ? ` (placing also takes ${costTxt(B.place)})` : ''}.`); }
     const crop = Object.values(D.crops).find(c => c.item === id), seedOf = Object.values(D.crops).find(c => c.seed === id);
     if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
@@ -2080,7 +2116,7 @@
       h += `<span class="eyebrow">Valley Monument</span>` + (m ? `<div class="monmini"><img class="monfloat sm" src="${ART.monPic(m.kind, t.stage)}" alt=""><div class="grow1"><b>${esc(m.name)}</b><div class="pb"><i style="width:${monPct(t)}%"></i></div><small>${t.finished ? 'Finished!' : `Stage ${t.stage} of ${m.phases.length} · ${monPct(t)}% · phase ${t.phase + 1} wants ${esc((m.phases[t.phase].short || m.phases[t.phase].name).toLowerCase())}`} · you’ve given ${(m.mine || 0).toLocaleString()}</small></div></div>`
         : `<p class="hint small">${NET.mon && NET.mon.none ? 'No monument is being built right now.' : 'Every online farm builds a shared monument together. Connecting…'}</p>`) + `<button class="btn" data-drawer="valley">Open the Valley Monument<small>What it needs, giving goods, how it works</small></button>`; }
     h += `<div class="row"><div class="grow1"><span class="eyebrow">Storage</span><div class="pb"><i style="width:${Math.round(used() / cap() * 100)}%"></i></div><small>${used()} of ${cap()} items</small></div></div>`;
-    const ex = extraCap(), nb = S.tiles.filter(t => t.b && D.buildings[t.b.type] && D.buildings[t.b.type].kind === 'storage').length;
+    const ex = extraCap(), nb = S.tiles.filter(t => t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage).length;
     h += `<p class="hint">Homestead ${homeCap(S.home)}${ex ? ` + ${nb} storage building${nb === 1 ? '' : 's'} ${ex}` : ''}. Expand the Homestead below, or build Storage Barns from the Open Market for more room.</p>`;
     h += btn({ a: 'homeup', i }, `Expand Homestead storage: ${homeCap(S.home)} → ${homeCap(S.home + 1)}`, { sub: costTxt(homeCost(S.home)) });
     h += `<button class="btn ghost" data-drawer="inv">Open inventory</button>`;
@@ -2188,7 +2224,12 @@
       return btn({ a: 'reshape', i, p: k }, `${esc(L.verb)} → ${esc(D.terrain[to].name)}`, { cls: 'ghost', sub: `${costTxt(L.cost)}${back.length ? ' · get back ' + costTxt(Object.fromEntries(back)) : ''}. ${esc(L.note)}` }); }).join('')+ '</div>';
   }
   function storagePanel(i) {
-    const B = D.buildings[T_(i).b.type];
+    const B = D.buildings[T_(i).b.type], b = T_(i).b;
+    if (B.hold) { const H = B.hold, K = SK[H.cls], lv = b.lvl || 0, tot = holdCaps()[H.cls] || 0, inIt = holdUsed()[H.cls] || 0;
+      let h = head(B.name, esc(B.desc)) + `<p class="state">Holds <b>${holdOf(b)}</b> ${esc(K.name)}${lv ? ` (expanded ${lv} of ${H.max} times)` : ''}.</p>`;
+      h += `<div class="row"><div class="grow1">All your ${esc(K.name)}: <b>${Math.min(inIt, tot)}</b> of ${tot} in ${B.name}${tot > holdOf(b) ? 's' : ''}${inIt > tot ? ` · ${inIt - tot} more in main storage` : ''}<div class="pb"><i style="width:${tot ? Math.min(100, Math.round(inIt / tot * 100)) : 0}%"></i></div></div></div>`;
+      h += lv < H.max ? btn({ a: 'storeup', i }, `Expand: ${holdOf(b)} → ${holdOf(b) + H.step}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
+      return h + `<p class="hint small">${esc(K.name.charAt(0).toUpperCase() + K.name.slice(1))} go here first; only what doesn’t fit takes space in main storage. Everything is still shared, so stations and orders use it as usual.</p>` + moveSection(i); }
     return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i);
   }
   function medalPanel(i) { const m = T_(i).b.m;
@@ -2409,13 +2450,16 @@
         const ds = D.discoveries.filter(d => branchOf(d) === b.id).sort((x, y) => rank(x) - rank(y));
         return `<div class="grp"><span class="eyebrow">${esc(b.name)} · ${ds.filter(d => unlocked(d.id)).length}/${ds.length}</span><div class="cards">${ds.map(card).join('')}</div></div>`; }).join('');
     } else if (UI.drawer === 'inv') {
-      h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items. Stations draw from here; station kits don’t count.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      const hc = holdCaps(), hu = holdUsed(), stores = Object.keys(hc).map(k => `${esc(SK[k].name)} ${Math.min(hu[k] || 0, hc[k]).toLocaleString()} of ${hc[k].toLocaleString()} in their own store${(hu[k] || 0) > hc[k] ? ` (+${(hu[k] - hc[k]).toLocaleString()} in main)` : ''}`);
+      const nk = Object.keys(S.keep || {}).length;
+      h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items in main storage. Stations draw from here; station kits don’t count.${stores.length ? ` ${stores.join(' · ')}.` : ''}</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        ${S.race ? '' : `<div class="autosell"><button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus</button><small>${S.autoSell ? (nk ? `${nk} good${nk === 1 ? '' : 's'} set. Anything above the keep amount sells at the market every 20 seconds.` : 'Tap a good’s “Auto-sell off” button below to set how many to keep.') : 'Off. Turn it on, then choose how many of each good to keep; the rest sells by itself.'}${S.autoSold ? ` Sold so far: ${S.autoSold.toLocaleString()}g.` : ''}</small></div>`}
         <button class="linkish small" data-qhelp>${UI.qhelp ? 'Hide' : 'How do I make'} ${QN[1]} and ${QN[2]} goods?</button>${UI.qhelp ? QUALITY_HELP : ''}`;
       const ids = Object.keys(S.inv).filter(id => count(id) > 0);
       if (ids.length) h += chips('inv', groupCounts(ids, count));
       const sortK = INV_SORTS.some(s => s[0] === UI.cat.invsort) ? UI.cat.invsort : 'cat', worth = id => (D.items[id].value || 0) * count(id);
       if (ids.length > 1) h += `<div class="chips sortbar" role="group" aria-label="Sort storage"><span class="sortlbl">Sort by</span>${INV_SORTS.map(([k, nm, tip]) => `<button class="chipf ${sortK === k ? 'on' : ''}" data-cat="invsort:${k}" aria-pressed="${sortK === k}" title="${esc(tip)}">${esc(nm)}</button>`).join('')}</div>`;
-      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}${mastBadge(id)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
+      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}${mastBadge(id)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${S.autoSell && !S.race && sellable(id) ? `<button class="keepchip ${S.keep && S.keep[id] != null ? 'on' : ''}" data-keep="${id}" aria-label="Auto-sell for ${esc(D.items[id].name)}: ${keepTxt(id)}. Tap to change.">${keepTxt(id)}</button>` : ''}${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
       if (!ids.length) h += '<p class="hint">Storage is empty.</p>';
       else if (sortK === 'cat') h += grouped(ids, 'inv', slot, 'invgrid');
       else { const sel = catSel('inv'), nm = id => D.items[id].name, order = Object.keys(S.inv), inv = id => S.inv[id];
@@ -2498,6 +2542,9 @@
         <span class="optlabel">Pause when I haven’t done anything for</span>
         <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
         <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
+        <span class="eyebrow">Selling</span><div class="opts">
+        <button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus goods</button>
+        <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. Turn it on to sell goods above a keep amount you choose in Storage. Nothing is sold until you set one.'}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
@@ -2518,7 +2565,9 @@
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race && S.race.weekly ? `<div class="demand"><span><b>${esc(weekTheme(S.race.week).name)}</b> · ${S.race.ranked ? 'ranked run' : 'practice run'}, ${fmtTime(Math.max(0, S.race.end - Date.now()))} left. ${esc(weekTheme(S.race.week).blurb)}</span></div><div class="menu"><button class="btn" data-week-end>End this run now<small>${S.race.ranked ? 'Your score so far counts' : 'Practice doesn’t count'}</small></button></div>`
         : S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        <div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, weekly report, sound</small></button><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button><button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button><button class="btn" data-drawer="daily">Daily Puzzle<small>${dqMenuSub()}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>
+        ${msec('farm', 'Your farm', 'Puzzles, mastery, the monument and helpers', `<div class="menu"><button class="btn" data-drawer="daily">Daily Puzzle<small>${dqMenuSub()}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}<button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button></div>`, true)}
+        ${msec('together', 'Play together', 'Races, the weekly challenge and the leaderboard', `<div class="menu"><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button>${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>`, true)}
+        ${msec('save', 'Save and backup', S.cloud && S.cloud.at ? `Backed up ${Math.max(1, Math.round((Date.now() - S.cloud.at) / 60000))} min ago · your farms, codes and files` : 'Not backed up yet · your farms, codes and files', `
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
         <span class="eyebrow">Cloud backup</span>${S.cloud && S.cloud.at ? `
         <div class="coderow"><span class="codechip">${fmtCode(S.cloud.code)}</span><button class="btn ${UI.cloudCopied ? 'pri' : 'ghost'} sm" data-copy-cloud>${UI.cloudCopied ? 'Copied ✓' : 'Copy code'}</button></div>
@@ -2544,17 +2593,18 @@
         ${UI.showCode && UI.importOpen ? `<label class="eyebrow" for="impcode">Paste a save code</label><textarea id="impcode" class="code" rows="4" placeholder="HWZ1:…">${esc(UI.importText || '')}</textarea>
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
-        <span class="eyebrow">Show your support</span>
-        <p class="sub">Harvest Valley is free to play. If you’re enjoying your farm, a show of support helps keep new updates coming.</p>
-        <div class="menu"><button class="btn pri" data-drawer="support">Show your support</button></div>
-        <div class="menu"><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>
-        <span class="eyebrow">Controls</span>${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>
+        `, false, !!(UI.fileInfo || UI.fileErr || UI.importOpen || UI.exportCode || UI.cloudBusy))}
+        ${msec('game', 'Game', 'Settings, support and the title screen', `<div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
+        ${msec('controls', 'Controls', isTouch() ? 'Taps, drags and pinches' : 'Mouse and keyboard', `${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>`, false)}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
     const sa = UI.drawer === 'menu' && $('#savedago');
     if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
+  // Main menu sections: a header you tap to fold or unfold; which are open is remembered on this device.
+  function msec(id, title, sub, body, open0, force) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), open = force || (f[id] != null ? f[id] : open0);
+    return `<section class="msec ${open ? 'open' : ''}"><button class="msech" data-msec="${id}" aria-expanded="${open}"><span><b>${esc(title)}</b><small>${sub}</small></span><i aria-hidden="true">${open ? '▾' : '▸'}</i></button>${open ? `<div class="msecb">${body}</div>` : ''}</section>`; }
   // Show your support: a big QR code to scan with a phone, and a link that opens Ko-fi.
   const supportHTML = () => `<h2>Show your support</h2>
     <p class="sub">Harvest Valley is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
@@ -2695,6 +2745,9 @@
     else if ('goalMin' in ds) { S.goalMin = true; save(); }
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
+    else if (ds.msec) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), cur = f[ds.msec] != null ? f[ds.msec] : !['save', 'controls'].includes(ds.msec); f[ds.msec] = !cur; lsSet('harvestworks.mfold', f); }
+    else if ('autosell' in ds) { S.autoSell = !S.autoSell; save(); }
+    else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
@@ -2862,7 +2915,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261020-184158';
+  const BUILD = '20261020-185623';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3219,7 +3272,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
