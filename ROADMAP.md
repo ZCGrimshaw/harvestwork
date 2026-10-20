@@ -64,6 +64,17 @@ Not built yet; picked up when we choose to.
   Add-to-Home-Screen app (manifest, offline), a larger-text option, battery and frame rate checks. Needs a real-device test.
   Done so far: v0.44 (44px tap targets, ticker hidden by default on phones). Skipped: quick-action chips (tapping a selected
   tile again already does its main action). Next: drag to till/plant/water/harvest many plots, Add to Home Screen, larger text.
+- **Homestead decor line (pinned 2026-10-20):** a new production line of household goods for decorating the farm (furniture,
+  rugs, lamps, curtains, pottery, picture frames), made at new stations from existing materials (wood, wool, clay, glass,
+  cloth) and placed on the map as decorations. Pairs with "decorations and farm charm" and City growth. Open: do they have a
+  use beyond looks (charm bonus, orders from villagers)?
+- **Inside a factory (pinned 2026-10-20):** a factory building you can step into: a separate indoor map where machines are
+  laid out and linked by belts, turning raw goods into finished ones on their own. Pairs with City growth phase 3 (industry)
+  and the storage buildings. Open: indoor grid size, belts versus adjacent machines, art volume.
+- **Time on work (to discuss, pinned 2026-10-20):** put a duration on every task that needs work (tilling, building, crafting,
+  expanding, hiring, gathering), so work takes time instead of finishing at once, and farmhands and speed upgrades matter more.
+  Questions to settle first: which tasks already have timers (crops, crafts) versus instant ones; whether time runs offline;
+  whether you can queue; how it affects races and the weekly challenge; skip-with-gold, and the balance risk for Joel-level farms.
 - ~~Valley stock~~ (dropped 2026-10-13): replaced by v0.19, where the market sells any good you've made at least once.
 
 ## Late-game loops plan (agreed 2026-10-15)

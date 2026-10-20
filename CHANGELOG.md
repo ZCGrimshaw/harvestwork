@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.57 — 2026-10-20
+- Menu → Game: "Spread the word" (`data-spread`: Web Share with title, text and URL, else copies the text and link via `copyText`) and a
+  "Harvest Valley website" link button (`HW_DATA.site.url`). ROADMAP: pinned Homestead decor line, Inside a factory, Time on work.
+
 ## v0.56 — 2026-10-20
 - Special stores: Silo, Cold Cellar, Material Yard (kind 'storage' with `hold: {cls, base, step, max}`; kits silo_kit, coldcellar_kit,
   yard_kit; Discoveries silo, coldcellar, yard in Upgrades). `storeKinds` maps goods to a store (crops; cat 'good' + egg, milk; cats
