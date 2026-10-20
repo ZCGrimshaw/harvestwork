@@ -71,6 +71,18 @@ Not built yet; picked up when we choose to.
 - **Inside a factory (pinned 2026-10-20):** a factory building you can step into: a separate indoor map where machines are
   laid out and linked by belts, turning raw goods into finished ones on their own. Pairs with City growth phase 3 (industry)
   and the storage buildings. Open: indoor grid size, belts versus adjacent machines, art volume.
+- **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:
+  (1) Task durations: user's idea was +5% short, +7% medium, +10% long tasks, farmhand matched. Concern: that's small and
+  mastery/speed upgrades cancel it; 10/15/25% would be felt; a flat % is simpler; one tier function (short <15 s, medium 15-40,
+  long >40) applied to every duration, only to tasks started after the update; check weekly-challenge targets.
+  (2) Discovery tokens (DT; rename "Discovery"/"Discovery Points" to "discovery tokens" everywhere): tree is 60 Discoveries
+  costing 171 DT in total, with DT paid by first-time actions, 29 contracts (2 each), mastery, monuments and the Daily Puzzle (3 a
+  day). Plan by phase. Early = learning: steady cheap DT (1-2) from tutorial goals and first-times. Middle = planning: DT from
+  contracts, mastery to Gold and deeper chains; costs 3-6 plus some goods; branching choices. Late = systems: DT from top mastery,
+  monuments, supply contracts, medals and throughput goals; costs 8-15 plus goods; unlocks automation, factories, more workers.
+  Target tree about 350-450 DT. Existing saves keep their tokens; only new prices apply. First step: tag all 60 Discoveries
+  early/mid/late and set DT and goods costs in a table for approval (best done on Opus).
+  (3) More than one farmhand (today exactly one: 4 jobs, 8 with Seasoned Farmhand).
 - **Time on work (to discuss, pinned 2026-10-20):** put a duration on every task that needs work (tilling, building, crafting,
   expanding, hiring, gathering), so work takes time instead of finishing at once, and farmhands and speed upgrades matter more.
   Questions to settle first: which tasks already have timers (crops, crafts) versus instant ones; whether time runs offline;
