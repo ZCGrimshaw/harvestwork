@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.55.1 — 2026-10-20 · backend (hidden from the in-game updates log)
+- Trade history trimmed daily. Server migration `trim_trades_old_daily` (name: trim_old_trades_daily): enables pg_cron; `trim_trades()` (security
+  definer, not callable by anon/authenticated) deletes trades older than 7 days; job `trim_trades_daily` runs at 03:17 UTC. Readers
+  (get_market, get_trades, record_trade, record_trades) only use recent rows. First run deleted 3 rows. Owner approved the deletes.
+  The trades table was ~4,900 rows / 624 KB, growing ~1,700 rows a day.
+
 ## v0.55 — 2026-10-20
 - Pause when storage is full: Settings toggle S.fullPause (default off). `checkFull()` each frame sets UI.fullHold when room() <= 0 (not in
   races, title screens or catch-up); `paused()` includes it; banner in #idlebar (dataset.k 'full'/'idle' so the idle message and this one
