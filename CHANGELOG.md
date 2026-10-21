@@ -3,6 +3,13 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.60 — 2026-10-21
+- Weekly "someone passed you" notice (no server change; uses `weekly_board` `mine.rank`). `noteWeekly(b, silent)` keeps
+  `harvestworks.wkrank` {week, rank, armed} per device: a worse rank while armed toasts once and disarms; a better rank re-arms; weekly
+  screens update it silently. `checkWeeklyPass()` runs from `pullMarket` at most every 150 s, only when S.wkAlert !== false, online,
+  not in a race, and a rank is already recorded for the player. Settings → Notifications toggle `data-wkalert`. Test: t_wkpass.py.
+- ROADMAP: pinned "One sync request" (combine market_sync, get_trades, mon_state and the load-time calls into one RPC).
+
 ## v0.59 — 2026-10-20
 - Sprinkler pick-up: task `pickup` (check: a sprinkler is there, room() >= 1; run: clears the building, S.built-1, kit back via
   `addItem`, `S.recycled[kit]++`). The `place` task skips build score/first-time award while `S.recycled[kit] > 0` (then decrements)

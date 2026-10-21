@@ -71,6 +71,11 @@ Not built yet; picked up when we choose to.
 - **Inside a factory (pinned 2026-10-20):** a factory building you can step into: a separate indoor map where machines are
   laid out and linked by belts, turning raw goods into finished ones on their own. Pairs with City growth phase 3 (industry)
   and the storage buildings. Open: indoor grid size, belts versus adjacent machines, art volume.
+- **One sync request (pinned 2026-10-20, not built):** today a cycle sends `market_sync` (prices, clock, open count, presence ping)
+  every 90 s, plus `get_trades` when the ticker is open, `mon_state` about every 3 min, and a load-time burst (`submit_score`,
+  `my_name`, `my_medals`, auto-backup, `link_farm`). Plan: one additive `game_sync` RPC returning market, clock, open count, trades,
+  monument state, and (on load) name and medals, so a normal cycle is one request; old clients keep using the current RPCs.
+  The weekly "overtaken" check could ride on it too. Low priority: DB is small and trades are trimmed daily.
 - **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:
   (1) Task durations: user's idea was +5% short, +7% medium, +10% long tasks, farmhand matched. Concern: that's small and
   mastery/speed upgrades cancel it; 10/15/25% would be felt; a flat % is simpler; one tier function (short <15 s, medium 15-40,

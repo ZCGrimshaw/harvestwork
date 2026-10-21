@@ -859,7 +859,7 @@
   async function openWeekly() { UI.wk = { loading: true }; UI.werr = null; openTitle('weekly');
     if (!NET.ok) await pullMarket();
     if (!NET.ok) { UI.wk = { off: true }; renderTitle(); return; }
-    try { UI.wk = await rpc('weekly_board', { p_player: PLAYER }); } catch (e) { UI.wk = { off: true }; }
+    try { UI.wk = await rpc('weekly_board', { p_player: PLAYER }); noteWeekly(UI.wk, true); } catch (e) { UI.wk = { off: true }; }
     if (UI.title === 'weekly') renderTitle(); }
   async function startWeekly(practice) { UI.werr = null; UI.wbusy = true; renderTitle();
     let info = { week: weekOf(srvNow()), ranked: false, start: Date.now() + 5000 };
@@ -886,7 +886,7 @@
     if (S.race.done || Date.now() >= S.race.end) finishWeekly(); else closeTitle(); return true; }
   function finishWeekly() { const R = S.race; if (!R.done) { R.done = true; R.final = Math.floor(S.score); save(); SND.play('contract');
       if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: R.final }).catch(() => {}); }
-    openTitle('weeklyend'); rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; if (UI.title === 'weeklyend') renderTitle(); }).catch(() => {}); }
+    openTitle('weeklyend'); rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; noteWeekly(b, true); if (UI.title === 'weeklyend') renderTitle(); }).catch(() => {}); }
   function tickWeekly(dt) { const R = S.race;
     if (UI.title === 'weeklygo') { const left = R.start - Date.now(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
       if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> ${runMins(R.week)} minutes. ${esc(weekTheme(R.week).blurb)}`, 'goal'); } return; }
@@ -947,6 +947,20 @@
   /* Market polling is kept light: one request (prices that differ from normal, the clock and the open-copies count, with
      the presence ping folded in) every 90 s while the tab is showing, a bare presence ping every 90 s while it's hidden,
      and the trade list only when the ticker is open. Older servers without market_sync fall back to get_market. */
+  /* Weekly challenge "someone passed you" notice. The board (weekly_board) gives your rank. We remember the last rank we saw this
+     week (per device). Being passed notifies once; it re-arms only after you win a place back. Only players who already have a
+     ranked score this week are checked, at most every 2.5 minutes, never during a race or run. */
+  const wkRec = () => lsGet('harvestworks.wkrank', null);
+  function noteWeekly(b, silent) { if (!b || b.week == null || !b.mine || typeof b.mine.rank !== 'number') return;
+    const r = wkRec(), cur = b.mine.rank; let armed = true;
+    if (r && r.week === b.week) {
+      if (cur < r.rank) armed = true;                                   // you won a place back (or climbed): ready for the next pass
+      else if (cur > r.rank) { armed = false;                           // someone passed you
+        if (r.armed && !silent && S && S.wkAlert !== false) { SND.play('warn'); toast(`<b>Weekly challenge:</b> someone just passed your score. You’re now <b>#${cur}</b> with ${b.mine.score.toLocaleString()}. Win your place back with a ranked run.`, 'info'); } }
+      else armed = r.armed !== false; }
+    lsSet('harvestworks.wkrank', { week: b.week, rank: cur, armed }); }
+  async function checkWeeklyPass() { NET.wkAt = Date.now();
+    try { noteWeekly(await rpc('weekly_board', { p_player: PLAYER })); } catch (e) { } }
   const MARKET_EVERY = 90000;
   const tradesWanted = () => !!(S && S.tick && S.tick.open !== false);
   async function pullMarket() {
@@ -959,7 +973,8 @@
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now();
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
       if (NET.sync && tradesWanted()) { try { const t = await rpc('get_trades', { p_limit: 25 }); if (Array.isArray(t)) NET.trades = t; } catch (e) { } }
-      if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon(); }
+      if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon();
+      if (S && S.wkAlert !== false && online() && !S.race && wkRec() && Date.now() - (NET.wkAt || 0) > 150000) checkWeeklyPass(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
   }
@@ -2551,6 +2566,9 @@
         <span class="optlabel">Pause when I haven’t done anything for</span>
         <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
         <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
+        <span class="eyebrow">Notifications</span><div class="opts">
+        <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone passes my weekly challenge score</button>
+        <p class="hint small">You get one notice the first time you’re passed. If you win your place back and are passed again, you get one more.</p></div>
         <span class="eyebrow">Selling</span><div class="opts">
         <button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus goods</button>
         <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. Turn it on to sell goods above a keep amount you choose in Storage. Nothing is sold until you set one.'}</p></div>
@@ -2762,6 +2780,7 @@
     else if ('autosell' in ds) { S.autoSell = !S.autoSell; save(); }
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
+    else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
     else if ('goPrivate' in ds) { if (!UI.goPrivate) { UI.goPrivate = true; clearTimeout(UI.goPrivT); UI.goPrivT = setTimeout(() => { UI.goPrivate = false; dirty(); }, 4000); }
@@ -3286,7 +3305,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
