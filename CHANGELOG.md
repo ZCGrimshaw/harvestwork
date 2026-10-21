@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.61.2 — 2026-10-21
+- `#logbar` (Activity, Updates, Puzzle) moved to `bottom: 12px` beside the zoom column on desktop (was 196px); `#logpanel` opens from
+  `bottom: 60px`, max-height `calc(100% - 150px)`. Phone layouts already had it at the bottom. ROADMAP: pinned "Grand orders tuning".
+
 ## v0.61.1 — 2026-10-21
 - Daily Puzzle clues end with "In the real world, it/they …" from `D.daily.uses[id]` (a plain description for each of the 69 sellable goods,
   e.g. crate: "could carry or store things"). Added in `dqMake` when a step is pushed, so uniqueness tests are unchanged; the first step

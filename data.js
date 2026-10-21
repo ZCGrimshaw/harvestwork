@@ -795,6 +795,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.61.2', at: '2026-10-21 17:30', notes: ['The Activity, Updates and Puzzle buttons now sit along the bottom edge of the screen on computers too (they were halfway up the left side), and their drop-down lists open upward from there.'] },
   { v: '0.61.1', at: '2026-10-21 15:00', notes: ['Daily Puzzle clues now say what the answer is like in the real world, as well as where it comes from. For example a crate “could carry or store things”, so you’re not only told which station to use.'] },
   { v: '0.61', at: '2026-10-21 14:00', notes: ['The Order Board grows: it starts with 3 requests and gains one more for every 14 Discoveries you unlock, up to 6.', 'New Discovery for veteran farmers: Grand Orders (Upgrades, after Granary and Master Crafting). The Order Board then posts Grand orders that ask for five different goods, many of each, scaled to how big your storage is, and pay big gold, score and Discovery (the first 3 Discovery rewards each day).', 'Weekly challenge: the “someone passed you” notice now only appears when someone takes #1 from you.'] },
   { v: '0.60', at: '2026-10-21 06:00', notes: ['Weekly challenge: you now get a small notice the first time someone passes your score. If you win your place back and are passed again, you get one more. Turn it off in Menu → Settings → Notifications.'] },

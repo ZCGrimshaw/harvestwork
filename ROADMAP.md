@@ -76,6 +76,10 @@ Not built yet; picked up when we choose to.
   `my_name`, `my_medals`, auto-backup, `link_farm`). Plan: one additive `game_sync` RPC returning market, clock, open count, trades,
   monument state, and (on load) name and medals, so a normal cycle is one request; old clients keep using the current RPCs.
   The weekly "overtaken" check could ride on it too. Low priority: DB is small and trades are trimmed daily.
+- **Grand orders tuning (pinned 2026-10-21, waiting on Joel):** Joel says "every 6 mins makes it impossible to keep up". Nothing in the
+  game runs every 6 minutes: Grand orders refill every 15 min (`C.grand.refill` 900 s, 2 slots, never expire), regular requests every
+  15 s, a game day is 4 min. Ask Joel which screen shows 6 minutes. If it is the Grand orders, options: slower refill (30-60 min),
+  smaller size (`C.grand.fill` 0.22 down to about 0.10-0.12), or one slot. Smaller size first.
 - **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:
   (1) Task durations: user's idea was +5% short, +7% medium, +10% long tasks, farmhand matched. Concern: that's small and
   mastery/speed upgrades cancel it; 10/15/25% would be felt; a flat % is simpler; one tier function (short <15 s, medium 15-40,
