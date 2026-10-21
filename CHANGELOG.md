@@ -3,6 +3,16 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.62 — 2026-10-21
+- Grand orders by the real clock: `S.advAt` (ms timestamp; migrated from `advRefill`), `C.grand.refill` 3600 s. A new one arrives when
+  a slot is free and `Date.now() >= advAt`, then advAt = now + 1 h. `grandNext(wasFull)` restarts the hour only when the board was full
+  (a timer already running is never pushed back) and returns a text like "1 hour"; delivery and Pass toast "Next Grand order in …".
+  Panel shows "Next Grand order in …". Test: t_grand3.py.
+- Farmhand seeds: `S.helper.seeds` (default off), toggle `data-fh-seeds`. `resolveStep` calls `fhBuySeeds(st)` for a tilled plot with no seed
+  in storage: buys up to min(10, his Tend jobs on that crop) at `buyPrice` (fewer if gold/room is short, none if he cannot afford one),
+  logs it, records the trade. Tend jobs already loop till, plant, water, harvest.
+- ROADMAP unchanged for Grand tuning: Joel's "6 minutes" still unexplained.
+
 ## v0.61.2 — 2026-10-21
 - `#logbar` (Activity, Updates, Puzzle) moved to `bottom: 12px` beside the zoom column on desktop (was 196px); `#logpanel` opens from
   `bottom: 60px`, max-height `calc(100% - 150px)`. Phone layouts already had it at the bottom. ROADMAP: pinned "Grand orders tuning".

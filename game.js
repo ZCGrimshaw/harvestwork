@@ -119,6 +119,7 @@
     if (!S.log) S.log = [];
     if (!S.adv) S.adv = [];
     if (S.advRefill == null) S.advRefill = 0;
+    if (S.advAt == null) S.advAt = Date.now() + Math.max(0, S.advRefill) * 1000; // Grand orders arrive by the real clock
     if (!S.tick) S.tick = { open: !isPhone(), spd: 'slow' }; // phones start with the ticker tucked away, for more map
     if (!S.wk) weekStart();
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
@@ -1072,6 +1073,9 @@
     const gold = Math.round(need.reduce((t, [id, n, q]) => t + D.items[id].value * n * (1 + q * .6), 0) * G.goldMult / 10) * 10;
     return { id: S.uid++, kind: 'grand', name: D.orderNames.grand[(Math.random() * D.orderNames.grand.length) | 0], need, gold, score: Math.round(gold * .6) };
   }
+  const fmtWait = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} hour${m >= 120 ? 's' : ''}${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`; };
+  // after a Grand order leaves the board (delivered or passed) the next one comes an hour later, unless one is already on its way
+  function grandNext(wasFull) { if (wasFull) S.advAt = Date.now() + C.grand.refill * 1000; return fmtWait(Math.max(0, S.advAt - Date.now())); }
   const findOrder = id => S.orders.find(o => o.id === id) || (S.adv || []).find(o => o.id === id);
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
   /* ================= rock bottom =================
@@ -1271,9 +1275,9 @@
           toast(`<b>Contract complete: ${esc(m.name)}</b> · +${m.gold}g · +${m.dp} Discovery`, 'disc');
         } else { const o = findOrder(t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
           S.gold += o.gold; gainScore(o.score, t.i, 'order'); wk().orders++; float(t.i, `+${o.gold}g`, '#f6e27a');
-          if (o.kind === 'grand') { S.adv = S.adv.filter(x => x !== o); S.advRefill = C.grand.refill; const dp = grandDpLeft() > 0 ? C.grand.dp : 0;
+          if (o.kind === 'grand') { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(x => x !== o); const nxt = grandNext(wasFull); const dp = grandDpLeft() > 0 ? C.grand.dp : 0;
             if (dp) { const d = utcDay(); S.grandDay = S.grandDay && S.grandDay.day === d ? S.grandDay : { day: d, n: 0 }; S.grandDay.n += dp; S.dp += dp; }
-            toast(`<b>Grand order delivered: ${esc(o.name)}</b> · +${o.gold.toLocaleString()}g${dp ? ` · +${dp} Discovery` : ' (today’s Discovery limit is used up)'}`, 'disc'); }
+            toast(`<b>Grand order delivered: ${esc(o.name)}</b> · +${o.gold.toLocaleString()}g${dp ? ` · +${dp} Discovery` : ' (today’s Discovery limit is used up)'}. Next Grand order in ${nxt}.`, 'disc'); }
           else { S.orders = S.orders.filter(x => x !== o); S.refill = C.orderRefill; }
           if (o.kind === 'crafted') first('orderC', C.firsts.orderCrafted, 'First crafted order filled'); }
         first('order', C.firsts.order, 'First order delivered'); emit('deliver'); } },
@@ -1395,8 +1399,15 @@
     return false;
   }
   // A routine step names a place and a kind of job; this picks the concrete task it needs right now.
+  // Farmhand "buy seeds": when the plot is tilled and there is no seed left, buy a few at the market price (no trip needed).
+  function fhBuySeeds(st) { const seed = D.crops[st.p] && D.crops[st.p].seed; if (!seed || count(seed) > 0 || !canBuyItem(seed)) return;
+    const price = buyPrice(seed), plots = S.helper.steps.filter(x => x.s === 'tend' && x.p === st.p).length;
+    let n = Math.max(1, Math.min(10, plots)); while (n > 1 && (S.gold < price * n || (storable(seed) && room() < n))) n--;
+    if (S.gold < price * n || (storable(seed) && room() < n)) return;
+    S.gold -= price * n; wk().spent += price * n; addItem(seed, n, 0, true); reportTrade(seed, n, 'buy'); logAct(`Farmhand bought ${n} ${D.items[seed].name}${n === 1 ? '' : 's'} for ${price * n}g`, 'hand'); dirty(); }
   function resolveStep(st) {
     const T = T_(st.i), b = T.b; let t = null;
+    if (st.s === 'tend' && b && b.type === 'farm' && b.st === 'tilled' && S.helper && S.helper.seeds) fhBuySeeds(st);
     if (st.s === 'tend' && b && b.type === 'farm') t = b.st === 'raw' ? { a: 'till' } : b.st === 'tilled' ? { a: 'plant', p: st.p, f: S.helper && S.helper.fert && count('fertilizer') > 0 ? 1 : 0 }
       : b.st === 'growing' && S.helper && S.helper.fert && !b.fert && count('fertilizer') > 0 ? { a: 'fertilize' } // fertilizer first, then water (both lift quality)
       : b.st === 'growing' && !b.wet ? { a: 'water' } : b.st === 'ready' ? { a: 'harvest' } : null;
@@ -1507,7 +1518,7 @@
       else { const G = D.gather[T.t]; if (R.stock < (finite(T) ? Math.min(G.stock, R.dep) : G.stock)) { R.rt += dt * (T.t === 'water' ? wrule('fish', 1) : 1) * (bd ? 2 : 1); if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
     });
     if (S.orders.length < orderSlots()) { S.refill -= dt * wrule('orders', 1); if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
-    if (unlocked('grandorders') && !S.race && S.adv.length < C.grand.slots) { S.advRefill -= dt * wrule('orders', 1); if (S.advRefill <= 0) { const o = genGrand(); if (o) S.adv.push(o); S.advRefill = C.grand.refill; dirty(); } }
+    if (unlocked('grandorders') && !S.race && S.adv.length < C.grand.slots && Date.now() >= S.advAt) { const o = genGrand(); if (o) S.adv.push(o); S.advAt = Date.now() + C.grand.refill * 1000; dirty(); }
     updateAvatar(dt); updateHelper(dt); checkBroke(dt);
     const g = D.goals[S.goal]; if (g && goalStateDone(g)) completeGoal();
     UI.saveIn -= dt; if (UI.saveIn <= 0) save();
@@ -2238,7 +2249,7 @@
     if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does. ${grandDpLeft() > 0 ? `${grandDpLeft()} Discovery reward${grandDpLeft() === 1 ? '' : 's'} left today.` : 'Today’s Discovery rewards are used up; gold and score still count.'}</p>`;
       h += S.adv.map(o => `<div class="order grand"><div class="otop"><span class="eyebrow">Grand order</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
         <div class="oreward">+${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score${grandDpLeft() > 0 ? ` · +${C.grand.dp} Discovery` : ''}</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
-      if (S.adv.length < C.grand.slots) h += `<p class="hint">New grand order in ${fmtLeftShort(Math.max(0, S.advRefill) * 1000)}.</p>`; }
+      if (S.adv.length < C.grand.slots) h += `<p class="hint">Next Grand order in ${fmtWait(Math.max(0, S.advAt - Date.now()))}.</p>`; }
     return h;
   }
   function gatherPanel(i, T) {
@@ -2562,6 +2573,8 @@
           <div class="chips">${D.farmhand.speeds.map(sp => `<button class="chipf ${(F.spd || 1) === sp ? 'on' : ''}" data-fh-setspd="${sp}">${sp}×</button>`).join('')}</div></div>
           ${unlocked('compost') || count('fertilizer') > 0 ? `<button class="toggle ${F.fert ? 'on' : ''}" data-fh-fert aria-pressed="${!!F.fert}"><i></i>Use fertilizer on the plots they tend (${count('fertilizer')} in storage)</button>
           <p class="hint small">${F.fert ? 'They fertilize each crop they plant or find growing, one Fertilizer per plot, for faster growth and +1 quality. When storage has none, they carry on without it.' : 'Off: the farmhand plants, waters and harvests without fertilizer, so your stock is saved for you.'}</p>` : ''}
+          <button class="toggle ${F.seeds ? 'on' : ''}" data-fh-seeds aria-pressed="${!!F.seeds}"><i></i>Buy seeds when they run out</button>
+          <p class="hint small">${F.seeds ? 'When a plot they tend is ready to plant and storage has no seed for it, they buy a few at the market price from your gold. If you can’t afford it, they skip that plot.' : 'Off: they only plant seeds already in storage. Turn it on and a Tend plot job keeps going on its own: till, plant, water, harvest, repeat.'}</p>
           <span class="eyebrow">Jobs ${F.steps.length}/${fhMax()}</span>`;
         h += F.steps.length ? `<ol class="routine jobs">${F.steps.map((st, k) => `<li class="${F.cur && F.cur.si === k ? 'now' : ''}"><button class="linkish" data-goto="${st.i}" title="Show on the map">${esc(stepLabel(st))}</button>
             <span class="jobbtns"><button class="x mv" data-fh-up="${k}" ${k ? '' : 'disabled'} aria-label="Move up">↑</button><button class="x mv" data-fh-down="${k}" ${k < F.steps.length - 1 ? '' : 'disabled'} aria-label="Move down">↓</button><button class="x" data-fh-del="${k}" aria-label="Remove job">×</button></span></li>`).join('')}</ol>`
@@ -2771,7 +2784,7 @@
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
-    else if (ds.pass) { if ((S.adv || []).some(o => o.id === +ds.pass)) { S.adv = S.adv.filter(o => o.id !== +ds.pass); S.advRefill = C.grand.refill; } else { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; } }
+    else if (ds.pass) { if ((S.adv || []).some(o => o.id === +ds.pass)) { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(o => o.id !== +ds.pass); toast(`Grand order passed. Next Grand order in ${grandNext(wasFull)}.`, 'info'); } else { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; } }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
       if (d && !unlocked(d.id) && discOk(d) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
@@ -2795,6 +2808,7 @@
       else { UI.fhClear = false; clearTimeout(UI.fhClearT); S.helper.steps = []; S.helper.cur = null; S.helper.k = 0; S.helper.path = []; toast('Farmhand jobs cleared. Add new ones from any plot, station or resource tile.', 'info'); save(); } }
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhFert' in ds) { if (S.helper) { S.helper.fert = !S.helper.fert; save(); } }
+    else if ('fhSeeds' in ds) { if (S.helper) { S.helper.seeds = !S.helper.seeds; save(); } }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }
     else if (ds.goto !== undefined) { UI.sel = +ds.goto; centerOn(+ds.goto); }
     else if (ds.shirt !== undefined) S.shirt = +ds.shirt;
@@ -2975,7 +2989,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261021-210746';
+  const BUILD = '20261021-211511';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

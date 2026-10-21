@@ -13,7 +13,7 @@ window.HW_DATA = {
     walkSpeed: 3.2,                        // tiles per second
     maxQueue: 5,
     orderSlots: 3, orderSlotEvery: 14, orderSlotMax: 6, // the board grows by one request for every 14 discoveries unlocked, up to 6
-    grand: { slots: 2, refill: 900, goods: 5, fill: 0.22, min: 6, goldMult: 1.5, dp: 1, dpPerDay: 3 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
+    grand: { slots: 2, refill: 3600, goods: 5, fill: 0.22, min: 6, goldMult: 1.5, dp: 1, dpPerDay: 3 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
     orderRefill: 15,
     marketOffers: 3,
     qualityNames: ['Basic', 'Good', 'Excellent'],
@@ -795,6 +795,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.62', at: '2026-10-21 18:00', notes: ['Grand orders: when you complete or pass one, the next one comes an hour later, and the game tells you so. They now arrive by the real clock, so one can be waiting when you come back.', 'Farmhand: new switch “Buy seeds when they run out” (Menu → Farmhands, or select the Homestead). When a plot they tend is ready to plant and there is no seed in storage, they buy a few at the market price from your gold, so a Tend plot job can till, plant, water and harvest again and again on its own.'] },
   { v: '0.61.2', at: '2026-10-21 17:30', notes: ['The Activity, Updates and Puzzle buttons now sit along the bottom edge of the screen on computers too (they were halfway up the left side), and their drop-down lists open upward from there.'] },
   { v: '0.61.1', at: '2026-10-21 15:00', notes: ['Daily Puzzle clues now say what the answer is like in the real world, as well as where it comes from. For example a crate “could carry or store things”, so you’re not only told which station to use.'] },
   { v: '0.61', at: '2026-10-21 14:00', notes: ['The Order Board grows: it starts with 3 requests and gains one more for every 14 Discoveries you unlock, up to 6.', 'New Discovery for veteran farmers: Grand Orders (Upgrades, after Granary and Master Crafting). The Order Board then posts Grand orders that ask for five different goods, many of each, scaled to how big your storage is, and pay big gold, score and Discovery (the first 3 Discovery rewards each day).', 'Weekly challenge: the “someone passed you” notice now only appears when someone takes #1 from you.'] },
