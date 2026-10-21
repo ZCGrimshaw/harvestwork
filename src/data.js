@@ -12,7 +12,8 @@ window.HW_DATA = {
     dayLength: 240,                        // seconds per in-game day (6:00 to 22:00)
     walkSpeed: 3.2,                        // tiles per second
     maxQueue: 5,
-    orderSlots: 3,
+    orderSlots: 3, orderSlotEvery: 14, orderSlotMax: 6, // the board grows by one request for every 14 discoveries unlocked, up to 6
+    grand: { slots: 2, refill: 900, goods: 5, fill: 0.22, min: 6, goldMult: 1.5, dp: 1, dpPerDay: 3 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
     orderRefill: 15,
     marketOffers: 3,
     qualityNames: ['Basic', 'Good', 'Excellent'],
@@ -324,7 +325,7 @@ window.HW_DATA = {
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary'] },
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
@@ -535,7 +536,8 @@ window.HW_DATA = {
     { id: 'silo', pic: ['grass:0', 'silo', 'wheat'], name: 'Silos', cost: 3, req: ['cellar'], text: 'A tall Silo that holds 250 crops apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 8 planks and 6 stone to place. One per area you own.' },
     { id: 'coldcellar', pic: ['grass:0', 'coldcellar', 'jam'], name: 'Cold Cellars', cost: 4, req: ['cellar', 'preserver'], text: 'A Cold Cellar that holds 200 eggs, milk, dishes, preserves, bakes and drinks apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 12 bricks and 8 stone to place. One per area you own.' },
     { id: 'yard', pic: ['grass:0', 'yard', 'log'], name: 'Material Yards', cost: 3, req: ['cellar', 'workbench'], text: 'A Material Yard that holds 250 logs, stone, ore, clay, wool and building parts apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 10 planks and 2 Land Kits to place. One per area you own.' },
-    { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' }
+    { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' },
+    { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold, score and Discovery. The bigger your storage, the bigger they get.', where: 'Order Board → Grand orders.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -667,7 +669,7 @@ window.HW_DATA = {
     { need: [['glazed_carrots', 1, 0]], gold: 40 },
     { need: [['potato', 2, 0]], gold: 32 }
   ],
-  orderNames: { raw: ['Pantry restock', 'Kitchen delivery', 'Fresh crate', 'Weekly basket'],
+  orderNames: { grand: ['Wholesale haul', 'Market-day mega order', 'Caravan contract', 'Feast for the valley', 'Grand provisioning', 'Harvest festival order'], raw: ['Pantry restock', 'Kitchen delivery', 'Fresh crate', 'Weekly basket'],
                 crafted: ['Café delivery', 'Inn supper', 'Workshop supply', 'Picnic hamper'] },
 
   // Tutorial goals for the first 10–15 minutes. `state` lets a goal tick off
@@ -721,6 +723,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.61', at: '2026-10-21 14:00', notes: ['The Order Board grows: it starts with 3 requests and gains one more for every 14 Discoveries you unlock, up to 6.', 'New Discovery for veteran farmers: Grand Orders (Upgrades, after Granary and Master Crafting). The Order Board then posts Grand orders that ask for five different goods, many of each, scaled to how big your storage is, and pay big gold, score and Discovery (the first 3 Discovery rewards each day).', 'Weekly challenge: the “someone passed you” notice now only appears when someone takes #1 from you.'] },
   { v: '0.60', at: '2026-10-21 06:00', notes: ['Weekly challenge: you now get a small notice the first time someone passes your score. If you win your place back and are passed again, you get one more. Turn it off in Menu → Settings → Notifications.'] },
   { v: '0.59', at: '2026-10-20 17:20', notes: ['Sprinklers can now be picked up. Select a Sprinkler or Deluxe Sprinkler and press “Pick up”: it’s free, and the kit goes back into storage, ready to place somewhere else. Storage needs a free slot. Placing a picked-up kit again earns no extra build score.'] },
   { v: '0.58.3', at: '2026-10-20 17:00', notes: ['Daily Puzzle: when the next step is made from the good you just handed in, you now keep those goods instead of having to make them again. A message tells you when this happens.'] },

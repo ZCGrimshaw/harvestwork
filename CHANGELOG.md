@@ -3,6 +3,17 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.61 — 2026-10-21
+- Weekly notice narrowed: `noteWeekly` only toasts when the stored rank was 1 and the new rank is worse (names the new #1 when it is in
+  the top list); winning #1 back and losing it again notifies again. Settings text updated. t_wkpass.py rewritten.
+- Order Board slots: `orderSlots()` = min(`C.orderSlotMax` 6, `C.orderSlots` 3 + floor(unlocked discoveries / `C.orderSlotEvery` 14)).
+- Grand orders: Discovery `grandorders` (Upgrades; cost 6; req granary + mastery). `S.adv` (max `C.grand.slots` 2, refill
+  `C.grand.refill` 900 s, `S.advRefill`), `genGrand()`: 5 distinct sellable goods from the upper 60% by value, total units
+  = cap() × `C.grand.fill` 0.22 × (0.7-1.2), per-good quantity weighted by (avg value / value)^0.4, min 6 and max 35% of cap(), up to 2 goods
+  at Good+ when `canGood`, gold = Σ value × qty × (1 + 0.6 × minQ) × 1.5, score 0.6 × gold. Delivery through the `deliver` task
+  (`findOrder`), +1 Discovery for the first `C.grand.dpPerDay` 3 per UTC day (`S.grandDay`). Not in races. Pass works. Board panel section.
+  Joel's farm (cap 6,220): orders of about 1,200 items, 70-100k gold. Tests: t_grand.py (uses joel/save.json), t_wkpass.py.
+
 ## v0.60 — 2026-10-21
 - Weekly "someone passed you" notice (no server change; uses `weekly_board` `mine.rank`). `noteWeekly(b, silent)` keeps
   `harvestworks.wkrank` {week, rank, armed} per device: a worse rank while armed toasts once and disarms; a better rank re-arms; weekly

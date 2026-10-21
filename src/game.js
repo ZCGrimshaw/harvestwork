@@ -117,6 +117,8 @@
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
+    if (!S.adv) S.adv = [];
+    if (S.advRefill == null) S.advRefill = 0;
     if (!S.tick) S.tick = { open: !isPhone(), spd: 'slow' }; // phones start with the ticker tucked away, for more map
     if (!S.wk) weekStart();
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
@@ -947,18 +949,16 @@
   /* Market polling is kept light: one request (prices that differ from normal, the clock and the open-copies count, with
      the presence ping folded in) every 90 s while the tab is showing, a bare presence ping every 90 s while it's hidden,
      and the trade list only when the ticker is open. Older servers without market_sync fall back to get_market. */
-  /* Weekly challenge "someone passed you" notice. The board (weekly_board) gives your rank. We remember the last rank we saw this
-     week (per device). Being passed notifies once; it re-arms only after you win a place back. Only players who already have a
-     ranked score this week are checked, at most every 2.5 minutes, never during a race or run. */
+  /* Weekly challenge "someone took #1" notice. The board (weekly_board) gives your rank. We remember the last rank we saw this
+     week (per device); if it was #1 and now isn't, you get one notice. Winning #1 back and losing it again gives another. Only
+     players who already have a ranked score this week are checked, at most every 2.5 minutes, never during a race or run. */
   const wkRec = () => lsGet('harvestworks.wkrank', null);
   function noteWeekly(b, silent) { if (!b || b.week == null || !b.mine || typeof b.mine.rank !== 'number') return;
-    const r = wkRec(), cur = b.mine.rank; let armed = true;
-    if (r && r.week === b.week) {
-      if (cur < r.rank) armed = true;                                   // you won a place back (or climbed): ready for the next pass
-      else if (cur > r.rank) { armed = false;                           // someone passed you
-        if (r.armed && !silent && S && S.wkAlert !== false) { SND.play('warn'); toast(`<b>Weekly challenge:</b> someone just passed your score. You’re now <b>#${cur}</b> with ${b.mine.score.toLocaleString()}. Win your place back with a ranked run.`, 'info'); } }
-      else armed = r.armed !== false; }
-    lsSet('harvestworks.wkrank', { week: b.week, rank: cur, armed }); }
+    const r = wkRec(), cur = b.mine.rank;
+    if (r && r.week === b.week && r.rank === 1 && cur > 1 && !silent && S && S.wkAlert !== false) { SND.play('warn');
+      const top = (b.top || []).find(p => p.rank === 1 && !p.me);
+      toast(`<b>Weekly challenge:</b> ${top ? `<b>${esc(top.name)}</b> just took #1 from you` : 'someone just took #1 from you'}. You’re now <b>#${cur}</b> with ${b.mine.score.toLocaleString()}. Win it back with a ranked run.`, 'info'); }
+    lsSet('harvestworks.wkrank', { week: b.week, rank: cur }); }
   async function checkWeeklyPass() { NET.wkAt = Date.now();
     try { noteWeekly(await rpc('weekly_board', { p_player: PLAYER })); } catch (e) { } }
   const MARKET_EVERY = 90000;
@@ -1054,6 +1054,25 @@
     const names = D.orderNames[useC ? 'crafted' : 'raw'];
     return { id: S.uid++, kind: useC ? 'crafted' : 'raw', name: names[(Math.random() * names.length) | 0], need: [[id, qty, minQ]], gold, score: Math.round(gold * (useC ? .9 : .5)) };
   }
+  const orderSlots = () => Math.min(C.orderSlotMax, C.orderSlots + Math.floor(S.unl.length / C.orderSlotEvery));
+  /* Grand orders: five different goods, many of each. The total units scale with main storage (so a huge farm gets huge orders), the
+     goods come from the upper half of what you can sell by value, and the reward is the goods' value × goldMult. */
+  const grandDpLeft = () => { const d = utcDay(), g = S.grandDay; return !g || g.day !== d ? C.grand.dpPerDay : Math.max(0, C.grand.dpPerDay - g.n); };
+  function genGrand() { const G = C.grand;
+    const taken = new Set(S.adv.flatMap(o => o.need.map(n => n[0])));
+    let pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && (D.items[id].value || 0) > 0 && !taken.has(id)).sort((a, b) => D.items[b].value - D.items[a].value);
+    if (pool.length < G.goods) return null;
+    pool = pool.slice(0, Math.max(G.goods, Math.ceil(pool.length * .6)));
+    const ids = []; while (ids.length < G.goods) ids.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+    const U = Math.max(G.goods * G.min, Math.round(cap() * G.fill * (.7 + Math.random() * .5))), share = U / G.goods;
+    const ref = ids.reduce((t, id) => t + D.items[id].value, 0) / ids.length;
+    let hq = 0;
+    const need = ids.map(id => { const q = S.maxQ >= 1 && hq < 2 && Math.random() < .25 && canGood(id) ? (hq++, 1) : 0;
+      return [id, Math.max(G.min, Math.min(Math.round(cap() * .35), Math.round(share * Math.pow(ref / D.items[id].value, .4)))), q]; });
+    const gold = Math.round(need.reduce((t, [id, n, q]) => t + D.items[id].value * n * (1 + q * .6), 0) * G.goldMult / 10) * 10;
+    return { id: S.uid++, kind: 'grand', name: D.orderNames.grand[(Math.random() * D.orderNames.grand.length) | 0], need, gold, score: Math.round(gold * .6) };
+  }
+  const findOrder = id => S.orders.find(o => o.id === id) || (S.adv || []).find(o => o.id === id);
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
   /* ================= rock bottom =================
      If the farm can't earn its way out (no gold for seeds, nothing to sell, nothing growing or cooking, no
@@ -1245,14 +1264,17 @@
       run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i, 'sell'); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
     deliver: { label: t => t.p === 'ms' ? `Deliver: ${curMs() ? curMs().name : 'contract'}` : 'Deliver order',
-      check: t => { const o = t.p === 'ms' ? curMs() : S.orders.find(o => o.id === t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
+      check: t => { const o = t.p === 'ms' ? curMs() : findOrder(t.p); if (!o) return 'Order is gone'; return canFill(o.need) ? null : 'Missing goods'; },
       run: t => {
         if (t.p === 'ms') { const m = curMs(); m.need.forEach(([id, n, q]) => take(id, n, q));
           S.gold += m.gold; S.dp += m.dp; S.ms++; fixMsOrder(); gainScore(m.gold, t.i);
           toast(`<b>Contract complete: ${esc(m.name)}</b> · +${m.gold}g · +${m.dp} Discovery`, 'disc');
-        } else { const o = S.orders.find(o => o.id === t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
-          S.gold += o.gold; gainScore(o.score, t.i, 'order'); S.orders = S.orders.filter(x => x !== o); wk().orders++; S.refill = C.orderRefill;
-          float(t.i, `+${o.gold}g`, '#f6e27a');
+        } else { const o = findOrder(t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
+          S.gold += o.gold; gainScore(o.score, t.i, 'order'); wk().orders++; float(t.i, `+${o.gold}g`, '#f6e27a');
+          if (o.kind === 'grand') { S.adv = S.adv.filter(x => x !== o); S.advRefill = C.grand.refill; const dp = grandDpLeft() > 0 ? C.grand.dp : 0;
+            if (dp) { const d = utcDay(); S.grandDay = S.grandDay && S.grandDay.day === d ? S.grandDay : { day: d, n: 0 }; S.grandDay.n += dp; S.dp += dp; }
+            toast(`<b>Grand order delivered: ${esc(o.name)}</b> · +${o.gold.toLocaleString()}g${dp ? ` · +${dp} Discovery` : ' (today’s Discovery limit is used up)'}`, 'disc'); }
+          else { S.orders = S.orders.filter(x => x !== o); S.refill = C.orderRefill; }
           if (o.kind === 'crafted') first('orderC', C.firsts.orderCrafted, 'First crafted order filled'); }
         first('order', C.firsts.order, 'First order delivered'); emit('deliver'); } },
     build: { label: () => 'Build Farm Plot', check: t => !isEmptyGrass(t.i) ? 'Tile is not empty grass' : canPay(C.farmPlotCost),
@@ -1484,7 +1506,8 @@
       if (T.t === 'forest') { if (R.st === 'sapling') { R.g += dt * (bd ? 2 : 1); if (R.g >= D.gather.forest.regrow) { R.st = 'tree'; dirty(); } } }
       else { const G = D.gather[T.t]; if (R.stock < (finite(T) ? Math.min(G.stock, R.dep) : G.stock)) { R.rt += dt * (T.t === 'water' ? wrule('fish', 1) : 1) * (bd ? 2 : 1); if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
     });
-    if (S.orders.length < C.orderSlots) { S.refill -= dt * wrule('orders', 1); if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
+    if (S.orders.length < orderSlots()) { S.refill -= dt * wrule('orders', 1); if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
+    if (unlocked('grandorders') && !S.race && S.adv.length < C.grand.slots) { S.advRefill -= dt * wrule('orders', 1); if (S.advRefill <= 0) { const o = genGrand(); if (o) S.adv.push(o); S.advRefill = C.grand.refill; dirty(); } }
     updateAvatar(dt); updateHelper(dt); checkBroke(dt);
     const g = D.goals[S.goal]; if (g && goalStateDone(g)) completeGoal();
     UI.saveIn -= dt; if (UI.saveIn <= 0) save();
@@ -2211,7 +2234,11 @@
       <p class="hint">${esc(m.hint)}</p>${isComplex(m.need) ? `<button class="btn ghost sm treebtn" data-tree="ms">See everything it takes</button>` : ''}<div class="oreward">+${m.gold}g · +${m.dp} Discovery</div>${btn({ a: 'deliver', i, p: 'ms' }, 'Deliver', { cls: 'pri' })}</div>`;
     h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'trap' ? 'Special request' : o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
       <div class="oreward">+${o.gold}g · +${o.score} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
-    if (S.orders.length < C.orderSlots) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
+    if (S.orders.length < orderSlots()) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
+    if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does. ${grandDpLeft() > 0 ? `${grandDpLeft()} Discovery reward${grandDpLeft() === 1 ? '' : 's'} left today.` : 'Today’s Discovery rewards are used up; gold and score still count.'}</p>`;
+      h += S.adv.map(o => `<div class="order grand"><div class="otop"><span class="eyebrow">Grand order</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
+        <div class="oreward">+${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score${grandDpLeft() > 0 ? ` · +${C.grand.dp} Discovery` : ''}</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
+      if (S.adv.length < C.grand.slots) h += `<p class="hint">New grand order in ${fmtLeftShort(Math.max(0, S.advRefill) * 1000)}.</p>`; }
     return h;
   }
   function gatherPanel(i, T) {
@@ -2567,8 +2594,8 @@
         <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
         <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
-        <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone passes my weekly challenge score</button>
-        <p class="hint small">You get one notice the first time you’re passed. If you win your place back and are passed again, you get one more.</p></div>
+        <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone takes #1 from me in the weekly challenge</button>
+        <p class="hint small">You get one notice when you lose first place. If you win #1 back and lose it again, you get one more.</p></div>
         <span class="eyebrow">Selling</span><div class="opts">
         <button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus goods</button>
         <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. Turn it on to sell goods above a keep amount you choose in Storage. Nothing is sold until you set one.'}</p></div>
@@ -2744,7 +2771,7 @@
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
     else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
-    else if (ds.pass) { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; }
+    else if (ds.pass) { if ((S.adv || []).some(o => o.id === +ds.pass)) { S.adv = S.adv.filter(o => o.id !== +ds.pass); S.advRefill = C.grand.refill; } else { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; } }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
       if (d && !unlocked(d.id) && discOk(d) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
         const kit = Object.keys(D.items).find(k => D.items[k].cat === 'kit' && D.items[k].buy && D.items[k].requires === d.id);
@@ -3305,7 +3332,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
