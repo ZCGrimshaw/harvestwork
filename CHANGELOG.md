@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.61.1 — 2026-10-21
+- Daily Puzzle clues end with "In the real world, it/they …" from `D.daily.uses[id]` (a plain description for each of the 69 sellable goods,
+  e.g. crate: "could carry or store things"). Added in `dqMake` when a step is pushed, so uniqueness tests are unchanged; the first step
+  keeps its riddle. Plural phrases (are/sprout/brighten) use "they". Today's already-generated puzzle keeps its old text.
+
 ## v0.61 — 2026-10-21
 - Weekly notice narrowed: `noteWeekly` only toasts when the stored rank was 1 and the new rank is worse (names the new #1 when it is in
   the top list); winning #1 back and losing it again notifies again. Settings text updated. t_wkpass.py rewritten.

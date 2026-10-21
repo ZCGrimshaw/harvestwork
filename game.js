@@ -300,7 +300,7 @@
               - (l.st && l.st === prev.st ? .7 : 0) - (kinds.includes(l.kind) && l.kind !== 'up' ? .9 : 0) }; }) // move between stations; at most one side and one down step
           .sort((x, y) => y.w - x.w);
         if (!ok.length) break;
-        const l = ok[0].l; chain.push({ id: l.b, q: dqQty(l.b), text: l.text, st: l.st, kind: l.kind });
+        const l = ok[0].l; chain.push({ id: l.b, q: dqQty(l.b), text: l.text + (DQ.uses[l.b] ? ` In the real world, ${/^(are|sprout|brighten) /.test(DQ.uses[l.b]) ? 'they' : 'it'} ${DQ.uses[l.b]}.` : ''), st: l.st, kind: l.kind });
       }
       if (!best || chain.length > best.length) best = chain;
     }
@@ -2975,7 +2975,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261021-201307';
+  const BUILD = '20261021-202549';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
