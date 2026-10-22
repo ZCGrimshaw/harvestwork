@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.62.1 — 2026-10-22
+- Daily Puzzle no longer pays Discovery. `DQ.reward`: `doneBonus` 0.5 (gold bonus on finishing = 50% of the steps' pay, minus `doneCut`
+  0.15 for each of: naming an answer, 3+ wrong guesses; floor 20%), `streakBonus` 1 (every 7th day adds 100% of the steps' pay). Removed
+  `dp`/`streakDp`; texts updated. `P.bonus` holds the bonus. t_dq.py updated.
+
 ## v0.62 — 2026-10-21
 - Grand orders by the real clock: `S.advAt` (ms timestamp; migrated from `advRefill`), `C.grand.refill` 3600 s. A new one arrives when
   a slot is free and `Date.now() >= advAt`, then advAt = now + 1 h. `grandNext(wasFull)` restarts the hour only when the board was full

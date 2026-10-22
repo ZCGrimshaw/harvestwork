@@ -188,7 +188,8 @@ window.HW_DATA = {
       dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace',
       coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
     steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
-    reward: { stepGold: 1.5, dp: 3, streakEvery: 7, streakDp: 3, hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
+    reward: { stepGold: 1.5, doneBonus: 0.5, doneCut: 0.15, streakEvery: 7, streakBonus: 1, // no Discovery tokens: finishing pays a gold bonus of doneBonus × what the steps paid (less 15% per name-hint or 3+ wrong guesses, at least 20%); every 7th day in a row adds streakBonus × the steps' pay
+      hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
   },
 
   monuments: {
@@ -795,6 +796,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.62.1', at: '2026-10-22 09:30', notes: ['The Daily Puzzle no longer pays Discovery. Finishing it now pays a gold bonus (half of what the steps paid, less if you named an answer or guessed wrong three times) and a bigger one every 7th day in a row. Discovery now comes only from things you do and build.'] },
   { v: '0.62', at: '2026-10-21 18:00', notes: ['Grand orders: when you complete or pass one, the next one comes an hour later, and the game tells you so. They now arrive by the real clock, so one can be waiting when you come back.', 'Farmhand: new switch “Buy seeds when they run out” (Menu → Farmhands, or select the Homestead). When a plot they tend is ready to plant and there is no seed in storage, they buy a few at the market price from your gold, so a Tend plot job can till, plant, water and harvest again and again on its own.'] },
   { v: '0.61.2', at: '2026-10-21 17:30', notes: ['The Activity, Updates and Puzzle buttons now sit along the bottom edge of the screen on computers too (they were halfway up the left side), and their drop-down lists open upward from there.'] },
   { v: '0.61.1', at: '2026-10-21 15:00', notes: ['Daily Puzzle clues now say what the answer is like in the real world, as well as where it comes from. For example a crate “could carry or store things”, so you’re not only told which station to use.'] },

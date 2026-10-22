@@ -332,10 +332,10 @@
     const nx = P.steps[P.at + 1], keep = !!nx && Object.values(D.recipes).some(r => r.out[nx.id] && r.in[id]); // the next answer is made from this good: you keep it
     if (!keep) take(id, st.q, st.minQ, 'low'); const g = dqStepGold(st); S.gold += g; P.gold += g; P.at++; UI.dqPick = false; SND.play('goal');
     if (P.at < P.steps.length) toast(`<b>Daily Puzzle: step ${P.at} solved!</b> +${g}g.${keep ? ` Your ${esc(D.items[id].name)} stay in storage; the next step is made from them.` : ''} A new clue is waiting.`, 'goal');
-    else { P.done = true; const name2 = P.hints.some(h => h >= 2), dp = Math.max(1, DQ.reward.dp - (name2 ? 1 : 0) - (P.wrong >= 3 ? 1 : 0));
+    else { P.done = true; const name2 = P.hints.some(h => h >= 2), pct = Math.max(.2, DQ.reward.doneBonus - ((name2 ? 1 : 0) + (P.wrong >= 3 ? 1 : 0)) * DQ.reward.doneCut);
       const d = utcDay(), s = S.dqStreak || { n: 0, last: null }; s.n = s.last === dqDayBefore(d) ? s.n + 1 : s.last === d ? s.n : 1; s.last = d; S.dqStreak = s;
-      const bonus = s.n % DQ.reward.streakEvery === 0 ? DQ.reward.streakDp : 0; S.dp += dp + bonus; P.dp = dp + bonus; gainScore(P.gold);
-      SND.play('contract'); toast(`<b>Daily Puzzle solved!</b> +${dp} Discovery${bonus ? ` and +${bonus} for a ${s.n}-day streak` : ''}. ${s.n > 1 ? `Streak: ${s.n} days.` : 'Come back tomorrow for a new one.'}`, 'disc'); }
+      const streakDay = s.n % DQ.reward.streakEvery === 0, bonus = Math.round(P.gold * (pct + (streakDay ? DQ.reward.streakBonus : 0))); S.gold += bonus; P.bonus = bonus; P.gold += bonus; gainScore(P.gold);
+      SND.play('contract'); toast(`<b>Daily Puzzle solved!</b> +${bonus.toLocaleString()}g bonus${streakDay ? ` (with the ${s.n}-day streak bonus)` : ''}. ${s.n > 1 ? `Streak: ${s.n} days.` : 'Come back tomorrow for a new one.'}`, 'disc'); }
     save(); dirty(); }
   const dqMenuSub = () => { if (S.race) return 'Off during races and challenges'; if (S.goal < D.goals.length) return 'Opens after the tutorial'; const P = dqToday();
     return !P ? 'Make a few more goods to unlock it' : P.done ? `Solved today${dqStreak() > 1 ? ` · ${dqStreak()}-day streak` : ''}` : `Step ${P.at + 1} of ${P.steps.length}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}`; };
@@ -349,7 +349,7 @@
     h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
     if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
       h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
-        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. Handing in takes the goods, unless the next step is made from them; then they stay in storage. A wrong guess takes nothing, but three or more lower today’s Discovery reward.</p>`; }
+        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. Handing in takes the goods, unless the next step is made from them; then they stay in storage. A wrong guess takes nothing, but three or more lower today’s bonus.</p>`; }
     return h + (wrap ? '</li>' : '</div>'); }
   function dqDrawer() {
     let h = `<div class="phead"><div><h2>Daily Puzzle</h2><p class="sub">A new riddle chain every day at 00:00 UTC. Solve a clue by handing in the goods it points to; each answer reveals the next clue.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -365,8 +365,8 @@
       else h += `<li class="dqstep later"><p class="dqclue muted">Solve the clue above to reveal this one.</p></li>`;
     });
     h += '</ol>';
-    if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g and ${P.dp || 0} Discovery today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
-    h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for ${DQ.reward.dp} Discovery (less after naming an answer or three wrong guesses), plus ${DQ.reward.streakDp} more every ${DQ.reward.streakEvery} days in a row.</p>`;
+    if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
+    h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for a gold bonus of ${Math.round(DQ.reward.doneBonus * 100)}% of what the steps paid (less after naming an answer or three wrong guesses), plus ${Math.round(DQ.reward.streakBonus * 100)}% more every ${DQ.reward.streakEvery} days in a row.</p>`;
     return h; }
   // main-screen button label and dropdown (Activity / Updates / Puzzle row)
   function dqBarBtn() { if (!S || S.race || S.goal < D.goals.length) return ''; const P = dqToday(); if (!P) return '';
@@ -374,8 +374,8 @@
     return `<button class="ibtn lg ${UI.logOpen === 'dq' ? 'on' : ''}" data-log="dq" aria-expanded="${UI.logOpen === 'dq'}">Puzzle ${P.done ? '✓' : `${P.at + 1}/${P.steps.length}`} ▾${fresh ? '<i class="dot"></i>' : ''}</button>`; }
   function dqDrop() { const P = dqToday(); let h = `<div class="lphead"><b>Daily Puzzle</b><span class="muted">${P ? (P.done ? 'Solved' : `Step ${P.at + 1} of ${P.steps.length}`) : ''}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}</span><button class="close" data-log="dq" aria-label="Close">×</button></div>`;
     if (!P) return h + '<p class="hint">No puzzle right now.</p>';
-    if (P.done) h += `<div class="dqdone"><b>Solved today!</b> You earned ${P.gold}g and ${P.dp || 0} Discovery. Next puzzle in ${dqLeft()}.</div>`;
-    else h += `<p class="dqmeta">New puzzle in ${dqLeft()} · finish for ${DQ.reward.dp} Discovery</p>` + dqNowHTML(P, false);
+    if (P.done) h += `<div class="dqdone"><b>Solved today!</b> You earned ${P.gold}g. Next puzzle in ${dqLeft()}.</div>`;
+    else h += `<p class="dqmeta">New puzzle in ${dqLeft()} · finish for a gold bonus</p>` + dqNowHTML(P, false);
     if (P.at > 0) h += `<details class="dqprev"><summary>Solved clues (${P.at})</summary>${P.steps.slice(0, P.at).map(st => `<p class="dqclue muted">${esc(st.text)}<br><b>${esc(D.items[st.id].name)}</b> ×${st.q}</p>`).join('')}</details>`;
     return h + `<button class="linkish small" data-drawer="daily">Open the full puzzle</button>`; }
   // once a day, a nudge when a fresh puzzle is waiting
@@ -2989,7 +2989,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261021-211511';
+  const BUILD = '20261022-161704';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
