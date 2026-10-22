@@ -13,7 +13,7 @@ window.HW_DATA = {
     walkSpeed: 3.2,                        // tiles per second
     maxQueue: 5,
     orderSlots: 3, orderSlotEvery: 14, orderSlotMax: 6, // the board grows by one request for every 14 discoveries unlocked, up to 6
-    grand: { slots: 2, refill: 3600, goods: 5, fill: 0.22, min: 6, goldMult: 1.5, dp: 1, dpPerDay: 3 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
+    grand: { slots: 2, refill: 3600, goods: 5, fill: 0.22, min: 6, goldMult: 1.5 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
     orderRefill: 15,
     marketOffers: 3,
     qualityNames: ['Basic', 'Good', 'Excellent'],
@@ -78,8 +78,8 @@ window.HW_DATA = {
       { id: 'silver', name: 'Silver', pts: 5000,  sell: 0.10, speed: 0.10, extra: 0, dp: 1 },
       { id: 'gold',   name: 'Gold',   pts: 15000, sell: 0.15, speed: 0.10, extra: 4, dp: 1 },
       { id: 'master', name: 'Master', pts: 40000, sell: 0.20, speed: 0.15, extra: 3, dp: 2 },
-      { id: 'legend', name: 'Legend', pts: 400000, sell: 0.25, speed: 0.20, extra: 2, dp: 3 },
-      { id: 'mythic', name: 'Mythic', pts: 2500000, sell: 0.30, speed: 0.25, extra: 2, dp: 5 }
+      { id: 'legend', name: 'Legend', pts: 400000, sell: 0.25, speed: 0.20, extra: 2, dp: 0, gold: 20000 },
+      { id: 'mythic', name: 'Mythic', pts: 2500000, sell: 0.30, speed: 0.25, extra: 2, dp: 0, gold: 100000 }
     ]
   },
 
@@ -398,7 +398,7 @@ window.HW_DATA = {
     { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking'] },
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
-    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders'] },
+    { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders', 'salvage'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
@@ -610,7 +610,8 @@ window.HW_DATA = {
     { id: 'coldcellar', pic: ['grass:0', 'coldcellar', 'jam'], name: 'Cold Cellars', cost: 4, req: ['cellar', 'preserver'], text: 'A Cold Cellar that holds 200 eggs, milk, dishes, preserves, bakes and drinks apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 12 bricks and 8 stone to place. One per area you own.' },
     { id: 'yard', pic: ['grass:0', 'yard', 'log'], name: 'Material Yards', cost: 3, req: ['cellar', 'workbench'], text: 'A Material Yard that holds 250 logs, stone, ore, clay, wool and building parts apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 10 planks and 2 Land Kits to place. One per area you own.' },
     { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' },
-    { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold, score and Discovery. The bigger your storage, the bigger they get.', where: 'Order Board → Grand orders.' }
+    { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold and score. The bigger your storage, the bigger they get.', where: 'Order Board → Grand orders.' },
+    { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -796,6 +797,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.63', at: '2026-10-22 10:30', notes: ['New Discovery: Salvage (Upgrades, after Rollers & Skids). Select a station, storage building or sprinkler you have a duplicate of and press “Take it down”: half of the gold and materials it cost, upgrades included, come back to you. The building must be empty, and your storage must still hold everything afterwards.', 'Discovery is now scarcer: Legend and Mythic mastery pay gold (20,000g and 100,000g) instead of Discovery, and Grand orders no longer give Discovery (they still pay big gold and score). Discovery you already have is untouched.'] },
   { v: '0.62.1', at: '2026-10-22 09:30', notes: ['The Daily Puzzle no longer pays Discovery. Finishing it now pays a gold bonus (half of what the steps paid, less if you named an answer or guessed wrong three times) and a bigger one every 7th day in a row. Discovery now comes only from things you do and build.'] },
   { v: '0.62', at: '2026-10-21 18:00', notes: ['Grand orders: when you complete or pass one, the next one comes an hour later, and the game tells you so. They now arrive by the real clock, so one can be waiting when you come back.', 'Farmhand: new switch “Buy seeds when they run out” (Menu → Farmhands, or select the Homestead). When a plot they tend is ready to plant and there is no seed in storage, they buy a few at the market price from your gold, so a Tend plot job can till, plant, water and harvest again and again on its own.'] },
   { v: '0.61.2', at: '2026-10-21 17:30', notes: ['The Activity, Updates and Puzzle buttons now sit along the bottom edge of the screen on computers too (they were halfway up the left side), and their drop-down lists open upward from there.'] },

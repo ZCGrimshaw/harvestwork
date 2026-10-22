@@ -219,8 +219,8 @@
   function mastAdd(id, n, i) { if (S.race || !isMast(id) || n <= 0) return; S.mast = S.mast || {};
     const was = mastTierRaw(id); S.mast[id] = mastN(id) + n; const now = mastTierRaw(id);
     for (let t = was + 1; t <= now; t++) { const T = MAS.tiers[t - 1], nm = D.items[id].name;
-      S.dp += T.dp; SND.play('goal'); if (i !== undefined) float(i, `${nm} mastery: ${T.name}!`, '#f6d24a');
-      toast(`<b>${esc(nm)} mastery: ${T.name}</b> · +${T.dp} Discovery. ${esc(mastPerkTxt(id, t))}`, 'disc'); } }
+      S.dp += T.dp; if (T.gold) S.gold += T.gold; SND.play('goal'); if (i !== undefined) float(i, `${nm} mastery: ${T.name}!`, '#f6d24a');
+      toast(`<b>${esc(nm)} mastery: ${T.name}</b> · ${T.dp ? `+${T.dp} Discovery` : `+${(T.gold || 0).toLocaleString()}g`}. ${esc(mastPerkTxt(id, t))}`, 'disc'); } }
   const extraWord = e => e === 2 ? 'second' : e === 3 ? 'third' : 'fourth';
   function mastPerkTxt(id, t) { if (!t) return 'No perks yet.'; const T = MAS.tiers[t - 1], nm = D.items[id].name, crop = Object.values(D.crops).some(c => c.item === id);
     const o = [`sells for ${Math.round(T.sell * 100)}% more`];
@@ -1058,7 +1058,6 @@
   const orderSlots = () => Math.min(C.orderSlotMax, C.orderSlots + Math.floor(S.unl.length / C.orderSlotEvery));
   /* Grand orders: five different goods, many of each. The total units scale with main storage (so a huge farm gets huge orders), the
      goods come from the upper half of what you can sell by value, and the reward is the goods' value × goldMult. */
-  const grandDpLeft = () => { const d = utcDay(), g = S.grandDay; return !g || g.day !== d ? C.grand.dpPerDay : Math.max(0, C.grand.dpPerDay - g.n); };
   function genGrand() { const G = C.grand;
     const taken = new Set(S.adv.flatMap(o => o.need.map(n => n[0])));
     let pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && (D.items[id].value || 0) > 0 && !taken.has(id)).sort((a, b) => D.items[b].value - D.items[a].value);
@@ -1275,9 +1274,8 @@
           toast(`<b>Contract complete: ${esc(m.name)}</b> · +${m.gold}g · +${m.dp} Discovery`, 'disc');
         } else { const o = findOrder(t.p); o.need.forEach(([id, n, q]) => take(id, n, q));
           S.gold += o.gold; gainScore(o.score, t.i, 'order'); wk().orders++; float(t.i, `+${o.gold}g`, '#f6e27a');
-          if (o.kind === 'grand') { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(x => x !== o); const nxt = grandNext(wasFull); const dp = grandDpLeft() > 0 ? C.grand.dp : 0;
-            if (dp) { const d = utcDay(); S.grandDay = S.grandDay && S.grandDay.day === d ? S.grandDay : { day: d, n: 0 }; S.grandDay.n += dp; S.dp += dp; }
-            toast(`<b>Grand order delivered: ${esc(o.name)}</b> · +${o.gold.toLocaleString()}g${dp ? ` · +${dp} Discovery` : ' (today’s Discovery limit is used up)'}. Next Grand order in ${nxt}.`, 'disc'); }
+          if (o.kind === 'grand') { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(x => x !== o); const nxt = grandNext(wasFull);
+            toast(`<b>Grand order delivered: ${esc(o.name)}</b> · +${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score. Next Grand order in ${nxt}.`, 'disc'); }
           else { S.orders = S.orders.filter(x => x !== o); S.refill = C.orderRefill; }
           if (o.kind === 'crafted') first('orderC', C.firsts.orderCrafted, 'First crafted order filled'); }
         first('order', C.firsts.order, 'First order delivered'); emit('deliver'); } },
@@ -1330,6 +1328,15 @@
           const i = t.i; if (Math.round(S.av.x) === tx(i) && Math.round(S.av.y) === ty(i)) { const n = nbrs(i).find(walkable); if (n !== undefined) { S.av.x = tx(n); S.av.y = ty(n); } } }
         gainScore(C.score.build / 2, t.i); float(t.i, `Now ${D.terrain[to].name}`, '#b8f08a');
         first('reshape', C.firsts.build, 'First land reshaped'); } },
+    salvage: { label: t => `Take down ${T_(t.i).b ? D.buildings[T_(t.i).b.type].name : 'building'}`,
+      check: t => { const T = T_(t.i), b = T.b; if (!unlocked('salvage')) return 'Unlock Salvage'; if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return 'Not something you can take down';
+        if (builtCount(b.type) < 2) return 'You only have one of these'; if (b.q && b.q.length) return 'Collect its batches first';
+        const items = Object.entries(salvageRefund(b)).filter(([k]) => k !== 'gold').reduce((n, [, v]) => n + v, 0);
+        T.b = null; HC.at = -1; const ok = room() - items >= 0; T.b = b; HC.at = -1; return ok ? null : 'Storage wouldn’t hold everything afterwards'; },
+      run: t => { const T = T_(t.i), b = T.b, nm = D.buildings[b.type].name, r = salvageRefund(b); T.b = null; HC.at = -1; S.built = Math.max(0, (S.built || 0) - 1);
+        if (S.helper) { S.helper.steps = S.helper.steps.filter(st => st.i !== t.i); if (S.helper.cur && S.helper.cur.i === t.i) S.helper.cur = null; }
+        for (const k in r) { if (k === 'gold') S.gold += r[k]; else addItem(k, r[k], 0, true); }
+        float(t.i, 'Taken down', '#b8f08a'); toast(`<b>${esc(nm)} taken down.</b> Refunded ${costTxt(r)}.`, 'info'); } },
     clearplot: { label: () => 'Clear farm plot',
       check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm') return 'No farm plot here'; return b.st === 'raw' ? null : 'Only untilled plots can be cleared'; },
       run: t => { T_(t.i).b = null; if (S.helper) S.helper.steps = S.helper.steps.filter(st => st.i !== t.i);
@@ -2163,7 +2170,7 @@
       const e = max ? null : checkTask({ a: 'upgrade', i, p: ax });
       return `<div class="recipe"><div class="grow1"><b class="rname">${U.name} <span class="muted">· now ${U.label(l)}</span></b>${max ? '<small class="why">Fully upgraded</small>' : `<small class="cost">Next: ${U.label(l + 1)} · Cost: ${costTxt(U.cost[l])}</small>${e ? `<small class="why short">${esc(e)}</small>` : ''}`}</div>${max ? '<span class="muted">Max</span>' : btn({ a: 'upgrade', i, p: ax }, 'Upgrade', { err: e })}</div>`; }).join('');
     h += `<p class="hint small">Quality: goods come out as good as their lowest-quality ingredient${b.lv && b.lv.quality ? `, +1 tier from this station’s upgrade${b.lv.quality >= 2 ? ', and every third batch makes one extra' : ''}` : ''}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
-    return h + fhControl(i, 'station') + moveSection(i);
+    return h + fhControl(i, 'station') + moveSection(i) + salvageSection(i);
   }
   function homePanel(i) {
     let h = head(`${S.name}’s Homestead`, esc(D.buildings.homestead.desc));
@@ -2246,9 +2253,9 @@
     h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'trap' ? 'Special request' : o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
       <div class="oreward">+${o.gold}g · +${o.score} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
     if (S.orders.length < orderSlots()) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
-    if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does. ${grandDpLeft() > 0 ? `${grandDpLeft()} Discovery reward${grandDpLeft() === 1 ? '' : 's'} left today.` : 'Today’s Discovery rewards are used up; gold and score still count.'}</p>`;
+    if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does.</p>`;
       h += S.adv.map(o => `<div class="order grand"><div class="otop"><span class="eyebrow">Grand order</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
-        <div class="oreward">+${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score${grandDpLeft() > 0 ? ` · +${C.grand.dp} Discovery` : ''}</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
+        <div class="oreward">+${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
       if (S.adv.length < C.grand.slots) h += `<p class="hint">Next Grand order in ${fmtWait(Math.max(0, S.advAt - Date.now()))}.</p>`; }
     return h;
   }
@@ -2289,8 +2296,8 @@
       let h = head(B.name, esc(B.desc)) + `<p class="state">Holds <b>${holdOf(b)}</b> ${esc(K.name)}${lv ? ` (expanded ${lv} of ${H.max} times)` : ''}.</p>`;
       h += `<div class="row"><div class="grow1">All your ${esc(K.name)}: <b>${Math.min(inIt, tot)}</b> of ${tot} in ${B.name}${tot > holdOf(b) ? 's' : ''}${inIt > tot ? ` · ${inIt - tot} more in main storage` : ''}<div class="pb"><i style="width:${tot ? Math.min(100, Math.round(inIt / tot * 100)) : 0}%"></i></div></div></div>`;
       h += lv < H.max ? btn({ a: 'storeup', i }, `Expand: ${holdOf(b)} → ${holdOf(b) + H.step}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
-      return h + `<p class="hint small">${esc(K.name.charAt(0).toUpperCase() + K.name.slice(1))} go here first; only what doesn’t fit takes space in main storage. Everything is still shared, so stations and orders use it as usual.</p>` + moveSection(i); }
-    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i);
+      return h + `<p class="hint small">${esc(K.name.charAt(0).toUpperCase() + K.name.slice(1))} go here first; only what doesn’t fit takes space in main storage. Everything is still shared, so stations and orders use it as usual.</p>` + moveSection(i) + salvageSection(i); }
+    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i) + salvageSection(i);
   }
   function medalPanel(i) { const m = T_(i).b.m;
     return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(weekTheme(m.week).name)}) with <b>${m.score.toLocaleString()}</b> points.</p></div>
@@ -2357,7 +2364,7 @@
       ${fin ? '' : '<button class="btn" data-drawer="valley">Open the monument<small>Give goods and watch it grow</small></button>'}<button class="btn ghost" data-mon-away="${i}">Put it away</button><p class="hint small">Place it again any time from the Monument Depot or Menu → Valley Monument.</p>`; }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
-    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + btn({ a: 'pickup', i }, `Pick up this ${esc(B.name.toLowerCase())}`, { sub: 'Free · the kit goes back to storage, ready to place again' }) + moveSection(i);
+    return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + btn({ a: 'pickup', i }, `Pick up this ${esc(B.name.toLowerCase())}`, { sub: 'Free · the kit goes back to storage, ready to place again' }) + moveSection(i) + salvageSection(i);
   }
   function emptyPanel(i) {
     let h = head('Empty grassland', 'Build a farm plot or place a station kit here.');
@@ -2382,6 +2389,17 @@
     if (res) { const G = D.gather[res], d = D.discoveries.find(x => x.id === G.needs); if (!unlocked(G.needs)) h += `<p class="hint">Working its ${esc(D.terrain[res].name)} tiles needs <b>${esc(d.name)}</b> in Discovery.</p>`; }
     return h;
   }
+  /* Salvage: take down a duplicate station, store or sprinkler; half of what it cost comes back (place cost + kit price or kit recipe + upgrades) */
+  function salvageRefund(b) { const bt = b.type, B = D.buildings[bt], cost = {}, add = c => { for (const k in c) cost[k] = (cost[k] || 0) + c[k]; };
+    add(B.place || {});
+    const kit = Object.keys(D.items).find(k => D.items[k].building === bt);
+    if (kit) { const K = D.items[kit]; if (K.buy) add({ gold: K.buy }); else { const R = Object.values(D.recipes).find(r => r.out[kit]); if (R) add(R.in); } }
+    if (b.lv) for (const ax in D.upgrades) for (let l = 0; l < (b.lv[ax] || 0); l++) add(D.upgrades[ax].cost[l] || {});
+    if (B.hold) for (let l = 0; l < (b.lvl || 0); l++) add(storeCost(l));
+    const half = {}; for (const k in cost) { const n = Math.floor(cost[k] / 2); if (n > 0) half[k] = n; } return half; }
+  function salvageSection(i) { const b = T_(i).b; if (!unlocked('salvage') || !b || !MOVABLE.includes(D.buildings[b.type].kind)) return '';
+    return `<div class="more"><span class="eyebrow">Take it down</span><p class="hint">${builtCount(b.type) >= 2 ? 'You have another of these, so you can take this one down. Half of what it cost comes back.' : 'You only have one of these. Salvage works once you have a duplicate.'}</p>`
+      + btn({ a: 'salvage', i }, `Take down this ${esc(D.buildings[b.type].name.toLowerCase())}`, { sub: `Refund: ${costTxt(salvageRefund(b))}` }) + '</div>'; }
   function moveSection(i) {
     const b = T_(i).b; if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return '';
     if (!unlocked('rollers')) return '';
@@ -3346,7 +3364,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

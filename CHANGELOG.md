@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.63 — 2026-10-22
+- Discovery supply trimmed (tree costs 177 + Salvage 3; contracts alone pay 117): mastery `legend`/`mythic` now `dp: 0` with `gold` 20,000 and
+  100,000 paid in `mastAdd`; Grand orders no longer pay Discovery (`C.grand.dp`/`dpPerDay`, `grandDpLeft`, `S.grandDay` removed). Existing tokens
+  are untouched. Tests: t_legendgold.py, t_grand.py updated.
+- Salvage (Discovery `salvage`, cost 3, needs rollers; Upgrades branch). Task `salvage` on a station, storage building or sprinkler when
+  `builtCount(type) >= 2`, the station has no batches and storage still holds the refund after removal (`room() - items >= 0`).
+  `salvageRefund(b)`: half (floored) of the place cost + the kit's market price (`buy`) or its recipe inputs + every station upgrade level
+  bought + every store expansion. Panel section `salvageSection` under the move section. Test: t_salvage.py.
+
 ## v0.62.1 — 2026-10-22
 - Daily Puzzle no longer pays Discovery. `DQ.reward`: `doneBonus` 0.5 (gold bonus on finishing = 50% of the steps' pay, minus `doneCut`
   0.15 for each of: naming an answer, 3+ wrong guesses; floor 20%), `streakBonus` 1 (every 7th day adds 100% of the steps' pay). Removed
