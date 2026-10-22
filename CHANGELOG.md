@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.66 — 2026-10-22
+- Move the house: task `housemove` (needs Rollers & Skids; `t.p` main tile, `t.i` new top-corner tile; `houseSpot` lists the footprint and what
+  blocks it, own tiles count as free so shifting by one works). Cost `houseMoveCost`: (C.move.gold + D.house.move.gold × size step) × heat,
+  plus D.house.move.plank × step planks; shares `moveHeat`. Uses the existing move bar; the lit-tile preview is drawn in `draw()`.
+- Manual (Menu → Game → Manual, drawer `manual`): `manualEntries()` builds rows from the game data (items via `infoHTML`, buildings, station/tool/
+  house/Homestead upgrades, discoveries, land, 11 hand-written "How it works" pages); `manualMatches()` ANDs the search words over each row's
+  keywords; the search box updates only `#manres` so it keeps focus; only the open row builds its body. Test: t_manual.py.
+
 ## v0.65 — 2026-10-22
 - Homestead decor, stages 1–2 (see ROADMAP pin). Discoveries `homemaking` (3 DT, needs kiln + fishing) and `additions` (3 DT, needs
   homemaking + surveying) in a new Home & decor branch. `D.house` holds the build cost and four levels (Cottage 1×1/3 spots, House 1×2/6,

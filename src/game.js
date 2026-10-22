@@ -1220,6 +1220,13 @@
         out.push({ key, x, y, W, H, add, bad, dir: dirWord(x + (W - 1) / 2 - (x0 + (b.w - 1) / 2), y + (H - 1) / 2 - (y0 + (b.h - 1) / 2)) }); } });
     return out; }
   const growOpt = (o, key) => growOpts(o).find(x => x.key === key);
+  const houseMoveCost = b => { const k = (b.lv || 0) + 1, heat = Math.pow(C.move.heat, S.moveHeat || 0);
+    return { gold: Math.round((C.move.gold + HZ().move.gold * k) * heat / 10) * 10, plank: HZ().move.plank * k }; };
+  // the footprint a house of size w×h would cover with its top corner on tile i, and what (if anything) stops it
+  function houseSpot(i, w, h) { const x0 = tx(i), y0 = ty(i), tiles = []; let bad = null;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!inB(x0 + x, y0 + y)) { bad = bad || 'the edge of the world'; continue; }
+      const j = idx(x0 + x, y0 + y); tiles.push(j); if (!bad && !isEmptyGrass(j) && houseAt(j) < 0) bad = blockWhy(j); }
+    return { tiles, bad }; }
   const decoSlots = b => houseLv(b).slots;
   const decoUsed = b => (b.d || []).filter(Boolean).length;
 
@@ -1394,11 +1401,17 @@
         S.queue.forEach(q => { if (q.i === o) q.i = n; }); if (houseAt(UI.sel) === n || UI.sel === o) UI.sel = n; UI.growPick = null;
         gainScore(C.score.upgrade * 3, n); float(n, `Now a ${nx.name}!`, '#b8f08a'); stepOffHouse(n);
         toast(`<b>Your house is now a ${esc(nx.name)}</b> (${x.W}×${x.H}) with ${nx.slots} display spots.`, 'goal'); } },
+    housemove: { label: () => 'Move the house',
+      check: t => { if (!unlocked('rollers')) return 'Unlock Rollers & Skids'; const b = T_(t.p) && T_(t.p).b; if (!b || b.type !== 'house' || b.pt != null) return 'Nothing to move';
+        if (t.i === t.p) return 'Pick a different spot'; const s = houseSpot(t.i, b.w, b.h); if (s.bad) return `${s.bad.charAt(0).toUpperCase() + s.bad.slice(1)} is in the way`; return canPay(houseMoveCost(b)); },
+      run: t => { const o = t.p, b = T_(o).b, c = houseMoveCost(b), s = houseSpot(t.i, b.w, b.h); pay(c);
+        houseTiles(o).forEach(j => { T_(j).b = null; }); T_(t.i).b = b; s.tiles.forEach(j => { if (j !== t.i) T_(j).b = { type: 'house', pt: t.i }; });
+        S.moveHeat = (S.moveHeat || 0) + 1; S.moveCool = 0; UI.sel = t.i; stepOffHouse(t.i); float(t.i, 'House moved', '#b8f08a'); } },
     hire: { label: () => 'Hire a farmhand', check: () => !unlocked('farmhand') ? 'Unlock Farmhand' : S.helper ? 'Already hired' : canPay(D.farmhand.hire),
       run: t => { pay(D.farmhand.hire); S.helper = { x: Math.round(S.av.x), y: Math.round(S.av.y), path: [], dir: [1, -1], cur: null, steps: [], k: 0, idle: 0, on: true };
         toast('<b>Your farmhand is here.</b> Select a plot, station, tree, pond or boulder field and choose “Add to farmhand”.', 'goal'); } }
   };
-  const ONCE = ['housebuild', 'housegrow', 'fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
+  const ONCE = ['housebuild', 'housegrow', 'housemove', 'fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
   function checkTask(t) { return TASKS[t.a].check(t); }
   function queueTask(t) {
     t.a = t.a; const busy = S.queue.length + (S.cur ? 1 : 0);
@@ -1889,7 +1902,10 @@
       const gp = UI.growPick && UI.growPick.split(':'), go = gp && +gp[0] === selHouse && growOpt(selHouse, gp[1]);
       if (go) go.add.forEach(j => { tilePoly(j, 1); cx.fillStyle = `rgba(184,240,138,${.3 + .2 * pulse})`; cx.fill(); cx.setLineDash([3 * p, 2 * p]); cx.strokeStyle = '#b8f08a'; cx.lineWidth = p * .8; cx.stroke(); cx.setLineDash([]); }); }
     else if (UI.sel >= 0 && !isVoid(UI.sel)) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
-    if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill(); }
+    const mvB = UI.moving != null && S.tiles[UI.moving] && S.tiles[UI.moving].b;
+    if (mvB && mvB.type === 'house') { const at = UI.sel >= 0 ? UI.sel : UI.hover;
+      if (at >= 0 && !isVoid(at)) { const s = houseSpot(at, mvB.w, mvB.h); s.tiles.forEach(j => { tilePoly(j, 1); cx.fillStyle = s.bad ? 'rgba(224,72,94,.32)' : `rgba(184,240,138,${.3 + .2 * pulse})`; cx.fill(); }); } }
+    else if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill(); }
     // task target markers
     [S.cur, ...S.queue].forEach((t, k) => { if (!t) return; tilePoly(t.i, 3); cx.strokeStyle = k ? 'rgba(143,211,239,.55)' : 'rgba(143,211,239,.9)'; cx.lineWidth = p * .7; cx.stroke(); });
     // objects + avatar, depth sorted
@@ -2456,7 +2472,9 @@
     h += ok.map(x => UI.growPick === o + ':' + x.key ? btn({ a: 'housegrow', i: o, p: x.key }, `Build the ${esc(nx.name)} here`, { cls: 'pri', sub: `${esc(cap1(x.dir))} · ${costTxt(nx.cost)}` })
       : `<button class="btn" data-grow-pick="${o}:${x.key}">Grow ${esc(x.dir)}${ce ? `<small>${esc(ce)}</small>` : ''}</button>`).join('');
     return h + why; }
-  function housePanel(o) { const b = T_(o).b, L = houseLv(b), sl = L.slots, d = b.d || (b.d = []), n = decoUsed(b), full = n >= sl;
+  function houseMoveHTML(o, i) { const b = T_(o).b; if (!unlocked('rollers')) return '';
+    return `<div class="more"><span class="eyebrow">Move the house</span><p class="hint">Keeps everything on display. It needs a free ${b.w}×${b.h} patch of grass you own. Costs ${costTxt(houseMoveCost(b))}${(S.moveHeat || 0) > 0 ? ' (higher after recent moves; the surcharge eases every few days)' : ''}.</p><button class="btn ghost" data-move-start="${o}">Pick a new spot</button></div>`; }
+  function housePanel(o, i) { const b = T_(o).b, L = houseLv(b), sl = L.slots, d = b.d || (b.d = []), n = decoUsed(b), full = n >= sl;
     let h = head(`${S.name}’s ${L.name}`, esc(D.buildings.house.desc));
     h += `<p class="state">A ${b.w}×${b.h} ${esc(L.name.toLowerCase())} · <b>${n}</b> of ${sl} display spots filled.</p>`;
     h += `<span class="eyebrow">On display</span><div class="decogrid">` + Array.from({ length: sl }, (_, k) => { const x = d[k];
@@ -2468,9 +2486,15 @@
         + (full ? `<p class="hint small">Every spot is filled. Store a piece to swap it${HZ().levels[(b.lv || 0) + 1] ? ', or grow the house for more spots' : ''}.</p>` : '')
       : `<p class="hint">No decor in storage. ${esc(decoWhere())}</p>`;
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
-    return h + `<p class="hint small">Pieces on display leave your storage, so they don’t take up room. Store one to take it back.</p>`; }
+    h += `<p class="hint small">Pieces on display leave your storage, so they don’t take up room. Store one to take it back.</p>`;
+    if (UI.moving === o) return head(`Moving the ${L.name}`, 'Choose where its top corner goes.') + houseMoveHere(i, o);
+    return h + houseMoveHTML(o, i); }
+  function houseMoveHere(i, o) { const b = T_(o).b, s = houseSpot(i, b.w, b.h);
+    return `<p class="state">${s.bad ? `${esc(s.bad.charAt(0).toUpperCase() + s.bad.slice(1))} is in the way here.` : `The ${b.w}×${b.h} house would cover the lit tiles.`}</p>`
+      + btn({ a: 'housemove', i, p: o }, 'Move the house here', { cls: 'pri', sub: costTxt(houseMoveCost(b)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
   function emptyPanel(i) {
     let h = head('Empty grassland', 'Build a farm plot or place a station kit here.');
+    if (UI.moving != null && T_(UI.moving).b && T_(UI.moving).b.type === 'house') return head('Move the house', 'Choose where its top corner goes.') + houseMoveHere(i, UI.moving);
     if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
       h += btn({ a: 'move', i, p: UI.moving, nm }, `Move the ${esc(nm)} here`, { cls: 'pri', sub: costTxt(moveCost(b.type)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
     if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)}</small></button>`; });
@@ -2520,7 +2544,7 @@
   }
   function renderMoveBar() { const el = $('#movebar'), b = UI.moving != null && T_(UI.moving).b;
     if (!b) { UI.moving = null; el.hidden = true; return; } el.hidden = false;
-    setHTML('#movebar', `<span><b>Moving the ${esc(D.buildings[b.type].name)}.</b> ${isTouch() ? 'Tap' : 'Click'} empty grass you own, then choose “Move here”.</span><button class="btn ghost sm" data-move-cancel>Cancel</button>`); }
+    setHTML('#movebar', `<span><b>Moving the ${esc(D.buildings[b.type].name)}.</b> ${isTouch() ? 'Tap' : 'Click'} ${b.type === 'house' ? 'where its top corner should go (the lit tiles show what it covers)' : 'empty grass you own'}, then choose “Move here”.</span><button class="btn ghost sm" data-move-cancel>Cancel</button>`); }
   /* On larger screens the action panel floats beside the selected tile (right of it, or left if there's no room)
      and follows it as the view moves. Phones keep the bottom sheet. */
   /* Computers can also pin the panel: right-click it → Move and resize, drag it where you like, and it opens there
@@ -2578,7 +2602,7 @@
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
-      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i)) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
+      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i), i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
       if (k === 'home') S.noticeSeen = UI.noticeK; }
     else if (T.r) h = gatherPanel(i, T);
     else if (greenT(i)) h = greenPanel(i);
@@ -2672,6 +2696,8 @@
       h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
       h = seasonDrawer();
+    } else if (UI.drawer === 'manual') {
+      h = manualDrawer();
     } else if (UI.drawer === 'spread') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${spreadHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'support') {
@@ -2783,7 +2809,7 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         `, false, !!(UI.fileInfo || UI.fileErr || UI.importOpen || UI.exportCode || UI.cloudBusy))}
-        ${msec('game', 'Game', 'Settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
+        ${msec('game', 'Game', 'Manual, settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="manual">Manual<small>Search every good, building, upgrade and discovery</small></button><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
         ${msec('controls', 'Controls', isTouch() ? 'Taps, drags and pinches' : 'Mouse and keyboard', `${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>`, false)}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
@@ -2791,6 +2817,71 @@
     const sa = UI.drawer === 'menu' && $('#savedago');
     if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
+
+  /* ================= the manual =================
+     Menu → Manual: a searchable list of every good, building, upgrade, discovery and kind of land, plus a few "how it works"
+     pages. Rows are built from the game's own data, so new content shows up here by itself. Only the open entry builds its body. */
+  const MAN_KINDS = [['item', 'Goods & items'], ['build', 'Buildings'], ['upg', 'Upgrades'], ['disc', 'Discoveries'], ['land', 'Land'], ['how', 'How it works']];
+  const bName = id => D.buildings[id] ? D.buildings[id].name : id;
+  const recipesAt = bt => Object.entries(D.recipes).filter(([, R]) => R.station === bt);
+  const outName = R => Object.keys(R.out).map(k => D.items[k].name);
+  function manualEntries() {
+    const E = [], add = (id, kind, name, icon, keys, body) => E.push({ id, kind, name, icon, keys: (name + ' ' + keys).toLowerCase(), body });
+    Object.keys(D.items).forEach(id => { const it = D.items[id], made = Object.values(D.recipes).filter(r => r.out[id]).map(r => bName(r.station)).join(' '),
+        uses = Object.values(D.recipes).filter(r => r.in[id]).flatMap(r => outName(r)).join(' '), ing = Object.values(D.recipes).filter(r => r.out[id]).flatMap(r => Object.keys(r.in).map(k => D.items[k].name)).join(' ');
+      add('i:' + id, 'item', it.name, id, `${it.cat} ${made} ${uses} ${ing} ${it.cat === 'kit' ? 'kit station building' : ''} ${it.cat === 'decor' ? 'decor house furniture' : ''}`, () => infoHTML(id)); });
+    Object.keys(D.buildings).filter(id => !['decor', 'monsite'].includes(D.buildings[id].kind)).forEach(id => { const B = D.buildings[id], rs = recipesAt(id);
+      add('b:' + id, 'build', B.name, null, `${B.kind} ${B.desc} ${rs.flatMap(([, R]) => outName(R)).join(' ')}`, () => {
+        let h = `<p>${esc(B.desc)}</p>`;
+        if (B.place && Object.keys(B.place).length) h += `<p><b>To place:</b> its kit plus ${esc(costTxt(B.place))}.</p>`; else if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>To place:</b> its kit (nothing else).</p>`;
+        if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>Limit:</b> ${B.perArea || 1} per area you own${B.perArea > 1 ? '' : ''}. Survey new land (Discovery → Land Surveying) to build more.</p>`;
+        if (B.storage) h += `<p><b>Storage:</b> adds ${B.storage} to shared storage.</p>`;
+        if (B.hold) h += `<p><b>Holds:</b> ${B.hold.base} ${esc(SK[B.hold.cls].name)} apart from main storage, +${B.hold.step} each expansion (up to ${B.hold.max} times).</p>`;
+        if (B.slots) h += `<p><b>Batches at once:</b> ${B.slots}, more with Capacity upgrades.</p>`;
+        if (rs.length) h += `<p><b>Makes:</b></p><ul class="manlist">${rs.map(([, R]) => `<li>${Object.keys(R.out).map(k => ico(k)).join('')} ${esc(outName(R).join(' + '))} <small class="muted">from ${esc(inTxtPlain(R.in))}${R.requires ? ` · needs ${esc(nmList([].concat(R.requires).map(k => (D.discoveries.find(d => d.id === k) || { name: k }).name)))}` : ''}</small></li>`).join('')}</ul>`;
+        if (id === 'house') h += `<p><b>Sizes:</b> ${HZ().levels.map(L => `${L.name} ${L.w}×${L.h} (${L.slots} spots)`).join(', ')}.</p>`;
+        if (MOVABLE.includes(B.kind)) h += `<p><b>Moving:</b> with Rollers & Skids you can move it, keeping upgrades and batches. See “Moving and taking buildings down”.</p>`;
+        return h; }); });
+    // upgrades
+    Object.values(D.upgrades).forEach(U => add('u:' + U.name, 'upg', `Station ${U.name} upgrade`, null, `station tuning ${U.name} level`, () => `<p>Upgrades any station (Discovery → Station Tuning). Each level costs more.</p><ul class="manlist">${U.cost.map((c, l) => `<li><b>${esc(U.label(l + 1))}</b> <small class="muted">${esc(costTxt(c))}${U.gate && U.gate[l] ? ` · needs ${esc((D.discoveries.find(d => d.id === U.gate[l]) || { name: U.gate[l] }).name)}` : ''}</small></li>`).join('')}</ul>`));
+    Object.keys(D.tools).forEach(k => { const T = D.tools[k]; add('t:' + k, 'upg', `${T.name} upgrades`, null, `tool toolsmithing ${T.tiers.join(' ')}`, () => `<p>Upgrade it at the Homestead (Discovery → Toolsmithing).</p><ul class="manlist">${T.tiers.map((t, l) => `<li><b>${esc(t)}</b> · ${esc(T.desc[l])}${l ? ` <small class="muted">${esc(costTxt(T.cost[l - 1]))}</small>` : ''}</li>`).join('')}</ul>`); });
+    add('u:home', 'upg', 'Homestead storage upgrades', null, 'storage capacity expand root cellar granary', () => `<p>Select the Homestead → Expand storage. Capacity grows with each level, and keeps growing past the listed ones.</p><ul class="manlist">${D.homeUpgrades.map((c, l) => `<li><b>Level ${l + 2}</b> <small class="muted">${esc(costTxt(c))}${D.homeGate[l] ? ` · needs ${esc((D.discoveries.find(d => d.id === D.homeGate[l]) || { name: D.homeGate[l] }).name)}` : ''}</small></li>`).join('')}</ul>`);
+    add('u:house', 'upg', 'House sizes', null, 'house additions cottage farmhouse manor decor', () => `<p>Build with Homemaking; grow with House Additions. The new size needs free grass beside the house.</p><ul class="manlist"><li><b>${esc(HZ().levels[0].name)}</b> ${HZ().levels[0].w}×${HZ().levels[0].h} · ${HZ().levels[0].slots} spots <small class="muted">${esc(costTxt(HZ().build))}</small></li>${HZ().levels.slice(1).map(L => `<li><b>${esc(L.name)}</b> ${L.w}×${L.h} · ${L.slots} spots <small class="muted">${esc(costTxt(L.cost))}</small></li>`).join('')}</ul>`);
+    add('u:farmhand', 'upg', 'Farmhand', null, 'helper worker jobs loop hire crew errands', () => `<p>Hire one helper (Discovery → Farmhand) at the Homestead for ${esc(costTxt(D.farmhand.hire))}. They loop through up to ${D.farmhand.maxSteps} jobs you give them (more with Seasoned Farmhand), work out the jobs they can do, and skip any that have nothing to do. Repeat Recipes, Errands and seed buying all build on them.</p>`);
+    // discoveries
+    D.discoveries.forEach(d => add('d:' + d.id, 'disc', d.name, null, `discovery unlock ${d.text} ${d.where}`, () => {
+      const own = unlocked(d.id), need = [...d.req.filter(r => !unlocked(r)).map(r => (D.discoveries.find(x => x.id === r) || { name: r }).name), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : [])];
+      return `<div class="mandisc"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p></div></div><p><b>${own ? 'Unlocked.' : `Costs ${d.cost} Discovery.`}</b>${own ? '' : need.length ? ` Needs ${esc(nmList(need))} first.` : ' Ready to unlock.'} <button class="linkish small" data-drawer="disc">Open Discovery</button></p>`; }));
+    // land
+    Object.keys(D.terrain).filter(t => D.terrain[t].cost != null && !D.terrain[t].green && t !== 'void').forEach(t => { const T = D.terrain[t], G = D.gather[t];
+      add('l:' + t, 'land', T.name, null, `terrain land tile ${T.desc} ${G ? Object.keys(G.out).map(k => D.items[k].name).join(' ') : ''}`, () => `<p>${esc(T.desc)}</p><p><b>Buy:</b> from ${T.cost}g at the edge of your land${t === 'boulder' ? '' : ' (land also gets pricier with every tile)'}.</p>${G ? `<p><b>Gives:</b> ${esc(nmList(Object.keys(G.out).map(k => D.items[k].name)))}${G.needs ? ` · needs ${esc((D.discoveries.find(d => d.id === G.needs) || { name: G.needs }).name)}` : ''}.</p>` : ''}${T.future ? `<p class="tip">${esc(T.future)}</p>` : ''}`); });
+    // how it works
+    const how = (id, name, keys, body) => add('h:' + id, 'how', name, null, keys, () => body);
+    how('quality', 'Quality', 'basic good excellent water fertilizer tier price', QUALITY_HELP);
+    how('orders', 'Orders and the Order Board', 'deliver request gold board contract', `<p>The Order Board posts requests for goods you’ve already made: deliver them for gold and score. The board holds ${C.orderSlots} requests and gains one for every ${C.orderSlotEvery} Discoveries you unlock (up to ${C.orderSlotMax}). A new one arrives ${C.orderRefill} seconds after you fill or pass one. Contracts (the card top left) are one-off goals that pay gold and Discovery. Decor is never requested.</p>`);
+    how('grand', 'Grand orders', 'big orders five goods advanced', `<p>With the Grand Orders discovery, the Board also posts ${C.grand.slots} Grand orders: five different goods, many of each, for big gold and score. They scale with your storage. After you fill or pass one, the next arrives ${Math.round(C.grand.refill / 60)} minutes later, by the real clock, even while you’re away.</p>`);
+    how('discovery', 'Discovery', 'tokens points unlock tree', `<p>Discovery is what you spend to unlock things in the tree. You earn it from first-time accomplishments, deeper production chains, quality, contracts, mastery tiers and the Valley Monument, never from repeating cheap work. Score is separate: everything you do earns score.</p>`);
+    how('mastery', 'Mastery', 'tier bronze silver gold legend mythic perk', `<p>Every crop and animal good you produce counts toward its mastery (Menu → Mastery). Tiers: ${MAS.tiers.map(T => T.name).join(', ')}. Each tier makes that good sell for more, and higher tiers make it faster or give extra yield. Legend and Mythic pay gold instead of Discovery. Mastery is off during races and weekly challenges.</p>`);
+    how('seasons', 'Seasons and weather', 'spring summer autumn winter rain frost snow heat', `<p>A season lasts ${SR.len} days and a year ${YEAR}. Crops and goods in season grow faster and sell for more; rain waters crops, heat dries soil, frost slows tender crops and snow days only let hardy crops be planted. Cold Frames protect your plots. See the Season button in the top bar.</p>`);
+    how('storage', 'Storage', 'inventory capacity full barn silo cellar', `<p>Everything you own lives in shared storage that every station and order draws from. The Homestead provides the base capacity; Storage Barns and Warehouses add to it. Silos, Cold Cellars and Material Yards hold one kind of goods apart from main storage. Kits and decor on display don’t use storage.</p>`);
+    how('moving', 'Moving and taking buildings down', 'move salvage rollers skids refund house', `<p>Rollers & Skids lets you move a station, storage building, sprinkler or your house: select it and choose Pick a new spot. Moves cost gold and materials, a little more after each recent move; the surcharge eases over a few days. Salvage lets you take down a duplicate station, storage building or sprinkler for half its cost back.</p>`);
+    how('queue', 'Tasks and the farmer', 'queue walk work farmer', `<p>Tap a tile and choose an action; your farmer walks there and works, and queues up to ${C.maxQueue} tasks. Tapping a selected tile again repeats its main action. The farmhand does the same for the jobs you give them.</p>`);
+    how('online', 'Online valley, races and the weekly challenge', 'leaderboard market prices race weekly medal monument online', `<p>Online farms share market prices, a leaderboard and one Valley Monument. Races (Menu → Race with friends) use a farm-word code like WHEAT; the Weekly Challenge gives everyone the same rules for a week, with medals for the top three. Private farms stay offline.</p>`);
+    how('puzzle', 'Daily puzzle', 'riddle hint streak gold', `<p>A new puzzle each day: make or find the goods it describes, in order, for gold. Hints cost gold. Steps keep the goods you made, and a streak earns a bonus.</p>`);
+    return E; }
+  function manualMatches() { const q = (UI.manQ || '').toLowerCase().trim().split(/\s+/).filter(Boolean), kind = UI.cat.manual && UI.cat.manual !== 'all' ? UI.cat.manual : null;
+    let L = manualEntries().filter(e => (!kind || e.kind === kind) && q.every(w => e.keys.includes(w)));
+    if (q.length) L.sort((a, b) => (b.name.toLowerCase().startsWith(q[0]) - a.name.toLowerCase().startsWith(q[0])) || (b.name.toLowerCase().includes(q[0]) - a.name.toLowerCase().includes(q[0])));
+    return L; }
+  function manualList() { const L = manualMatches(), MAX = 60, open = UI.manOpen, show = L.slice(0, MAX);
+    if (open && !show.some(e => e.id === open)) { const o = L.find(e => e.id === open); if (o) show.unshift(o); }
+    if (!L.length) return `<p class="hint">Nothing matches “${esc(UI.manQ || '')}”. Try a shorter word, or a good or building name.</p>`;
+    return show.map(e => `<div class="manent ${open === e.id ? 'open' : ''}"><button class="manrow" data-man="${esc(e.id)}" aria-expanded="${open === e.id}">${e.icon ? ico(e.icon) : '<span class="manpad"></span>'}<span class="grow1"><b>${esc(e.name)}</b><small>${esc(MAN_KINDS.find(k => k[0] === e.kind)[1])}</small></span><i aria-hidden="true">${open === e.id ? '▾' : '▸'}</i></button>${open === e.id ? `<div class="manbody">${e.body()}</div>` : ''}</div>`).join('')
+      + (L.length > show.length ? `<p class="hint">Showing ${show.length} of ${L.length}. Type to narrow it down.</p>` : ''); }
+  function manualDrawer() { const all = manualEntries(), cnt = k => all.filter(e => e.kind === k).length;
+    return `<div class="phead"><div><h2>Manual</h2><p class="sub">Every good, building, upgrade, discovery and kind of land in the game. Search, or pick a group.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+      <label class="field manq">Search <input id="manq" type="text" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. flour, kiln, speed, rug" value="${esc(UI.manQ || '')}"></label>
+      ${chips('manual', MAN_KINDS.map(([k, n]) => [k, n, cnt(k)]))}<div id="manres" class="manres">${manualList()}</div>`; }
   // Main menu sections: a header you tap to fold or unfold; which are open is remembered on this device.
   function msec(id, title, sub, body, open0, force) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), open = force || (f[id] != null ? f[id] : open0);
     return `<section class="msec ${open ? 'open' : ''}"><button class="msech" data-msec="${id}" aria-expanded="${open}"><span><b>${esc(title)}</b><small>${sub}</small></span><i aria-hidden="true">${open ? '▾' : '▸'}</i></button>${open ? `<div class="msecb">${body}</div>` : ''}</section>`; }
@@ -2888,7 +2979,7 @@
     const ds = el.dataset;
     if ('task' in ds) { const t = { a: ds.a, i: +ds.i }; if (ds.p !== undefined) t.p = isNaN(+ds.p) || ds.p === '' ? ds.p : (ds.a === 'deliver' ? +ds.p : ds.p);
       if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; if (ds.nm) t.nm = ds.nm;
-      if (t.a === 'move' || t.a === 'survey') t.p = +ds.p; queueTask(t); if (t.a === 'move') UI.moving = null; }
+      if (t.a === 'move' || t.a === 'housemove' || t.a === 'survey') t.p = +ds.p; queueTask(t); if (t.a === 'move' || t.a === 'housemove') UI.moving = null; }
     else if ('close' in ds) UI.sel = -1;
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
@@ -2989,6 +3080,7 @@
     else if ('medalPut' in ds) { const m = NET.medals.find(x => medalKey(x) === ds.medalPut), i = +ds.i;
       if (m && isEmptyGrass(i) && medalAt(m) === undefined) { T_(i).b = { type: 'medal', m: { week: m.week, place: m.place, score: m.score } }; UI.placeMedal = null; save(); SND.play('contract');
         float(i, `${MEDAL[m.place][0]} medal on show`, '#f6e27a'); } }
+    else if (ds.man) { UI.manOpen = UI.manOpen === ds.man ? null : ds.man; }
     else if (ds.growPick) { UI.growPick = UI.growPick === ds.growPick ? null : ds.growPick; }
     else if (ds.decoPut) { const [o, id] = ds.decoPut.split(':'), b = T_(+o).b; if (!b || b.type !== 'house') return;
       const sl = decoSlots(b), d = b.d || (b.d = []), k = Array.from({ length: sl }, (_, j) => j).find(j => !d[j]); const a = S.inv[id];
@@ -3055,6 +3147,7 @@
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
+    if (e.target.id === 'manq') { UI.manQ = e.target.value; UI.manOpen = null; const r = $('#manres'); if (r) r.innerHTML = manualList(); return; }
     if (e.target.id === 'lbname') { UI.lbDraft = e.target.value; if (UI.claim && UI.claim.taken) UI.claim = null; return; }
     if (e.target.dataset && e.target.dataset.vol) { SND.unlock(); SND.set(e.target.dataset.vol, (+e.target.value) / 100); return; }
     if (e.target.id === 'impcode') { UI.importText = e.target.value; UI.confirmImport = false; UI.importData = null; UI.importErr = UI.importInfo = null;
@@ -3086,7 +3179,7 @@
     if (UI.idle) return;
     if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
     else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb') && S.menuPause !== false;
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
