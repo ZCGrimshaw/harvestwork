@@ -75,7 +75,11 @@ Not built yet; picked up when we choose to.
   every 90 s, plus `get_trades` when the ticker is open, `mon_state` about every 3 min, and a load-time burst (`submit_score`,
   `my_name`, `my_medals`, auto-backup, `link_farm`). Plan: one additive `game_sync` RPC returning market, clock, open count, trades,
   monument state, and (on load) name and medals, so a normal cycle is one request; old clients keep using the current RPCs.
-  The weekly "overtaken" check could ride on it too. Low priority: DB is small and trades are trimmed daily.
+  The weekly check for losing #1 could ride on it too. Low priority: DB is small and trades are trimmed daily.
+  **Watch (noted 2026-10-22):** monument gifts (`mon_give`) are sent straight to the server one at a time, and Auto-give sends one gift of
+  one good every 20 s at most. Manual gifts should stay immediate (the server must approve the allowance and phase before goods leave
+  storage). If traffic becomes too much, address Auto-give first: let one request carry several goods, or send auto gifts with the
+  regular sync, and handle the server refusing a gift after the goods were set aside. Not a problem today.
 - **Grand orders tuning (pinned 2026-10-21, waiting on Joel):** Joel says "every 6 mins makes it impossible to keep up". Nothing in the
   game runs every 6 minutes: Grand orders refill every 15 min (`C.grand.refill` 900 s, 2 slots, never expire), regular requests every
   15 s, a game day is 4 min. Ask Joel which screen shows 6 minutes. If it is the Grand orders, options: slower refill (30-60 min),
