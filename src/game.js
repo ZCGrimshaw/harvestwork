@@ -725,7 +725,7 @@
     try { UI.rl = await raceCall('create_race', { p_player: PLAYER, p_name: S.name, p_target: target }); openTitle('racelobby'); pollLobby(); }
     catch (e) { UI.rerr = e.message; } UI.rbusy = false; renderTitle(); }
   async function joinRace(code) { code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); UI.rerr = null; UI.rjoin = code;
-    if (code.length !== 5) { UI.rerr = 'Race codes are 5 letters, like K7QPM.'; renderTitle(); return; }
+    if (code.length < 3 || code.length > 5) { UI.rerr = 'Race codes are farm words, like WHEAT.'; renderTitle(); return; }
     UI.rbusy = true; renderTitle();
     try { UI.rl = await raceCall('join_race', { p_code: code, p_player: PLAYER, p_name: S.name });
       if (UI.rl.status === 'running') enterRace(); else { openTitle('racelobby'); pollLobby(); } }
@@ -3142,7 +3142,7 @@
         <span class="eyebrow">Host a race</span><div class="chips">${RACE_TARGETS.map(([n, l]) => `<button class="chipf ${sel === n ? 'on' : ''}" data-t="rtarget" data-n="${n}">${l} · ${n.toLocaleString()}</button>`).join('')}</div>
         <div class="tmenu"><button class="btn pri big" data-t="rhost" ${busy ? 'disabled' : ''}>Host a race to ${sel.toLocaleString()} points</button></div>
         <span class="eyebrow">Join a race</span>
-        <div class="fhrow"><input id="rjoin" maxlength="7" placeholder="Race code" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(UI.rjoin || '')}"><button class="btn sm" data-t="rjoin" ${busy ? 'disabled' : ''}>Join</button></div>
+        <div class="fhrow"><input id="rjoin" maxlength="7" placeholder="Race code, like WHEAT" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(UI.rjoin || '')}"><button class="btn sm" data-t="rjoin" ${busy ? 'disabled' : ''}>Join</button></div>
         ${UI.rerr ? `<p class="hint err">${esc(UI.rerr)}</p>` : busy ? '<p class="hint">Connecting…</p>' : ''}
         <p class="hint small">No pausing during a race, and races don’t change valley market prices or the leaderboard. Up to 8 farmers.</p>
         <div class="tmenu"><button class="btn ghost" data-t="main">Back</button></div></div>`; }

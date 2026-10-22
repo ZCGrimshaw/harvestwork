@@ -52,7 +52,7 @@ Not built yet; picked up when we choose to.
   smithy) sell your goods for you for steady income; roads and a town square. (3) City: industry (bigger versions
   of your stations, factories), districts, more residents wanting finer goods. Watch: scope, art volume, and
   performance on the 36×36 map (may need a separate "town" map).
-- **Race codes as farm words (pinned 2026-10-16):** replace the random 5-character race code (K7QPM) with a real farm word of
+- **Race codes as farm words (pinned 2026-10-16, DONE in v0.64):** replace the random 5-character race code (K7QPM) with a real farm word of
   4 to 5 letters (BARN, WHEAT, HIVE…), picked from a list of about 190 inside create_race. Old races (over 2 days) are deleted
   so words can be reused; if every word is in use it falls back to a random code. Client: joinRace currently demands exactly
   5 letters or digits; it should accept 3 to 5 (old codes keep working), with new wording ("Race codes are farm words, like

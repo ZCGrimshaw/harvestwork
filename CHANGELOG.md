@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.64 — 2026-10-22
+- Race codes are farm words (4–5 letters, ~215 in a list inside `create_race`; migration `race_codes_farm_words`). `create_race` picks a random
+  unused word (40 tries), then falls back to a random 5-character code; races and players older than 2 days are deleted on create so words
+  are reused. `joinRace` accepts 3–5 letters/digits (old codes still work), new wording and placeholder.
+
 ## v0.63 — 2026-10-22
 - Discovery supply trimmed (tree costs 177 + Salvage 3; contracts alone pay 117): mastery `legend`/`mythic` now `dp: 0` with `gold` 20,000 and
   100,000 paid in `mastAdd`; Grand orders no longer pay Discovery (`C.grand.dp`/`dpPerDay`, `grandDpLeft`, `S.grandDay` removed). Existing tokens
