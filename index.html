@@ -705,6 +705,15 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .notices .notice { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 7px 9px; margin-bottom: 6px; font-size: 13px; line-height: 1.35;
   background: rgba(246,210,74,.12); border: 1px solid rgba(246,210,74,.45); border-radius: var(--r); }
 .monhelp p { margin: 6px 0; }
+/* your house: decor on display, one card per spot */
+.decogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+.deco { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px 4px; text-align: center;
+  background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: var(--r); }
+.deco .ico { width: 32px; height: 32px; }
+.deco small { font-size: 12px; line-height: 1.25; color: var(--paper); }
+.deco .linkish.small { flex: none; margin: 2px 0 0; font-size: 12px; }
+.deco.empty { justify-content: center; min-height: 76px; border-style: dashed; background: transparent; }
+.deco.empty small { color: var(--paper-dim); }
 .moncard { text-align: center; } .monheroimg { display: block; width: 200px; height: auto; margin: 6px auto 0; image-rendering: pixelated; animation: monbob 3.2s ease-in-out infinite; }
 .monstrip { display: flex; justify-content: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; } .monstrip span { opacity: .45; } .monstrip span.on { opacity: 1; }
 .monstrip img { display: block; width: 52px; height: auto; image-rendering: pixelated; } .monstrip small { font-size: 11px; color: var(--paper-dim); }
@@ -784,9 +793,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261022-180030"></script>
-<script src="art.js?v=20261022-180030"></script>
-<script src="sound.js?v=20261022-180030"></script>
-<script src="game.js?v=20261022-180030"></script>
+<script src="data.js?v=20261022-182249"></script>
+<script src="art.js?v=20261022-182249"></script>
+<script src="sound.js?v=20261022-182249"></script>
+<script src="game.js?v=20261022-182249"></script>
 
 </body></html>

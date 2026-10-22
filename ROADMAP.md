@@ -64,7 +64,7 @@ Not built yet; picked up when we choose to.
   Add-to-Home-Screen app (manifest, offline), a larger-text option, battery and frame rate checks. Needs a real-device test.
   Done so far: v0.44 (44px tap targets, ticker hidden by default on phones). Skipped: quick-action chips (tapping a selected
   tile again already does its main action). Next: drag to till/plant/water/harvest many plots, Add to Home Screen, larger text.
-- **Homestead decor line (pinned 2026-10-20):** a new production line of household goods for decorating the farm (furniture,
+- **Homestead decor line (pinned 2026-10-20; stages 1–2 SHIPPED in v0.65: house, decor, growth to 2×3; charm still open):** a new production line of household goods for decorating the farm (furniture,
   rugs, lamps, curtains, pottery, picture frames), made at new stations from existing materials (wood, wool, clay, glass,
   cloth). Pairs with "decorations and farm charm" and City growth.
   **Direction (discussed 2026-10-22):** decor is displayed inside a **Homestead house**, not scattered on the map. The house

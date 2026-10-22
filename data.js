@@ -333,6 +333,16 @@ window.HW_DATA = {
     stained_glass: { name: 'Stained Glass', cat: 'good', value: 190, icon: ['block', '#e86aa8', '#4aa3d8'] },
     berry_wine:    { name: 'Berry Wine', cat: 'good', value: 165, icon: ['bottle', '#7a1a3a', '#3a5a2a'] },
     apple_brandy:  { name: 'Apple Brandy', cat: 'good', value: 185, icon: ['bottle', '#c8782a', '#7a4b28'] },
+    // home decor (Discovery 'homemaking'): shown inside your house; the market buys them too, but orders never ask for them
+    chair:         { name: 'Wooden Chair', cat: 'decor', value: 38, icon: ['chair', '#c98a4a', '#8a5a2e'] },
+    table:         { name: 'Farmhouse Table', cat: 'decor', value: 70, icon: ['table', '#b07a42', '#7a4b28'] },
+    fish_trophy:   { name: 'Fish Trophy', cat: 'decor', value: 75, icon: ['trophy', '#6fb3d9', '#8a5a2e'] },
+    vase:          { name: 'Flower Vase', cat: 'decor', value: 72, icon: ['vase', '#c8703a', '#e86aa8'] },
+    bookshelf:     { name: 'Bookshelf', cat: 'decor', value: 135, icon: ['shelf', '#9a6a3c', '#c22a44'] },
+    painting:      { name: 'Painted Picture', cat: 'decor', value: 150, icon: ['frame', '#c99a1e', '#4aa3d8'] },
+    rug:           { name: 'Woven Rug', cat: 'decor', value: 155, icon: ['rug', '#c8483a', '#e8c04a'] },
+    curtains:      { name: 'Curtains', cat: 'decor', value: 115, icon: ['curtain', '#9a4ac8', '#efe6cf'] },
+    lamp:          { name: 'Oil Lamp', cat: 'decor', value: 130, icon: ['lamp', '#d9824a', '#f6e27a'] },
 
     sawmill_kit:  { name: 'Sawmill Kit', cat: 'kit', buy: 50, building: 'sawmill', requires: 'sawmill', icon: ['kit', '#c98a4a', '#9aa0aa'] },
     mill_kit:     { name: 'Flour Mill Kit', cat: 'kit', buy: 70, building: 'mill', requires: 'mill', icon: ['kit', '#c98a4a', '#f2ead8'] },
@@ -373,7 +383,8 @@ window.HW_DATA = {
     dyevat_kit:   { name: 'Dye Vat Kit', cat: 'kit', buy: 130, building: 'dyevat', requires: 'dyeing', icon: ['kit', '#9a4ac8', '#c98a4a'] },
     potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
     forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] },
-    glassworks_kit: { name: 'Glass Furnace Kit', cat: 'kit', buy: 220, building: 'glassworks', requires: 'glassworks', icon: ['kit', '#7fb8c8', '#f06a20'] }
+    glassworks_kit: { name: 'Glass Furnace Kit', cat: 'kit', buy: 220, building: 'glassworks', requires: 'glassworks', icon: ['kit', '#7fb8c8', '#f06a20'] },
+    carpenter_kit: { name: 'Carpenter’s Bench Kit', cat: 'kit', buy: 150, building: 'carpenter', requires: 'homemaking', icon: ['kit', '#c98a4a', '#8a5a2e'] }
   },
 
   // Categories used to sort lists in the market, storage and Discovery screens.
@@ -388,6 +399,7 @@ window.HW_DATA = {
     { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake'] },
     { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead', 'berry_wine', 'apple_brandy'] },
     { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket', 'glass_jar', 'stained_glass'] },
+    { id: 'decor', name: 'Home decor', cats: ['decor'] },
     { id: 'materials', name: 'Building materials', cats: ['component'] },
     { id: 'kits', name: 'Station kits', cats: ['kit'] },
     { id: 'other', name: 'Other', cats: ['good'] }
@@ -399,11 +411,12 @@ window.HW_DATA = {
     { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
     { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders', 'salvage'] },
+    { id: 'home', name: 'Home & decor', ids: ['homemaking', 'additions'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
     { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
   ],
 
-  // kind: home | farm | station | market | board | storage | sprinkler
+  // kind: home | farm | station | market | board | storage | sprinkler | house (your family home, see house below)
   // Stations and storage are limited per area you own (perArea, default 1); survey new land to build more.
   buildings: {
     homestead: { name: 'Homestead', kind: 'home', desc: 'Your home and shared storage. Every station draws from and returns to it.' },
@@ -443,7 +456,22 @@ window.HW_DATA = {
     dyevat:    { name: 'Dye Vat', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
     potter:    { name: 'Potter’s Wheel', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
     forge:     { name: 'Forge', kind: 'station', slots: 2, place: { brick: 8, stone: 6 }, desc: 'Smelts iron ore over charcoal and hammers ingots into tools.' },
-    glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' }
+    glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' },
+    carpenter: { name: 'Carpenter’s Bench', kind: 'station', slots: 2, place: { plank: 6, brick: 2 }, desc: 'Builds furniture, frames pictures and mounts fish trophies for your house.' },
+    house:     { name: 'House', kind: 'house', desc: 'Your family home. Put the decor you make on display inside it.' }
+  },
+
+  /* Your house (Discovery 'homemaking'): one per farm, built on empty grass. It holds decor on display, one piece per spot.
+     House Additions ('additions') grows it a size at a time onto free grass beside it; w×h is the footprint in tiles
+     (it can face either way). Spots carry over when it grows. */
+  house: {
+    build: { gold: 400, plank: 20, brick: 10 },
+    levels: [
+      { name: 'Cottage', w: 1, h: 1, slots: 3 },
+      { name: 'House', w: 1, h: 2, slots: 6, cost: { gold: 1500, plank: 30, brick: 24 } },
+      { name: 'Farmhouse', w: 2, h: 2, slots: 10, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
+      { name: 'Manor', w: 2, h: 3, slots: 15, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
+    ]
   },
 
   // Station upgrade axes. Level costs are indexed by current level.
@@ -539,7 +567,17 @@ window.HW_DATA = {
     apple_brandy:   { station: 'press', in: { cider: 2, charcoal: 1 }, out: { apple_brandy: 1 }, time: 40, requires: 'winemaking' },
     glass:          { station: 'glassworks', in: { sand: 2, charcoal: 1 }, out: { glass: 1 }, time: 18 },
     glass_jar:      { station: 'glassworks', in: { glass: 1 }, out: { glass_jar: 1 }, time: 14 },
-    stained_glass:  { station: 'glassworks', in: { glass: 2, dye: 1, plank: 1 }, out: { stained_glass: 1 }, time: 30, requires: 'dyeing' }
+    stained_glass:  { station: 'glassworks', in: { glass: 2, dye: 1, plank: 1 }, out: { stained_glass: 1 }, time: 30, requires: 'dyeing' },
+    // home decor; requires can list several discoveries (all needed)
+    chair:          { station: 'carpenter', in: { plank: 4 }, out: { chair: 1 }, time: 16, requires: 'homemaking' },
+    table:          { station: 'carpenter', in: { plank: 8 }, out: { table: 1 }, time: 22, requires: 'homemaking' },
+    fish_trophy:    { station: 'carpenter', in: { fish: 3, plank: 2 }, out: { fish_trophy: 1 }, time: 24, requires: ['homemaking', 'fishing'] },
+    bookshelf:      { station: 'carpenter', in: { plank: 6, linen: 2 }, out: { bookshelf: 1 }, time: 30, requires: ['homemaking', 'loom'] },
+    painting:       { station: 'carpenter', in: { canvas: 1, dye: 1, plank: 2 }, out: { painting: 1 }, time: 36, requires: ['homemaking', 'dyeing'] },
+    vase:           { station: 'potter', in: { clay_pot: 1, flowers: 4 }, out: { vase: 1 }, time: 18, requires: ['homemaking', 'wildflowers'] },
+    rug:            { station: 'loom', in: { yarn: 3, dye: 1 }, out: { rug: 1 }, time: 34, requires: ['homemaking', 'dyeing'] },
+    curtains:       { station: 'loom', in: { linen: 2, dye: 1 }, out: { curtains: 1 }, time: 26, requires: ['homemaking', 'dyeing'] },
+    lamp:           { station: 'glassworks', in: { glass_jar: 1, copper_ingot: 1 }, out: { lamp: 1 }, time: 28, requires: 'homemaking' }
   },
 
   // Spend Discovery here. Each states what it enables and where to find it.
@@ -611,7 +649,11 @@ window.HW_DATA = {
     { id: 'yard', pic: ['grass:0', 'yard', 'log'], name: 'Material Yards', cost: 3, req: ['cellar', 'workbench'], text: 'A Material Yard that holds 250 logs, stone, ore, clay, wool and building parts apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 10 planks and 2 Land Kits to place. One per area you own.' },
     { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' },
     { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold and score. The bigger your storage, the bigger they get.', where: 'Order Board → Grand orders.' },
-    { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' }
+    { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' },
+
+    // home & decor
+    { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Put the decor you make on display inside the house. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
+    { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size holds more decor. It needs free grass beside it.', where: 'Select your house → Grow the house.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -797,6 +839,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.65', at: '2026-10-22 12:30', notes: ['Your own house! Unlock Homemaking (Discovery → Home & decor, after the Brick Kiln and Fishing), then select empty grass you own and build a Cottage. Select the house to put decor on display. Pieces on display leave your storage, and you can store them again any time.', 'New station: the Carpenter’s Bench (Open Market → Stations) makes Wooden Chairs, Farmhouse Tables and Fish Trophies, and later Bookshelves and Painted Pictures. The Loom also weaves Woven Rugs and Curtains, the Potter’s Wheel makes Flower Vases and the Glass Furnace makes Oil Lamps. The market buys spare decor.', 'House Additions (after Land Surveying) grows your house a size at a time onto free grass beside it: House (1×2), Farmhouse (2×2) and Manor (2×3), each with more display spots. Pick which way it grows; the new tiles light up before you build, and if something is in the way the house tells you what.'] },
   { v: '0.64', at: '2026-10-22 12:00', notes: ['Race codes are now farm words, like WHEAT or BARN, so they are easy to say and share. Races you already started with the old codes still work.'] },
   { v: '0.63', at: '2026-10-22 10:30', notes: ['New Discovery: Salvage (Upgrades, after Rollers & Skids). Select a station, storage building or sprinkler you have a duplicate of and press “Take it down”: half of the gold and materials it cost, upgrades included, come back to you. The building must be empty, and your storage must still hold everything afterwards.', 'Discovery is now scarcer: Legend and Mythic mastery pay gold (20,000g and 100,000g) instead of Discovery, and Grand orders no longer give Discovery (they still pay big gold and score). Discovery you already have is untouched.'] },
   { v: '0.62.1', at: '2026-10-22 09:30', notes: ['The Daily Puzzle no longer pays Discovery. Finishing it now pays a gold bonus (half of what the steps paid, less if you named an answer or guessed wrong three times) and a bigger one every 7th day in a row. Discovery now comes only from things you do and build.'] },

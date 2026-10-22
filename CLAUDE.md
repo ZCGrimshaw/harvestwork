@@ -28,7 +28,7 @@
   (mon_projects + mon_gifts; a new monument is a new mon_projects row). All RPCs are SECURITY DEFINER
   with RLS on and no policies (intentional). Test SQL inside `begin; … rollback;`.
 - Testing: Playwright with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, opening `src/index.html`
-  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, mon (set, give, totals, notices, show, green), drawer…).
+  via file://. Hooks on `window.HW` (state, select, focus, update, queueTask, checkTask, info, weekTest, raceTest, season, weatherOn, sellPrice, mon (set, give, totals, notices, show, green), house (at, idx, opts, tiles), drawer…).
   Mock the server with `ctx.route('**/rest/v1/rpc/*')`; seed saves with `add_init_script`. Write test screenshots to
   a scratch folder, never the repo.
 - Plans and ideas live in `ROADMAP.md` (next up: "Late-game loops plan" Stage 2 Supply contracts; Stage 1 Seasons and weather shipped in v0.41, Stage 4 Valley Monuments in v0.42).

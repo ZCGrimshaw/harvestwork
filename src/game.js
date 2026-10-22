@@ -131,8 +131,9 @@
   const inB = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h;
   const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   function nbrs(i) { const x = tx(i), y = ty(i), o = []; N4.forEach(([dx, dy]) => inB(x + dx, y + dy) && o.push(idx(x + dx, y + dy))); return o; }
-  const walkable = i => S.tiles[i].o && D.terrain[S.tiles[i].t].walk;
-  const unlocked = id => !id || S.unl.includes(id);
+  const walkable = i => S.tiles[i].o && D.terrain[S.tiles[i].t].walk && !(S.tiles[i].b && S.tiles[i].b.type === 'house');
+  const unlocked = id => !id || (Array.isArray(id) ? id.every(k => S.unl.includes(k)) : S.unl.includes(id));
+  const lockOf = req => { const m = [].concat(req || []).find(k => !S.unl.includes(k)); return D.discoveries.find(d => d.id === m) || { name: m || '' }; }; // first discovery a recipe still needs
   // Storage = the Homestead's level plus every storage building you've placed.
   const G_ = () => D.homeGrowth, nList = () => D.homeUpgrades.length;
   const homeCap = l => l < C.capacity.length ? C.capacity[l] : C.capacity[C.capacity.length - 1] + (unlocked('granary') ? G_().granary : G_().cap) * (l - C.capacity.length + 1);
@@ -1014,7 +1015,7 @@
   const SELLABLE = ['crop', 'gathered', 'good', 'component'];          // what orders and market demand use
   // what the Open Market will sell you: supplies once unlocked, plus any good you've made at least once
   const canBuyItem = id => D.items[id].cat !== 'kit' && (D.items[id].buy ? unlocked(D.items[id].requires) : S.disc.includes(id) && SELLABLE.includes(D.items[id].cat));
-  const MARKET_BUYS = SELLABLE.concat(['seed', 'supply']);               // what the market will buy from you
+  const MARKET_BUYS = SELLABLE.concat(['seed', 'supply', 'decor']);               // what the market will buy from you
   // A short "how do I use this?" line for items that aren't obvious.
   // stations on Repeat quietly take ingredients from storage; say so wherever the item shows up
   function repeatUsers(id) { const seen = {};
@@ -1026,6 +1027,7 @@
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
     if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
     if (it.cat === 'kit') return 'Select empty grass you own → Place.';
+    if (it.cat === 'decor') return 'Put it on display: select your house → Display.';
     return ''; }
   function rollMarket() {
     const kits = Object.keys(D.items).filter(id => D.items[id].cat === 'kit' && D.items[id].buy && unlocked(D.items[id].requires));
@@ -1139,7 +1141,7 @@
   const isEmptyGrass = i => T_(i).o && T_(i).t === 'grass' && !T_(i).b;
   /* building limits: stations and storage are capped per area you own */
   const capFor = bt => { const B = D.buildings[bt]; return B.kind === 'station' || B.kind === 'storage' ? areas() * (B.perArea || 1) : Infinity; };
-  const builtCount = bt => S.tiles.reduce((n, T) => n + (T.b && T.b.type === bt ? 1 : 0), 0);
+  const builtCount = bt => S.tiles.reduce((n, T) => n + (T.b && T.b.type === bt && T.b.pt == null ? 1 : 0), 0);
   const kitFor = bt => Object.keys(D.items).find(id => D.items[id].building === bt);
   const capMsg = bt => { const B = D.buildings[bt], n = capFor(bt); return `Limit reached: ${n} ${B.name}${n === 1 ? '' : 's'} with ${areas()} area${areas() === 1 ? '' : 's'}. Survey new land to build more.`; };
   /* moving buildings: expensive, and pricier for each recent move */
@@ -1188,8 +1190,38 @@
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i, 'craft', k);
       first('craft:' + k, C.firsts.craft, `First ${D.items[k].name} made`);
-      if (d >= 2) first('deep:' + k, C.firsts.craftDeep, `${d}-step production chain: ${D.items[k].name}`);
+      if (d >= 2 && D.items[k].cat !== 'decor') first('deep:' + k, C.firsts.craftDeep, `${d}-step production chain: ${D.items[k].name}`); // decor pays only its first-made award
       emit('collect', { item: k }); } }); }
+
+  /* ================= your house =================
+     One per farm (Discovery 'homemaking'). The main tile holds the house: { type: 'house', lv, w, h, d } where d lists the
+     decor on display ([item, quality] or null per spot). Every other tile it covers holds { type: 'house', pt: main tile }.
+     House Additions grows it onto free grass beside it, a size at a time (D.house.levels). */
+  const HZ = () => D.house;
+  const houseAt = i => { const b = i >= 0 && S.tiles[i] && S.tiles[i].b; return b && b.type === 'house' ? (b.pt != null ? b.pt : i) : -1; };
+  const houseIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'house' && T.b.pt == null);
+  const houseLv = b => HZ().levels[Math.min(b.lv || 0, HZ().levels.length - 1)];
+  const houseName = b => houseLv(b).name;
+  const houseTiles = o => { const b = T_(o).b, x0 = tx(o), y0 = ty(o), out = []; for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) out.push(idx(x0 + x, y0 + y)); return out; };
+  // which way a world step (dx, dy) points on screen right now, in words
+  function dirWord(dx, dy) { const ex = UI.ex || [16, 8], ey = UI.ey || [-16, 8], sx = dx * ex[0] + dy * ey[0], sy = dx * ex[1] + dy * ey[1];
+    return `toward the ${sy < 0 ? 'top' : 'bottom'} ${sx < 0 ? 'left' : 'right'}`; }
+  function blockWhy(j) { const T = T_(j); if (isVoid(j)) return 'the edge of your map'; if (!T.o) return 'land you don’t own yet';
+    if (T.b) return T.b.type === 'farm' ? 'a farm plot' : `your ${D.buildings[T.b.type].name}`; if (T.t !== 'grass') return `a ${D.terrain[T.t].name} tile`; return 'something'; }
+  // every way the house could grow into its next size: the new footprint must contain the old one
+  function growOpts(o) { const b = T_(o).b, nx = HZ().levels[(b.lv || 0) + 1]; if (!nx) return [];
+    const x0 = tx(o), y0 = ty(o), seen = new Set(), out = [];
+    [[nx.w, nx.h], [nx.h, nx.w]].forEach(([W, H]) => {
+      for (let y = y0 + b.h - H; y <= y0; y++) for (let x = x0 + b.w - W; x <= x0; x++) { const key = `${x},${y},${W},${H}`;
+        if (seen.has(key)) continue; seen.add(key);
+        const add = []; let off = false;
+        for (let yy = y; yy < y + H; yy++) for (let xx = x; xx < x + W; xx++) if (xx < x0 || xx >= x0 + b.w || yy < y0 || yy >= y0 + b.h) { if (!inB(xx, yy)) off = true; else add.push(idx(xx, yy)); }
+        const bad = off ? 'the edge of the world' : (j => j === undefined ? null : blockWhy(j))(add.find(j => !isEmptyGrass(j)));
+        out.push({ key, x, y, W, H, add, bad, dir: dirWord(x + (W - 1) / 2 - (x0 + (b.w - 1) / 2), y + (H - 1) / 2 - (y0 + (b.h - 1) / 2)) }); } });
+    return out; }
+  const growOpt = (o, key) => growOpts(o).find(x => x.key === key);
+  const decoSlots = b => houseLv(b).slots;
+  const decoUsed = b => (b.d || []).filter(Boolean).length;
 
   const TASKS = {
     till: { label: () => 'Till soil', check: t => { const b = T_(t.i).b; return b && b.type === 'farm' && b.st === 'raw' ? null : 'Soil is already prepared'; },
@@ -1345,11 +1377,28 @@
       check: t => { const T = D.tools[t.p], l = toolLv(t.p); if (!unlocked('tools')) return 'Unlock Toolsmithing'; if (l >= T.cost.length) return 'Fully upgraded'; return canPay(T.cost[l]); },
       run: t => { const T = D.tools[t.p]; pay(T.cost[toolLv(t.p)]); S.tools[t.p]++; gainScore(C.score.upgrade, t.i);
         toast(`<b>${T.tiers[S.tools[t.p]]} ${esc(T.name)}.</b> ${esc(T.desc[S.tools[t.p]])}`, 'info'); } },
+    housebuild: { label: () => `Build a ${HZ().levels[0].name}`,
+      check: t => { if (!unlocked('homemaking')) return 'Unlock Homemaking in Discovery'; if (houseIdx() >= 0) return 'You already have a house';
+        if (!isEmptyGrass(t.i)) return 'Pick empty grass you own'; return canPay(HZ().build); },
+      run: t => { const L = HZ().levels[0]; pay(HZ().build); T_(t.i).b = { type: 'house', lv: 0, w: L.w, h: L.h, d: Array(L.slots).fill(null) }; S.built++;
+        gainScore(C.score.build, t.i); first('build:house', C.firsts.build, `${L.name} built`); float(t.i, `${L.name} built!`, '#b8f08a'); stepOffHouse(t.i);
+        toast(`<b>Your ${esc(L.name)} is built.</b> Make decor at a Carpenter’s Bench (Open Market → Stations), then select the house to put it on display. It has ${L.slots} display spots.`, 'goal'); emit('build', { st: 'house' }); } },
+    housegrow: { label: t => { const b = T_(t.i).b, nx = b && b.type === 'house' && HZ().levels[(b.lv || 0) + 1]; return nx ? `Grow into a ${nx.name}` : 'Grow the house'; },
+      check: t => { const b = T_(t.i).b; if (!unlocked('additions')) return 'Unlock House Additions in Discovery'; if (!b || b.type !== 'house' || b.pt != null) return 'No house here';
+        const nx = HZ().levels[(b.lv || 0) + 1]; if (!nx) return 'It’s as big as it gets'; const x = growOpt(t.i, t.p); if (!x) return 'Pick a direction again';
+        if (x.bad) return `${x.bad.charAt(0).toUpperCase() + x.bad.slice(1)} is in the way`; return canPay(nx.cost); },
+      run: t => { const o = t.i, b = T_(o).b, x = growOpt(o, t.p), nx = HZ().levels[(b.lv || 0) + 1]; pay(nx.cost);
+        const n = idx(x.x, x.y); houseTiles(o).forEach(j => { T_(j).b = null; });
+        b.lv = (b.lv || 0) + 1; b.w = x.W; b.h = x.H; b.d = (b.d || []).concat(Array(Math.max(0, nx.slots - (b.d || []).length)).fill(null));
+        T_(n).b = b; houseTiles(n).forEach(j => { if (j !== n) T_(j).b = { type: 'house', pt: n }; });
+        S.queue.forEach(q => { if (q.i === o) q.i = n; }); if (houseAt(UI.sel) === n || UI.sel === o) UI.sel = n; UI.growPick = null;
+        gainScore(C.score.upgrade * 3, n); float(n, `Now a ${nx.name}!`, '#b8f08a'); stepOffHouse(n);
+        toast(`<b>Your house is now a ${esc(nx.name)}</b> (${x.W}×${x.H}) with ${nx.slots} display spots.`, 'goal'); } },
     hire: { label: () => 'Hire a farmhand', check: () => !unlocked('farmhand') ? 'Unlock Farmhand' : S.helper ? 'Already hired' : canPay(D.farmhand.hire),
       run: t => { pay(D.farmhand.hire); S.helper = { x: Math.round(S.av.x), y: Math.round(S.av.y), path: [], dir: [1, -1], cur: null, steps: [], k: 0, idle: 0, on: true };
         toast('<b>Your farmhand is here.</b> Select a plot, station, tree, pond or boulder field and choose “Add to farmhand”.', 'goal'); } }
   };
-  const ONCE = ['fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
+  const ONCE = ['housebuild', 'housegrow', 'fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
   function checkTask(t) { return TASKS[t.a].check(t); }
   function queueTask(t) {
     t.a = t.a; const busy = S.queue.length + (S.cur ? 1 : 0);
@@ -1361,7 +1410,12 @@
 
   /* ================= pathing & avatar ================= */
   const avTile = () => idx(Math.round(S.av.x), Math.round(S.av.y));
-  function standGoals(i) { return walkable(i) ? [i] : nbrs(i).filter(walkable); }
+  function standGoals(i) { const o = houseAt(i); if (o >= 0) { const ft = new Set(houseTiles(o)), g = new Set(); ft.forEach(j => nbrs(j).forEach(n => { if (!ft.has(n) && walkable(n)) g.add(n); })); return [...g]; } // beside the house
+    return walkable(i) ? [i] : nbrs(i).filter(walkable); }
+  // move anyone standing where the house now stands to the nearest open tile beside it
+  function stepOffHouse(o) { const ft = new Set(houseTiles(o)), out = standGoals(o);
+    [S.av, S.helper].forEach(A => { if (!A) return; const at = idx(Math.round(A.x), Math.round(A.y)); if (!ft.has(at) || !out.length) return;
+      const n = out.slice().sort((a, b) => (Math.abs(tx(a) - A.x) + Math.abs(ty(a) - A.y)) - (Math.abs(tx(b) - A.x) + Math.abs(ty(b) - A.y)))[0]; A.x = tx(n); A.y = ty(n); A.path = []; }); }
   function findPath(from, goals) {
     if (!goals.length) return null; if (goals.includes(from)) return [];
     const prev = new Map([[from, -1]]), q = [from];
@@ -1828,7 +1882,13 @@
     // hover & selection
     if (UI.hover >= 0 && UI.hover !== UI.sel && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.strokeStyle = 'rgba(255,255,255,.45)'; cx.lineWidth = p * .8; cx.stroke(); }
     if (UI.sel >= 0 && S.tiles[UI.sel].b && D.buildings[S.tiles[UI.sel].b.type].kind === 'sprinkler') around(UI.sel, D.buildings[S.tiles[UI.sel].b.type].radius).forEach(j => { if (j === UI.sel) return; tilePoly(j, 1); cx.fillStyle = 'rgba(143,211,239,.18)'; cx.fill(); });
-    if (UI.sel >= 0 && !isVoid(UI.sel)) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
+    const selHouse = houseAt(UI.sel);
+    if (selHouse >= 0) { const hb = S.tiles[selHouse].b, x0 = tx(selHouse), y0 = ty(selHouse); cx.beginPath();
+      [[-.5, -.5], [hb.w - .5, -.5], [hb.w - .5, hb.h - .5], [-.5, hb.h - .5]].forEach(([a, c], k) => { const [sx, sy] = toScreen(x0 + a, y0 + c); k ? cx.lineTo(sx, sy) : cx.moveTo(sx, sy); });
+      cx.closePath(); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke();
+      const gp = UI.growPick && UI.growPick.split(':'), go = gp && +gp[0] === selHouse && growOpt(selHouse, gp[1]);
+      if (go) go.add.forEach(j => { tilePoly(j, 1); cx.fillStyle = `rgba(184,240,138,${.3 + .2 * pulse})`; cx.fill(); cx.setLineDash([3 * p, 2 * p]); cx.strokeStyle = '#b8f08a'; cx.lineWidth = p * .8; cx.stroke(); cx.setLineDash([]); }); }
+    else if (UI.sel >= 0 && !isVoid(UI.sel)) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
     if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill(); }
     // task target markers
     [S.cur, ...S.queue].forEach((t, k) => { if (!t) return; tilePoly(t.i, 3); cx.strokeStyle = k ? 'rgba(143,211,239,.55)' : 'rgba(143,211,239,.9)'; cx.lineWidth = p * .7; cx.stroke(); });
@@ -1845,11 +1905,21 @@
       if (working) bar(sx, sy - 23 * p, p, cur.t / cur.dur, tag ? '#b8f08a' : '#8fd3ef');
       if (tag && UI.sel >= 0 && S.tiles[UI.sel].b && S.tiles[UI.sel].b.type === 'homestead') { cx.font = `600 ${5 * p}px "Lexend", system-ui, sans-serif`; cx.textAlign = 'center'; cx.fillStyle = '#fff6e0'; cx.fillText(tag, sx, sy - 26 * p); }
     };
-    for (const i of order) {
-      const x = tx(i), y = ty(i);
-      while (ai < actors.length && vd[i][0] + vd[i][1] > actors[ai].d) drawAv(actors[ai++]);
-      const T = S.tiles[i], b = T.b, [sx, sy] = toScreen(x, y);
-      if (sx < -40 * p || sx > W + 40 * p || sy < -60 * p || sy > H + 60 * p) continue;
+    /* Your house is drawn once, from whichever of its tiles is nearest the viewer. Tiles beside its visible walls that were
+       drawn before it (and anyone standing on them) are drawn again on top, since they stand in front of those walls. */
+    const ho = houseIdx(); let hFront = -1, hView = null, hAgain = new Set();
+    if (ho >= 0) { const hb = S.tiles[ho].b, ft = houseTiles(ho), fs = new Set(ft), dep = j => vd[j] ? vd[j][0] + vd[j][1] : -1e9; let bd = -1e9;
+      ft.forEach(j => { const d = dep(j) + (vd[j] ? vd[j][0] * 1e-3 : 0); if (d > bd) { bd = d; hFront = j; } });
+      const [ux, uy] = turn(1, 0, Math.round(UI.yaw / (Math.PI / 2)) * Math.PI / 2); hView = Math.abs(ux) > Math.abs(uy) ? [hb.w, hb.h] : [hb.h, hb.w];
+      ft.forEach(j => nbrs(j).forEach(n => { if (!fs.has(n) && dep(n) > dep(j) && dep(n) < dep(hFront)) hAgain.add(n); })); }
+    const drawHouse = () => { const hb = S.tiles[ho].b, img = ART.get(`house:${hView[0]}.${hView[1]}.${hb.lv || 0}`), [hx, hy] = toScreen(tx(ho) + (hb.w - 1) / 2, ty(ho) + (hb.h - 1) / 2);
+      blit(img, hx, hy, p, img.ax, img.ay); if (UI.labels) labels.push({ sx: hx, sy: hy - (img.ay - 3) * p, name: houseName(hb) });
+      [...hAgain].sort((m, n) => (vd[m][0] + vd[m][1]) - (vd[n][0] + vd[n][1])).forEach(n => drawObj(n, true));
+      actors.slice(0, ai).forEach(a => { if (hAgain.has(idx(Math.round(a.A.x), Math.round(a.A.y)))) drawAv(a); }); };
+    const drawObj = (i, again) => {
+      const x = tx(i), y = ty(i), T = S.tiles[i], b = T.b, [sx, sy] = toScreen(x, y);
+      if (b && b.type === 'house') { if (i === hFront && !again) drawHouse(); return; }
+      if (sx < -40 * p || sx > W + 40 * p || sy < -60 * p || sy > H + 60 * p) return;
       const a = T.o ? 1 : .72;
       if (b) {
         if (b.type === 'farm') {
@@ -1859,7 +1929,7 @@
         } else if (b.type === 'mon_site') {
           if (i === UI.monFront) { const kind = b.kind || 'pyramid', img = ART.get(`mon:${kind}.${monStageOf(b.p)}.${'site'}`), [mx, my] = toScreen(tx(b.c), ty(b.c));
             blit(img, mx, my, p, img.ax, img.ay);
-            if (UI.labels) labels.push({ sx: mx, sy: my - (img.ay - 6) * p, name: (D.monuments[kind] || D.monuments.pyramid).name }); }
+            if (UI.labels && !again) labels.push({ sx: mx, sy: my - (img.ay - 6) * p, name: (D.monuments[kind] || D.monuments.pyramid).name }); }
         } else {
           let key = b.type; const active = b.q && b.q.some(j => !j.done);
           if (b.type === 'depot') { const m = MONK(); key = 'depot:' + (m ? Math.min(5, Math.ceil((m.today || 0) / Math.max(1, (m.cap || 800) / 5))) : 0); }
@@ -1870,7 +1940,7 @@
           if (b.type === 'coop' || b.type === 'dairy' || b.type === 'pasture') key += ':' + (((now * .8) + i * .37) | 0) % 2;
           if (D.buildings[b.type].kind === 'sprinkler') key = (b.type === 'big_sprinkler' ? 'big_sprinkler:' : 'sprinkler:') + (b.fx > 0 ? ((now * 6) | 0) % 2 : 0);
           const img = ART.get(key); if (img.ax != null) blit(img, sx, sy, p, img.ax, img.ay); else blit(img, sx, sy, p, 16, img.height - 4);
-          if (UI.labels) labels.push({ sx, sy: sy - (img.height - 1) * p, name: D.buildings[b.type].name });
+          if (UI.labels && !again) labels.push({ sx, sy: sy - (img.height - 1) * p, name: D.buildings[b.type].name });
           if (b.type === 'homestead' && UI.noticeK && S.noticeSeen !== UI.noticeK && !S.race) { // something waiting at the Homestead
             const gy = sy - (img.height + 4) * p, gl = .55 + .45 * Math.sin(now * 4);
             cx.fillStyle = `rgba(246,210,74,${.25 * gl})`; cx.beginPath(); cx.arc(sx, gy - 5 * p, 9 * p, 0, 7); cx.fill();
@@ -1879,7 +1949,7 @@
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
-            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter', 'forge', 'glassworks'].includes(b.type) && active && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
+            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter', 'forge', 'glassworks'].includes(b.type) && active && !again && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
         }
       } else if (T.r) {
         if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a);
@@ -1888,6 +1958,10 @@
         else if (T.t === 'water' && T.v === 1) blit(ART.get('pondreeds'), sx, sy, p, 16, 16, a);
         else if (D.gather[T.t] && D.gather[T.t].sprite) { const img = ART.get(D.gather[T.t].sprite + ':' + T.r.stock); blit(img, sx, sy, p, 16, img.height - 4, a); }
       }
+    };
+    for (const i of order) {
+      while (ai < actors.length && vd[i][0] + vd[i][1] > actors[ai].d) drawAv(actors[ai++]);
+      drawObj(i);
     }
     while (ai < actors.length) drawAv(actors[ai++]);
     if (UI.cart && S.green) { // a little cart carries your gift from the Depot to the monument
@@ -1930,7 +2004,7 @@
     <p>${QN[1]} sells for ${C.qualityMult[1]}×, ${QN[2]} for ${C.qualityMult[2]}×, and some orders and contracts ask for them.</p></div>`;
   function infoHTML(id) { const it = D.items[id]; if (!it) return '';
     const P = [], B = it.building && D.buildings[it.building], disc = it.requires && D.discoveries.find(d => d.id === it.requires);
-    const cats = { seed: 'Seed', supply: 'Farm supply', crop: 'Crop', gathered: 'Gathered resource', good: 'Finished good', component: 'Component', kit: 'Building kit' };
+    const cats = { seed: 'Seed', supply: 'Farm supply', crop: 'Crop', gathered: 'Gathered resource', good: 'Finished good', component: 'Component', kit: 'Building kit', decor: 'Home decor' };
     if (B) { P.push(esc(B.desc));
       if (B.kind === 'sprinkler') P.push(`That’s the ${(B.radius * 2 + 1) ** 2 - 1} tiles around it, so no more watering by hand there. Plots it waters still earn Good quality.`);
       if (B.kind === 'station') { const rs = Object.values(D.recipes).filter(r => r.station === it.building).map(r => D.items[Object.keys(r.out)[0]].name); if (rs.length) P.push(`Makes ${esc(nmList(rs))}.`); }
@@ -1944,6 +2018,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
+    if (it.cat === 'decor') P.push('Home decor: put it on display in your house (select the house → Display). Orders never ask for decor, but the market buys it.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
@@ -2051,7 +2126,7 @@
     const rid = recipeFor(id); if (!rid || seen.includes(id)) { node.src = sourceOf(id); return node; }
     const R = D.recipes[rid]; node.rid = rid; node.station = R.station;
     node.batches = Math.ceil(short / R.out[id]);
-    if (R.requires && !unlocked(R.requires)) node.lock = `Unlock “${D.discoveries.find(d => d.id === R.requires).name}”`;
+    if (R.requires && !unlocked(R.requires)) node.lock = `Unlock “${lockOf(R.requires).name}”`;
     else if (!hasStation(R.station)) node.lock = `Build a ${D.buildings[R.station].name}`;
     // Quality: crops and made goods can carry it up; gathered goods are always Basic, so the station must add it.
     const canQ = k => D.items[k].cat !== 'gathered';
@@ -2157,7 +2232,7 @@
     if (unlocked('repeat')) h += `<p class="hint">Repeat keeps one recipe loaded whenever a slot is free and the ingredients are in storage.</p>`;
     const recs = Object.entries(D.recipes).filter(([, R]) => R.station === b.type);
     h += recs.map(([id, R]) => {
-      if (!unlocked(R.requires)) { const d = D.discoveries.find(d => d.id === R.requires); return `<div class="recipe locked" data-info="${Object.keys(R.out)[0]}"><span>${ico(Object.keys(R.out)[0], 'dim')} ${esc(D.items[Object.keys(R.out)[0]].name)}</span><small>Unlock “${esc(d.name)}” in Discovery</small></div>`; }
+      if (!unlocked(R.requires)) { const d = lockOf(R.requires); return `<div class="recipe locked" data-info="${Object.keys(R.out)[0]}"><span>${ico(Object.keys(R.out)[0], 'dim')} ${esc(D.items[Object.keys(R.out)[0]].name)}</span><small>Unlock “${esc(d.name)}” in Discovery</small></div>`; }
       const ins = Object.entries(R.in).map(([k, n]) => `<span class="in ${count(k) >= n ? '' : 'short'}">${ico(k)}${n}<small>(${count(k)})</small></span>`).join('<span class="plus">+</span>');
       const outs = Object.entries(R.out).map(([k, n]) => `<span class="out">${ico(k)}${n > 1 ? n : ''}<small>(${count(k)})</small></span>`).join('');
       const le = checkTask({ a: 'load', i, p: id });
@@ -2366,6 +2441,34 @@
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
     return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + btn({ a: 'pickup', i }, `Pick up this ${esc(B.name.toLowerCase())}`, { sub: 'Free · the kit goes back to storage, ready to place again' }) + moveSection(i) + salvageSection(i);
   }
+  /* ---------- your house panel: decor on display, and growing it ---------- */
+  function decoWhere() { const o = [`chairs, tables${unlocked('loom') ? ', bookshelves' : ''}${unlocked('dyeing') ? ', paintings' : ''} and fish trophies at a Carpenter’s Bench (Open Market → Stations)`];
+    if (unlocked('wildflowers') && unlocked('pottery')) o.push('flower vases at the Potter’s Wheel'); if (unlocked('dyeing')) o.push('rugs and curtains at the Loom');
+    if (unlocked('glassworks')) o.push('oil lamps at the Glass Furnace'); return `Make ${nmList(o)}.`; }
+  function growSection(o) { const b = T_(o).b, nx = HZ().levels[(b.lv || 0) + 1];
+    if (!nx) return `<p class="hint">Your ${esc(houseName(b))} is as big as a house gets.</p>`;
+    if (!unlocked('additions')) return `<p class="hint">Unlock “House Additions” in Discovery to grow it into a ${esc(nx.name)} (${nx.w}×${nx.h} tiles, ${nx.slots} display spots).</p>`;
+    const opts = growOpts(o), ok = opts.filter(x => !x.bad), no = opts.filter(x => x.bad), ce = canPay(nx.cost), cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
+    let h = `<p class="state">Next: <b>${esc(nx.name)}</b>, ${nx.w}×${nx.h} tiles with ${nx.slots} display spots. Cost: ${costTxt(nx.cost)}.</p>`;
+    const why = no.length ? `<p class="hint small">${no.map(x => `${esc(cap1(x.dir))}: ${esc(x.bad)} is in the way.`).join(' ')}</p>` : '';
+    if (!ok.length) return h + `<p class="hint">There’s no room to grow it. It needs free grass you own beside it.</p>` + why;
+    h += `<p class="hint small">Choose which way it grows. The new tiles light up on the map; press again to build.</p>`;
+    h += ok.map(x => UI.growPick === o + ':' + x.key ? btn({ a: 'housegrow', i: o, p: x.key }, `Build the ${esc(nx.name)} here`, { cls: 'pri', sub: `${esc(cap1(x.dir))} · ${costTxt(nx.cost)}` })
+      : `<button class="btn" data-grow-pick="${o}:${x.key}">Grow ${esc(x.dir)}${ce ? `<small>${esc(ce)}</small>` : ''}</button>`).join('');
+    return h + why; }
+  function housePanel(o) { const b = T_(o).b, L = houseLv(b), sl = L.slots, d = b.d || (b.d = []), n = decoUsed(b), full = n >= sl;
+    let h = head(`${S.name}’s ${L.name}`, esc(D.buildings.house.desc));
+    h += `<p class="state">A ${b.w}×${b.h} ${esc(L.name.toLowerCase())} · <b>${n}</b> of ${sl} display spots filled.</p>`;
+    h += `<span class="eyebrow">On display</span><div class="decogrid">` + Array.from({ length: sl }, (_, k) => { const x = d[k];
+      return x ? `<div class="deco" data-info="${x[0]}">${ico(x[0])}<small>${esc(D.items[x[0]].name)}${x[1] ? ' ' + qtag(x[1]) : ''}</small><button class="linkish small" data-deco-take="${o}:${k}">Store</button></div>` : ''; }).join('')
+      + (sl > n ? `<div class="deco empty"><small>${sl - n} empty spot${sl - n === 1 ? '' : 's'}</small></div>` : '') + `</div>`;
+    const own = Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'decor' && count(id) > 0);
+    h += `<span class="eyebrow">Decor in storage</span>`;
+    h += own.length ? own.map(id => `<div class="row">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> <small class="muted">×${count(id)}</small></div><button class="btn sm" data-deco-put="${o}:${id}" ${full ? 'disabled' : ''}>Display</button></div>`).join('')
+        + (full ? `<p class="hint small">Every spot is filled. Store a piece to swap it${HZ().levels[(b.lv || 0) + 1] ? ', or grow the house for more spots' : ''}.</p>` : '')
+      : `<p class="hint">No decor in storage. ${esc(decoWhere())}</p>`;
+    h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
+    return h + `<p class="hint small">Pieces on display leave your storage, so they don’t take up room. Store one to take it back.</p>`; }
   function emptyPanel(i) {
     let h = head('Empty grassland', 'Build a farm plot or place a station kit here.');
     if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
@@ -2373,6 +2476,7 @@
     if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)}</small></button>`; });
     if (!S.race) earnedModels().filter(p => modelAt(p.id) === undefined).forEach(p => { h += `<button class="btn ${UI.placeMon === p.id ? 'pri' : 'ghost'}" data-mon-put="${p.id}" data-i="${i}">Place the ${esc(monShort(p.name))} model here<small>Free · it shows the monument’s current stage</small></button>`; });
     h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal || UI.placeMon ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
+    if (unlocked('homemaking') && houseIdx() < 0 && !S.race) h += btn({ a: 'housebuild', i }, `Build your ${HZ().levels[0].name} here`, { sub: `${costTxt(HZ().build)} · one per farm, for showing off decor` });
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
     h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building]; return btn({ a: 'place', i, p: id }, `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}` }); }).join('')
       : `<p class="hint">Station kits are sold at the Open Market once unlocked.</p>`;
@@ -2468,13 +2572,13 @@
     if (i < 0) { el.hidden = true; UI.html['#panel'] = ''; return; }
     el.hidden = false; const T = S.tiles[i];
     if (UI.lastSel !== i) { const a = document.activeElement; if (a && el.contains(a)) a.blur(); UI.lastSel = i; // new tile: let the panel redraw
-      const bk = T.b && D.buildings[T.b.type] ? D.buildings[T.b.type].kind : ''; UI.pfull = ['station', 'market', 'home', 'storage', 'board'].includes(bk) || (T.b && T.b.type === 'board'); } // phone sheet: short by default, tools that are mostly lists open full
+      const bk = T.b && D.buildings[T.b.type] ? D.buildings[T.b.type].kind : ''; UI.pfull = ['station', 'market', 'home', 'storage', 'board', 'house'].includes(bk) || (T.b && T.b.type === 'board'); } // phone sheet: short by default, tools that are mostly lists open full
     el.classList.toggle('full', !!UI.pfull);
     let h;
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
-      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
+      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i)) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
       if (k === 'home') S.noticeSeen = UI.noticeK; }
     else if (T.r) h = gatherPanel(i, T);
     else if (greenT(i)) h = greenPanel(i);
@@ -2885,6 +2989,12 @@
     else if ('medalPut' in ds) { const m = NET.medals.find(x => medalKey(x) === ds.medalPut), i = +ds.i;
       if (m && isEmptyGrass(i) && medalAt(m) === undefined) { T_(i).b = { type: 'medal', m: { week: m.week, place: m.place, score: m.score } }; UI.placeMedal = null; save(); SND.play('contract');
         float(i, `${MEDAL[m.place][0]} medal on show`, '#f6e27a'); } }
+    else if (ds.growPick) { UI.growPick = UI.growPick === ds.growPick ? null : ds.growPick; }
+    else if (ds.decoPut) { const [o, id] = ds.decoPut.split(':'), b = T_(+o).b; if (!b || b.type !== 'house') return;
+      const sl = decoSlots(b), d = b.d || (b.d = []), k = Array.from({ length: sl }, (_, j) => j).find(j => !d[j]); const a = S.inv[id];
+      if (k === undefined || !a || count(id) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; d[k] = [id, q]; save(); SND.play('contract'); float(+o, `${D.items[id].name} on display`, '#f6e27a'); }
+    else if (ds.decoTake) { const [o, k] = ds.decoTake.split(':').map(Number), b = T_(o).b, x = b && b.d && b.d[k]; if (!x) return;
+      if (room() < 1) { toast(esc(FULL), 'warn'); return; } addItem(x[0], 1, x[1], true); b.d[k] = null; save(); }
     else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your trophy case (Menu → Medals).', 'info'); } }
     else if (ds.monAuto) { const id = ds.monAuto; S.monAuto = S.monAuto || {}; S.monAuto[id] = !S.monAuto[id]; if (!S.monAuto[id]) delete S.monAuto[id];
       toast(S.monAuto[id] ? `<b>Auto-give on</b> for ${esc(D.items[id].name)}. It goes to the monument by itself while there’s allowance left today.` : `Auto-give off for ${esc(D.items[id].name)}.`, 'info'); save(); dirty(); if (S.monAuto[id]) setTimeout(autoMonGive, 600); return; }
@@ -3364,7 +3474,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

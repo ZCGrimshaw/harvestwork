@@ -383,6 +383,16 @@ window.HW_ART = (function () {
       r('#7a4b28', 23, 20, 7, 1); r('#5e3519', 24, 21, 1, 7); r('#5e3519', 29, 21, 1, 7);
       r('#bfe6ee', 24, 16, 2, 4); r('#7fb8c8', 24, 16, 2, 1); r('#e86aa8', 27, 15, 2, 5); r('#4aa3d8', 27, 17, 2, 1); r('#ffffff', 24, 17);
     }),
+    carpenter: () => mk(32, 30, (g, r) => {
+      shadow(r, 30, 12);
+      // a long bench with a vice, a saw and planks, and a finished chair beside it
+      r('#6b4220', 5, 18, 2, 9); r('#6b4220', 19, 18, 2, 9); r('#b07a42', 3, 15, 20, 3); r('#8a5a2e', 3, 17, 20, 1); r('#d8a868', 3, 15, 20, 1);
+      r('#5e3519', 6, 23, 14, 1); r('#7a7a84', 3, 12, 3, 3); r('#5c5c66', 3, 14, 3, 1);
+      r('#dcaa68', 8, 13, 9, 2); r('#9a6a3c', 8, 14, 9, 1); r('#c8ccd4', 17, 10, 4, 4); r('#7a4b28', 20, 9, 2, 2); for (let x = 17; x < 21; x += 2) r('#8a8f9a', x, 14);
+      r('#c98a4a', 25, 13, 2, 14); r('#c98a4a', 25, 20, 6, 2); r('#8a5a2e', 25, 22, 6, 1); r('#8a5a2e', 29, 23, 2, 4); r('#8a5a2e', 26, 15, 1, 4); r('#8a5a2e', 25, 23, 2, 4);
+      ell(r, '#e2bf86', 12, 27, 3, 1); r('#c8a070', 14, 26);
+    }),
+    house: () => mk(2, 2, () => {}), // real house sprites come from house() below; this entry lets snow days cap their roofs
     pondreeds: () => mk(32, 24, (g, r) => {
       r('#4c8a30', 6, 12, 1, 6); r('#5aa83f', 8, 13, 1, 5); r('#7a4b28', 6, 11, 1, 2);
       ell(r, '#5aa83f', 22, 16, 3, 1); r('#f2f2f2', 22, 15);
@@ -481,9 +491,87 @@ window.HW_ART = (function () {
         case 'wedge': for (let y = 0; y < 8; y++) r(a, 2 + y, 5 + y, 13 - y, 1); r(b, 2, 12, 13, 2); ell(r, b, 7, 9, 1, 1); ell(r, b, 11, 11, 1, 1); break;
         case 'cake': r(b, 3, 4, 10, 2); r(a, 3, 6, 10, 7); r(b, 3, 9, 10, 1); r('#a8662a', 2, 13, 12, 1); r('#c22a44', 7, 2, 2, 2); r('#fff', 4, 5, 1, 2); r('#fff', 8, 5, 1, 3); r('#fff', 11, 5, 1, 2); break;
         case 'yarn': ell(r, a, 8, 9, 5, 5); line(r, b, 4, 7, 11, 13); line(r, b, 5, 5, 12, 11); line(r, b, 3, 10, 9, 14); line(r, b, 13, 13, 15, 15); break;
+        // home decor
+        case 'chair': r(a, 4, 1, 2, 14); r(a, 10, 1, 2, 7); r(b, 6, 2, 4, 1); r(b, 6, 4, 4, 1); r(b, 6, 6, 4, 1); r(a, 3, 8, 11, 2); r(b, 3, 10, 11, 1); r(a, 12, 11, 2, 4); r(b, 10, 11, 1, 3); r('rgba(255,255,255,.3)', 4, 8, 9, 1); break;
+        case 'table': r(a, 1, 5, 14, 2); r(b, 1, 7, 14, 1); r(b, 2, 8, 2, 7); r(b, 12, 8, 2, 7); r(b, 5, 8, 6, 1); r('rgba(255,255,255,.3)', 2, 5, 12, 1); r('#f2ece0', 6, 3, 4, 2); r('#c22a44', 7, 2, 2, 1); break;
+        case 'trophy': r(b, 1, 3, 14, 10); r('#5e3519', 1, 12, 14, 1); r('#5e3519', 14, 3, 1, 10); r('#b07a42', 2, 3, 12, 1);
+          ell(r, a, 7, 8, 4, 2); r(a, 11, 7, 1, 3); r(a, 12, 5, 2, 7); r('#3d7fa8', 4, 9, 6, 1); r('#1a2a3a', 4, 7); r('#fff', 4, 6); r('#e8c04a', 6, 13, 4, 2); break;
+        case 'vase': r('#4c8a30', 7, 3, 1, 5); r('#4c8a30', 9, 2, 1, 6); r('#4c8a30', 5, 4, 1, 4); ell(r, b, 7, 2, 1, 1); ell(r, '#f6e27a', 10, 2, 1, 1); ell(r, b, 5, 3, 1, 1);
+          r(a, 6, 7, 4, 2); ell(r, a, 8, 11, 4, 4); r('rgba(255,255,255,.35)', 6, 9, 1, 3); r('#8a4a26', 5, 14, 6, 1); break;
+        case 'shelf': r(a, 2, 1, 12, 14); r('#3d2617', 3, 2, 10, 12); r(a, 3, 5, 10, 1); r(a, 3, 9, 10, 1);
+          [[b, 3], ['#4aa3d8', 5], ['#e8c04a', 6], ['#5aa83f', 8], [b, 10]].forEach(([c, x], k) => { r(c, x, k % 2 ? 3 : 2, 1, k % 2 ? 2 : 3); r(c, x + 1, 6, 1, 3); }); r('#efe6cf', 4, 11, 4, 2); r('#4aa3d8', 9, 10, 2, 3); break;
+        case 'frame': r(a, 2, 2, 12, 11); r(b, 3, 3, 10, 9); r('#5aa83f', 3, 9, 10, 3); ell(r, '#4c8a30', 6, 9, 3, 1); r('#f6e27a', 10, 4, 2, 2); r('#8a6a1a', 2, 12, 12, 1); r('#8a6a1a', 13, 2, 1, 11); r('#fff3b0', 2, 2, 12, 1); break;
+        case 'rug': r(a, 1, 5, 14, 8); r(b, 1, 5, 14, 1); r(b, 1, 12, 14, 1); r(b, 1, 5, 1, 8); r(b, 14, 5, 1, 8); r(b, 7, 7, 2, 4); r(b, 6, 8, 4, 2); r('#f2ece0', 7, 8, 2, 2);
+          for (let x = 1; x < 15; x += 2) { r('#efe6cf', x, 4); r('#efe6cf', x, 13); } break;
+        case 'curtain': r('#7a4b28', 1, 2, 14, 1); r('#bfe6ee', 6, 3, 4, 11); r('#ffffff', 7, 4, 1, 3); r(a, 2, 3, 4, 11); r(a, 10, 3, 4, 11);
+          r(b, 3, 3, 1, 11); r(b, 12, 3, 1, 11); r('rgba(0,0,0,.2)', 5, 3, 1, 11); r('rgba(0,0,0,.2)', 10, 3, 1, 11); r('#e8c04a', 2, 9, 4, 1); r('#e8c04a', 10, 9, 4, 1); break;
+        case 'lamp': r(a, 4, 13, 8, 2); r('#9a5a2e', 4, 14, 8, 1); r(a, 7, 10, 2, 3); r(a, 5, 9, 6, 1); r('#d4f0f6', 6, 3, 4, 6); r('rgba(255,255,255,.7)', 6, 4, 1, 3); ell(r, b, 8, 6, 1, 2); r('#f06a20', 8, 7); r(a, 6, 2, 4, 1); break;
         default: r(a, 4, 4, 8, 8);
       }
     });
+  }
+
+  /* ---------- your house ----------
+     A true isometric box on a footprint of A×B tiles (A runs down-right on screen, B down-left) at level L: 0 Cottage
+     (thatch, timber), 1 House (shingles, chimney), 2 Farmhouse (brick, clay tiles), 3 Manor (stone, slate). It is drawn with
+     the roof ridge along the longer side; when B is longer it is drawn the other way and mirrored, with the wall and roof
+     shades swapped so the light still falls from the left. Anchor (ax, ay) is the footprint's centre on the ground. */
+  const HOUSE = [
+    { wl: '#f0d6a0', wr: '#d7b57c', tr: '#7a4b28', rl: '#d8b45a', rr: '#b8923a', rd: '#8a6a24', ln: '#a8822e', wh: 13, rh: 9, timber: true },
+    { wl: '#f2e2c0', wr: '#d8c49a', tr: '#6b4226', rl: '#d4553f', rr: '#b0402f', rd: '#8a3226', ln: '#9a3a2a', wh: 14, rh: 10, chim: true },
+    { wl: '#c8664a', wr: '#a8503a', tr: '#efe2c8', rl: '#d0703a', rr: '#a8562a', rd: '#7e3e1e', ln: '#9a4e26', wh: 15, rh: 11, chim: true, brick: true },
+    { wl: '#dcd6cc', wr: '#b8b0a4', tr: '#f2ece0', rl: '#5e6e8e', rr: '#4a5872', rd: '#343e52', ln: '#46546e', wh: 18, rh: 12, chim: true, stone: true }
+  ];
+  function house(A, B, L) {
+    const flip = B > A; if (flip) [A, B] = [B, A];
+    const P0 = HOUSE[Math.max(0, Math.min(3, L | 0))], P = flip ? Object.assign({}, P0, { wl: P0.wr, wr: P0.wl, rl: P0.rr, rr: P0.rl }) : P0;
+    const e = .14, o = .12, wh = P.wh, rh = P.rh, top = wh + rh + (P.chim ? 7 : 2);
+    const oy = Math.max(2, Math.ceil(top - (B / 2 + e - o) * 8) + 1), ox = 16 * B + 1, w = 16 * (A + B) + 2, h = oy + 8 * (A + B) + 3;
+    const S = (x, y, z) => [ox + (x - y) * 16, oy + (x + y) * 8 - z];
+    const c = mk(w, h, (g, r) => {
+      const poly = (pts, col) => { const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y++) for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x++) if (inPoly(pts, x + .5, y + .5)) r(col, x, y); };
+      const ln = (col, a, b) => line(r, col, Math.round(a[0]), Math.round(a[1]), Math.round(b[0]), Math.round(b[1]));
+      const onY = (yp, x0, x1, z0, z1, col) => poly([S(x0, yp, z0), S(x1, yp, z0), S(x1, yp, z1), S(x0, yp, z1)], col); // a patch on the front-left wall
+      const onX = (xp, y0, y1, z0, z1, col) => poly([S(xp, y0, z0), S(xp, y1, z0), S(xp, y1, z1), S(xp, y0, z1)], col); // a patch on the front-right wall
+      const xa = e, xb = A - e, ya = e, yb = B - e, ym = B / 2, x0 = e - o, x1 = A - e + o, ze = wh - 1, zr = wh + rh;
+      poly([S(0, 0, 0), S(A, 0, 0), S(A + .06, B + .06, 0), S(0, B, 0)].map(([x, y]) => [x + 2, y]), 'rgba(30,20,10,.22)'); // shadow, a little to the right
+      // back roof slope (the visible sliver behind the ridge)
+      poly([S(x0, ya - o, ze), S(x1, ya - o, ze), S(x1, ym, zr), S(x0, ym, zr)], P.rd);
+      // walls and the gable end
+      onY(yb, xa, xb, 0, wh, P.wl); onX(xb, ya, yb, 0, wh, P.wr);
+      poly([S(xb, ya, wh), S(xb, yb, wh), S(xb, ym, zr - 1)], P.wr);
+      if (P.brick || P.stone) { const step = P.stone ? 4 : 3, dk = P.stone ? '#a49c90' : '#8a3e2a', dk2 = P.stone ? '#948c80' : '#7a3424';
+        for (let z = step; z < wh; z += step) { ln(dk, S(xa, yb, z), S(xb, yb, z)); ln(dk2, S(xb, ya, z), S(xb, yb, z)); } }
+      if (P.stone) for (let z = 0; z < wh; z += 4) { const k = (z / 4) % 2; onY(yb, xb - (k ? .16 : .1), xb, z, z + 3, '#f2ece0'); onX(xb, yb - (k ? .1 : .16), yb, z, z + 3, '#e2dcd2'); }
+      ln('#7a6a58', S(xa, yb, 0), S(xb, yb, 0)); ln('#6a5a4a', S(xb, ya, 0), S(xb, yb, 0)); // footing
+      if (P.timber) { ln(P.tr, S(xb, yb, 0), S(xb, yb, wh)); ln(P.tr, S(xa, yb, 0), S(xa, yb, wh)); ln(P.tr, S(xa, yb, wh - 1), S(xb, yb, wh - 1)); ln(P.tr, S(xb, ya, wh - 1), S(xb, yb, wh - 1));
+        for (let k = 1; k < A; k++) ln(P.tr, S(k, yb, 0), S(k, yb, wh)); ln(P.tr, S(xb, ym, wh), S(xb, ym, zr - 2)); }
+      // a window: a trim frame, glass and a glint
+      const winY = (x, z0, z1, ww) => { onY(yb, x - .02, x + ww + .02, z0 - 1, z1 + 1, P.tr); onY(yb, x, x + ww, z0, z1, '#9fd8f0'); onY(yb, x, x + .05, z1 - 2, z1, '#e6f6fc'); };
+      const winX = (y, z0, z1, ww) => { onX(xb, y - .02, y + ww + .02, z0 - 1, z1 + 1, P.tr); onX(xb, y, y + ww, z0, z1, '#8cc6de'); onX(xb, y, y + .05, z1 - 2, z1, '#d6eef8'); };
+      const wz0 = Math.round(wh * .42), wz1 = Math.round(wh * .78), door = Math.max(0, Math.floor(A / 2) - (A > 1 ? 1 : 0));
+      for (let k = 0; k < A; k++) { if (k === door) { // the front door, with a lamp and a step
+          onY(yb, k + .3, k + .62, 0, Math.round(wh * .68) + 1, P.tr); onY(yb, k + .34, k + .58, 0, Math.round(wh * .68), '#7a4a26'); onY(yb, k + .52, k + .55, 3, 5, '#f6e27a');
+          onY(yb + .06, k + .26, k + .66, 0, 1, '#9a8a76'); if (A === 1 && L >= 1) winY(k + .7, wz0, wz1, .14); }
+        else winY(k + .32, wz0, wz1, .36); }
+      for (let k = 0; k < B; k++) winX(k + (B === 1 ? .34 : .3), wz0, wz1, B === 1 ? .32 : .4);
+      if (L >= 3) for (let k = 0; k < A; k++) if (k !== door) onY(yb, k + .32, k + .68, wh - 4, wh - 3, P.tr); // manor: stone lintels
+      // chimney on the back slope, near the right end
+      if (P.chim) { const cx0 = A - e - .55, cx1 = cx0 + .2, cy0 = ym - .32, cy1 = ym - .12, zt = zr + 5;
+        poly([S(cx0, cy1, wh), S(cx1, cy1, wh), S(cx1, cy1, zt), S(cx0, cy1, zt)], '#9a5a3a'); poly([S(cx1, cy0, wh), S(cx1, cy1, wh), S(cx1, cy1, zt), S(cx1, cy0, zt)], '#7e4430');
+        poly([S(cx0, cy0, zt), S(cx1, cy0, zt), S(cx1, cy1, zt), S(cx0, cy1, zt)], '#4a2e22'); }
+      // front roof slope, with shingle rows and the ridge
+      poly([S(x0, yb + o, ze), S(x1, yb + o, ze), S(x1, ym, zr), S(x0, ym, zr)], P.rl);
+      const rows = Math.floor((rh + 1) / 3); for (let k = 1; k <= rows; k++) { const t = k / (rows + 1), y = ym + t * (yb + o - ym), z = zr - t * (rh + 1); ln(P.ln, S(x0, y, z), S(x1, y, z)); }
+      for (let k = 1; k <= Math.floor(rows / 2); k++) { const t = k / (Math.floor(rows / 2) + 1), y = ym - t * (ym - ya + o), z = zr - t * (rh + 1); ln('rgba(0,0,0,.18)', S(x0, y, z), S(x1, y, z)); }
+      ln(P.rr, S(x1, ya - o, ze), S(x1, ym, zr)); ln(P.rr, S(x1, ym, zr), S(x1, yb + o, ze)); // barge boards at the visible end
+      ln(P.rd, S(x0, yb + o, ze), S(x1, yb + o, ze)); // eave edge
+      ln(P.timber ? '#f0d890' : 'rgba(255,255,255,.35)', S(x0, ym, zr), S(x1, ym, zr)); // ridge
+      if (L === 0) { r('#5aa83f', Math.round(S(xa + .12, yb + .1, 0)[0]), Math.round(S(xa + .12, yb + .1, 0)[1]) - 2, 3, 2); r('#d6334a', Math.round(S(xa + .12, yb + .1, 0)[0]) + 1, Math.round(S(xa + .12, yb + .1, 0)[1]) - 2); } // flowers by the wall
+    });
+    const g = flip ? (() => { const m = document.createElement('canvas'); m.width = w; m.height = h; const x = m.getContext('2d'); x.translate(w, 0); x.scale(-1, 1); x.drawImage(c, 0, 0); return m; })() : c;
+    const [ax, ay] = S(A / 2, B / 2, 0); g.ax = flip ? w - ax : ax; g.ay = ay; return g;
   }
 
   /* ---------- Valley Monuments ----------
@@ -687,6 +775,7 @@ window.HW_ART = (function () {
       else if (k === 'crop') { const [kind, st] = a.split('.'); c = crop(kind, +st); }
       else if (k === 'avatar') { const [s, h, f, w] = a.split('.').map(Number); c = avatar(s, h, f, w); }
       else if (k === 'mon') { const [kind, st, mode] = a.split('.'); c = monument(kind, +st, mode); }
+      else if (k === 'house') { const [A, B, L] = a.split('.').map(Number); c = house(A || 1, B || 1, L || 0); }
       else if (OBJ[k]) c = OBJ[k](a === undefined ? undefined : +a);
       else c = mk(2, 2, () => {});
       if (SHORT.has(k)) c = dropRows(c, shortRows(k === 'stove_on' ? 'stove' : k));

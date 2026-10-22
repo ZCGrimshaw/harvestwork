@@ -3,6 +3,22 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.65 — 2026-10-22
+- Homestead decor, stages 1–2 (see ROADMAP pin). Discoveries `homemaking` (3 DT, needs kiln + fishing) and `additions` (3 DT, needs
+  homemaking + surveying) in a new Home & decor branch. `D.house` holds the build cost and four levels (Cottage 1×1/3 spots, House 1×2/6,
+  Farmhouse 2×2/10, Manor 2×3/15). One house per farm: task `housebuild` on empty grass; task `housegrow` (key `x,y,W,H`) picks any
+  next-size footprint that contains the old one and is all empty grass (`growOpts`, `blockWhy` names the blocker, `dirWord` gives the
+  on-screen direction for the current view angle). Save format: the main tile holds `{type:'house', lv, w, h, d}` (`d` = `[item, quality]`
+  or null per display spot); every other covered tile holds `{type:'house', pt: mainIdx}`. `builtCount` skips `pt` tiles.
+- House tiles are not walkable; `standGoals` sends the farmer beside the house and `stepOffHouse` moves anyone standing where it lands.
+- Drawing: the house is one sprite (`art.js` `house(A, B, L)`, a true isometric box, mirrored with swapped shades when B > A) drawn from
+  its front-most tile; tiles beside its visible walls that were drawn earlier, and actors on them, are redrawn on top (`draw()` object
+  pass refactored into `drawObj(i, again)`). Selection outlines the whole footprint; a picked growth direction lights its new tiles.
+- Decor: 9 items, cat `decor` (market buys them; not in orders, puzzles or mastery); Carpenter's Bench station + kit; recipes at the
+  bench, Loom, Potter's Wheel and Glass Furnace. Recipe `requires` may be a list (`unlocked` takes arrays; `lockOf` names the first
+  missing discovery). Decor pays the first-made Discovery award but not the deep-chain one. Display/store are instant panel actions
+  (`data-deco-put`, `data-deco-take`). Test hook `HW.house` (at, idx, opts, tiles). Tests: t_house.py, t_housephone.py.
+
 ## v0.64 — 2026-10-22
 - Race codes are farm words (4–5 letters, ~215 in a list inside `create_race`; migration `race_codes_farm_words`). `create_race` picks a random
   unused word (40 tries), then falls back to a random 5-character code; races and players older than 2 days are deleted on create so words
