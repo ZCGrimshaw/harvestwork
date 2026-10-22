@@ -66,8 +66,15 @@ Not built yet; picked up when we choose to.
   tile again already does its main action). Next: drag to till/plant/water/harvest many plots, Add to Home Screen, larger text.
 - **Homestead decor line (pinned 2026-10-20):** a new production line of household goods for decorating the farm (furniture,
   rugs, lamps, curtains, pottery, picture frames), made at new stations from existing materials (wood, wool, clay, glass,
-  cloth) and placed on the map as decorations. Pairs with "decorations and farm charm" and City growth. Open: do they have a
-  use beyond looks (charm bonus, orders from villagers)?
+  cloth). Pairs with "decorations and farm charm" and City growth.
+  **Direction (discussed 2026-10-22):** decor is displayed inside a **Homestead house**, not scattered on the map. The house
+  starts 1x1 and grows in 3 to 4 paid steps (1x1, 1x2, 2x2, 2x3); its size sets the display slots (about 3, 6, 10, 15).
+  Charm comes from what is on display (capped by slots). A **fish trophy** (crafted from a caught fish; rarer fish make
+  better trophies) is the first showpiece, so the trophy wall doubles as a collection. Interior is a slot-grid drawer like
+  storage (phone friendly), not isometric rooms.
+  Build order: 1x1 house + 3 slots + a handful of pieces incl. the fish trophy; then size upgrades; then the charm bonus.
+  Risks: buildings are single-tile today (`T.b` per tile), so multi-tile footprints are new (placement check naming the
+  blocking tile, save format, procedural art per size; Opus work). Open: should charm feed order rewards or stay display-only?
 - **Inside a factory (pinned 2026-10-20):** a factory building you can step into: a separate indoor map where machines are
   laid out and linked by belts, turning raw goods into finished ones on their own. Pairs with City growth phase 3 (industry)
   and the storage buildings. Open: indoor grid size, belts versus adjacent machines, art volume.
