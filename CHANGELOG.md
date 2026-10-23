@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.69 — 2026-10-23
+- `btn()` matches the queued task on a, i, p and n, so only the pressed button (×1 vs ×5) becomes Cancel. Queued tasks carry `at` (ms); a `.cancelbtn` press within 400 ms of it is ignored (double-tap guard). Tests: t_buy2.py.
+
 ## v0.68 — 2026-10-23
 - The v0.67 cancel × (`.btnx`/`.cancelx`) is replaced: `btn()` now returns a `.btn.cancelbtn` (× Cancel + state line: waiting / on the way / working) in the action button's place
   while that task is queued or current; same `data-cancel` handler.

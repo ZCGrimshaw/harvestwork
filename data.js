@@ -840,6 +840,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.69', at: '2026-10-23 17:10', notes: ['Buying now swaps only the button you pressed (×1 or ×5) for Cancel, not both. A quick second tap on that spot no longer cancels the purchase you just made.'] },
   { v: '0.68', at: '2026-10-23 16:40', notes: ['Panel action buttons now turn into a red × Cancel button in the same spot as soon as the action is queued or under way, instead of a separate × beside them.'] },
   { v: '0.67', at: '2026-10-23 12:50', notes: ['You can now set auto-sell keep amounts in Storage even while Auto-sell is switched off. Nothing sells until you turn it on, and your settings are kept.', 'When an action in a panel is already waiting in your farmer’s queue or being worked on, a red × button appears beside it so you can cancel it right there.'] },
   { v: '0.66', at: '2026-10-22 13:30', notes: ['New Manual (Menu → Game → Manual): search every good, building, upgrade, discovery and kind of land, with what it does, what it costs and where to find it. Pick a group to browse, or open a few “How it works” pages on quality, orders, mastery, seasons and more.', 'You can now move your house. After Rollers & Skids, select it and choose Pick a new spot; the tiles it would cover light up green (or red if something is in the way). It keeps everything on display and costs more the bigger it is.'] },

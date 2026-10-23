@@ -1418,7 +1418,7 @@
     const same = x => x && x.a === t.a && x.i === t.i && x.p === t.p;
     if (ONCE.includes(t.a) && (same(S.cur) || S.queue.some(same))) { toast('That’s already in the task queue.', 'warn'); return; }
     if (busy >= C.maxQueue) { toast(`Task queue is full (${C.maxQueue}). Wait for your farmer to finish.`, 'warn'); return; }
-    S.queue.push(Object.assign({ id: S.uid++ }, t)); dirty();
+    S.queue.push(Object.assign({ id: S.uid++, at: Date.now() }, t)); dirty();
   }
 
   /* ================= pathing & avatar ================= */
@@ -2078,7 +2078,7 @@
     const e = opts.err !== undefined ? opts.err : checkTask(t);
     const data = Object.entries(t).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
     const b = `<button class="btn ${opts.cls || ''}" data-task ${data} ${e ? 'disabled' : ''}>${label}${e ? `<small>${esc(e)}</small>` : opts.sub ? `<small>${opts.sub}</small>` : ''}</button>`;
-    const same = x => x && x.a === t.a && String(x.i) === String(t.i) && String(x.p) === String(t.p), q = same(S.cur) ? S.cur : S.queue.find(same);
+    const same = x => x && x.a === t.a && String(x.i) === String(t.i) && String(x.p) === String(t.p) && String(x.n) === String(t.n), q = same(S.cur) ? S.cur : S.queue.find(same);
     return q ? `<button class="btn cancelbtn" data-cancel="${q.id}" aria-label="Cancel: ${esc(label.replace(/<[^>]*>/g, ''))}"><span class="cx">×</span><span>Cancel<small>${q === S.cur ? (q.ph === 'work' ? 'Working on it' : 'Farmer is on the way') : 'Waiting in the queue'}</small></span></button>` : b;
   }
   const pbar = (key, cls = '') => `<div class="pb ${cls}"><i data-prog="${key}"></i></div>`;
@@ -2998,7 +2998,8 @@
     else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
-    else if (ds.cancel) { if (S.cur && S.cur.id === +ds.cancel) { S.cur = null; S.av.path = []; } else S.queue = S.queue.filter(t => t.id !== +ds.cancel); dirty(); }
+    else if (ds.cancel) { const ct = S.cur && S.cur.id === +ds.cancel ? S.cur : S.queue.find(t => t.id === +ds.cancel); if (el.classList.contains('cancelbtn') && ct && ct.at && Date.now() - ct.at < 400) return; // a quick second tap on the same spot doesn't cancel what it just queued
+      if (S.cur && S.cur.id === +ds.cancel) { S.cur = null; S.av.path = []; } else S.queue = S.queue.filter(t => t.id !== +ds.cancel); dirty(); }
     else if (ds.pass) { if ((S.adv || []).some(o => o.id === +ds.pass)) { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(o => o.id !== +ds.pass); toast(`Grand order passed. Next Grand order in ${grandNext(wasFull)}.`, 'info'); } else { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; } }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
       if (d && !unlocked(d.id) && discOk(d) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
