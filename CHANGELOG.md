@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.68 — 2026-10-23
+- The v0.67 cancel × (`.btnx`/`.cancelx`) is replaced: `btn()` now returns a `.btn.cancelbtn` (× Cancel + state line: waiting / on the way / working) in the action button's place
+  while that task is queued or current; same `data-cancel` handler.
+
 ## v0.67 — 2026-10-23
 - Auto-sell keep chips (`data-keep`) show in Storage whether or not `S.autoSell` is on; the toggle now only gates `autoSellTick`. Hint texts in Storage and Settings updated.
 - `btn()` wraps a task button with a medium red × (`.cancelx`, `data-cancel`) when that same task (a, i, p) is queued or current. The `cancel` handler now also
