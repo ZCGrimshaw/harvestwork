@@ -2077,7 +2077,9 @@
   function btn(t, label, opts = {}) {
     const e = opts.err !== undefined ? opts.err : checkTask(t);
     const data = Object.entries(t).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
-    return `<button class="btn ${opts.cls || ''}" data-task ${data} ${e ? 'disabled' : ''}>${label}${e ? `<small>${esc(e)}</small>` : opts.sub ? `<small>${opts.sub}</small>` : ''}</button>`;
+    const b = `<button class="btn ${opts.cls || ''}" data-task ${data} ${e ? 'disabled' : ''}>${label}${e ? `<small>${esc(e)}</small>` : opts.sub ? `<small>${opts.sub}</small>` : ''}</button>`;
+    const same = x => x && x.a === t.a && String(x.i) === String(t.i) && String(x.p) === String(t.p), q = same(S.cur) ? S.cur : S.queue.find(same);
+    return q ? `<div class="btnx">${b}<button class="cancelx" data-cancel="${q.id}" aria-label="Cancel this task" title="Cancel">×</button></div>` : b;
   }
   const pbar = (key, cls = '') => `<div class="pb ${cls}"><i data-prog="${key}"></i></div>`;
 
@@ -2659,13 +2661,13 @@
       const hc = holdCaps(), hu = holdUsed(), stores = Object.keys(hc).map(k => `${esc(SK[k].name)} ${Math.min(hu[k] || 0, hc[k]).toLocaleString()} of ${hc[k].toLocaleString()} in their own store${(hu[k] || 0) > hc[k] ? ` (+${(hu[k] - hc[k]).toLocaleString()} in main)` : ''}`);
       const nk = Object.keys(S.keep || {}).length;
       h = `<div class="phead"><div><h2>Storage</h2><p class="sub">${used()} of ${cap()} items in main storage. Stations draw from here; station kits don’t count.${stores.length ? ` ${stores.join(' · ')}.` : ''}</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        ${S.race ? '' : `<div class="autosell"><button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus</button><small>${S.autoSell ? (nk ? `${nk} good${nk === 1 ? '' : 's'} set. Anything above the keep amount sells at the market every 20 seconds.` : 'Tap a good’s “Auto-sell off” button below to set how many to keep.') : 'Off. Turn it on, then choose how many of each good to keep; the rest sells by itself.'}${S.autoSold ? ` Sold so far: ${S.autoSold.toLocaleString()}g.` : ''}</small></div>`}
+        ${S.race ? '' : `<div class="autosell"><button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus</button><small>${S.autoSell ? (nk ? `${nk} good${nk === 1 ? '' : 's'} set. Anything above the keep amount sells at the market every 20 seconds.` : 'Tap a good’s “Auto-sell off” button below to set how many to keep.') : (nk ? `Off. Your ${nk} keep setting${nk === 1 ? ' is' : 's are'} saved; turn it on to start selling.` : 'Off. You can set a keep amount on any good below now; nothing sells until you turn this on.')}${S.autoSold ? ` Sold so far: ${S.autoSold.toLocaleString()}g.` : ''}</small></div>`}
         <button class="linkish small" data-qhelp>${UI.qhelp ? 'Hide' : 'How do I make'} ${QN[1]} and ${QN[2]} goods?</button>${UI.qhelp ? QUALITY_HELP : ''}`;
       const ids = Object.keys(S.inv).filter(id => count(id) > 0);
       if (ids.length) h += chips('inv', groupCounts(ids, count));
       const sortK = INV_SORTS.some(s => s[0] === UI.cat.invsort) ? UI.cat.invsort : 'cat', worth = id => (D.items[id].value || 0) * count(id);
       if (ids.length > 1) h += `<div class="chips sortbar" role="group" aria-label="Sort storage"><span class="sortlbl">Sort by</span>${INV_SORTS.map(([k, nm, tip]) => `<button class="chipf ${sortK === k ? 'on' : ''}" data-cat="invsort:${k}" aria-pressed="${sortK === k}" title="${esc(tip)}">${esc(nm)}</button>`).join('')}</div>`;
-      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}${mastBadge(id)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${S.autoSell && !S.race && sellable(id) ? `<button class="keepchip ${S.keep && S.keep[id] != null ? 'on' : ''}" data-keep="${id}" aria-label="Auto-sell for ${esc(D.items[id].name)}: ${keepTxt(id)}. Tap to change.">${keepTxt(id)}</button>` : ''}${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
+      const slot = id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}${mastBadge(id)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small>${!S.race && sellable(id) ? `<button class="keepchip ${S.keep && S.keep[id] != null ? 'on' : ''}" data-keep="${id}" aria-label="Auto-sell for ${esc(D.items[id].name)}: ${keepTxt(id)}. Tap to change.">${keepTxt(id)}</button>` : ''}${sortK === 'worth' ? `<small class="use">worth about ${worth(id).toLocaleString()}g in all</small>` : useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div></div>`;
       if (!ids.length) h += '<p class="hint">Storage is empty.</p>';
       else if (sortK === 'cat') h += grouped(ids, 'inv', slot, 'invgrid');
       else { const sel = catSel('inv'), nm = id => D.items[id].name, order = Object.keys(S.inv), inv = id => S.inv[id];
@@ -2759,7 +2761,7 @@
         <p class="hint small">You get one notice when you lose first place. If you win #1 back and lose it again, you get one more.</p></div>
         <span class="eyebrow">Selling</span><div class="opts">
         <button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus goods</button>
-        <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. Turn it on to sell goods above a keep amount you choose in Storage. Nothing is sold until you set one.'}</p></div>
+        <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. You can still set keep amounts in Storage; nothing sells until this is on.'}</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
@@ -2996,7 +2998,7 @@
     else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
-    else if (ds.cancel) { S.queue = S.queue.filter(t => t.id !== +ds.cancel); }
+    else if (ds.cancel) { if (S.cur && S.cur.id === +ds.cancel) { S.cur = null; S.av.path = []; } else S.queue = S.queue.filter(t => t.id !== +ds.cancel); dirty(); }
     else if (ds.pass) { if ((S.adv || []).some(o => o.id === +ds.pass)) { const wasFull = S.adv.length >= C.grand.slots; S.adv = S.adv.filter(o => o.id !== +ds.pass); toast(`Grand order passed. Next Grand order in ${grandNext(wasFull)}.`, 'info'); } else { S.orders = S.orders.filter(o => o.id !== +ds.pass); S.refill = C.orderRefill; } }
     else if (ds.unlock) { const d = D.discoveries.find(x => x.id === ds.unlock);
       if (d && !unlocked(d.id) && discOk(d) && S.dp >= d.cost) { S.dp -= d.cost; S.unl.push(d.id); logAct(`Unlocked ${d.name} · −${d.cost} Discovery`, 'you');
@@ -3210,7 +3212,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261022-184756';
+  const BUILD = '20261023-192314';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

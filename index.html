@@ -128,6 +128,12 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .btn > img { display: none; }
 .btn:hover:not(:disabled) { background: #6b4628; }
 .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood-lo); }
+.btnx { display: flex; align-items: stretch; gap: 6px; margin: 6px 0; }
+.btnx .btn { margin: 0; flex: 1; width: auto; }
+.cancelx { cursor: pointer; flex: 0 0 42px; border: 2px solid var(--wood-lo); border-radius: var(--r); background: #7a2f26; color: var(--paper); font-size: 22px; font-weight: 800; line-height: 1; box-shadow: 0 3px 0 var(--wood-lo); }
+.cancelx:hover { background: #944035; }
+.cancelx:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood-lo); }
+@media (pointer: coarse) { .cancelx { flex-basis: 52px; } }
 .btn small { font-weight: 500; font-size: 12px; color: var(--paper-dim); }
 .btn.pri { background: var(--sun); color: #3a2416; }
 .btn.pri small { color: #6b4a1a; }
@@ -806,9 +812,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261022-184756"></script>
-<script src="art.js?v=20261022-184756"></script>
-<script src="sound.js?v=20261022-184756"></script>
-<script src="game.js?v=20261022-184756"></script>
+<script src="data.js?v=20261023-192314"></script>
+<script src="art.js?v=20261023-192314"></script>
+<script src="sound.js?v=20261023-192314"></script>
+<script src="game.js?v=20261023-192314"></script>
 
 </body></html>

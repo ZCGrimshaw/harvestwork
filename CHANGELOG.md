@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.67 — 2026-10-23
+- Auto-sell keep chips (`data-keep`) show in Storage whether or not `S.autoSell` is on; the toggle now only gates `autoSellTick`. Hint texts in Storage and Settings updated.
+- `btn()` wraps a task button with a medium red × (`.cancelx`, `data-cancel`) when that same task (a, i, p) is queued or current. The `cancel` handler now also
+  cancels the current task (`S.cur = null`, path cleared; costs are only charged on completion, so nothing is lost).
+
 ## v0.66 — 2026-10-22
 - Move the house: task `housemove` (needs Rollers & Skids; `t.p` main tile, `t.i` new top-corner tile; `houseSpot` lists the footprint and what
   blocks it, own tiles count as free so shifting by one works). Cost `houseMoveCost`: (C.move.gold + D.house.move.gold × size step) × heat,
