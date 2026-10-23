@@ -64,6 +64,15 @@ Not built yet; picked up when we choose to.
   Add-to-Home-Screen app (manifest, offline), a larger-text option, battery and frame rate checks. Needs a real-device test.
   Done so far: v0.44 (44px tap targets, ticker hidden by default on phones). Skipped: quick-action chips (tapping a selected
   tile again already does its main action). Next: drag to till/plant/water/harvest many plots, Add to Home Screen, larger text.
+- **Pause button at the top (pinned 2026-10-23, next build):** a visible Pause/Resume button in the top bar, so players can stop the
+  clock without opening the menu (today only the menu, idle timeout and full-storage hold pause the world; see `paused()`).
+  Open: it should show a clear "Paused" state, keep working while panels are open, and not apply during races or the weekly
+  challenge (the clock keeps running there).
+- **Walk-in house interior (pinned 2026-10-22, not built; Opus work):** a "Go inside" room view for the house with a floor grid
+  (4×4 cells per house tile: Cottage 4×4, House 4×8, Farmhouse 8×8, Manor 8×12), floor pieces (chairs, tables, bookshelves, lamps,
+  rugs flat underneath) and wall pieces (paintings, curtains, fish trophy) on the two back walls, placed by tap or drag with rotate
+  and store. Needs larger room sprites for the 9 decor pieces and a save-format change; current display spots (`d`) would be placed
+  automatically the first time it opens. Open: wall spots now or floor only; a layout bonus (rug under a table, lamp by a chair).
 - **Homestead decor line (pinned 2026-10-20; stages 1–2 SHIPPED in v0.65: house, decor, growth to 2×3; charm still open):** a new production line of household goods for decorating the farm (furniture,
   rugs, lamps, curtains, pottery, picture frames), made at new stations from existing materials (wood, wool, clay, glass,
   cloth). Pairs with "decorations and farm charm" and City growth.
