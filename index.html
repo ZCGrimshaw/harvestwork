@@ -599,6 +599,9 @@ body.has-vm #hud { margin-left: var(--vmw, 0px); }
 .online[hidden] { display: none; }
 .online i { width: 8px; height: 8px; border-radius: 50%; background: #7cd05b; box-shadow: 0 0 0 0 rgba(124,208,91,.6); animation: livepulse 2.4s infinite; }
 .online b { font-variant-numeric: tabular-nums; }
+.pills { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 700px) { .pills { flex-direction: column; align-items: stretch; gap: 2px; } .pills .online { padding: 1px 8px; font-size: 11px; gap: 4px; justify-content: center; } .visitors svg { width: 12px; height: 12px; } }
+.visitors svg { display: block; } .visitors .gd { fill: #f2b632; stroke: #24160d; stroke-width: 1; }
 @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(124,208,91,.55); } 70% { box-shadow: 0 0 0 6px rgba(124,208,91,0); } 100% { box-shadow: 0 0 0 0 rgba(124,208,91,0); } }
 @media (max-width: 700px) { .online .lg { display: none; } .online { padding: 5px 8px; } }
 /* action panel: every action you can take gets a gold border; none is singled out */
@@ -780,7 +783,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
     <div id="stats"></div>
     <div id="ticker" aria-label="Recent valley market trades"></div>
     <div id="topbtns">
-      <span id="online" class="online" hidden></span>
+      <span class="pills"><span id="visitors" class="online visitors" hidden></span><span id="online" class="online" hidden></span></span>
       <button class="ibtn inv" data-drawer="inv">Storage</button>
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
@@ -810,9 +813,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261023-234511"></script>
-<script src="art.js?v=20261023-234511"></script>
-<script src="sound.js?v=20261023-234511"></script>
-<script src="game.js?v=20261023-234511"></script>
+<script src="data.js?v=20261023-235243"></script>
+<script src="art.js?v=20261023-235243"></script>
+<script src="sound.js?v=20261023-235243"></script>
+<script src="game.js?v=20261023-235243"></script>
 
 </body></html>

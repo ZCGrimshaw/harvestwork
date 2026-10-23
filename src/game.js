@@ -481,7 +481,7 @@
   const MODES = { online: { name: 'Online Valley', blurb: 'Shared market prices, the valley ticker and the leaderboard' }, private: { name: 'Private farm', blurb: 'Just you, on your own time. No leaderboard, no shared prices' } };
   /* leaderboard: each farm reports its score and day once an in-game day; the board is read when opened */
   const LB_MIN_DAYS = 7;
-  function sendScore() { if (!NET.ok || !S.fid || !online()) return;
+  function sendScore() { if (!NET.ok || !S.fid || !online() || !UI.hadSave) return; // not for the placeholder farm shown before someone starts one
     rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
   // A locked-in name belongs to this device's player and is unique across the valley.
   NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
@@ -514,7 +514,7 @@
       else if (manual) toast('Backed up a moment ago. Try again in a few seconds.', 'info');
     } catch (e) { if (manual) toast('Couldn’t reach the valley. Try again in a moment.', 'warn'); }
     UI.cloudBusy = false; dirty(); }
-  function autoBackup() { if (S.race) return; if (S.cloud && S.cloud.auto === false) return; if (!NET.ok) return; if (S.cloud && Date.now() - (S.cloud.at || 0) < 10 * 60000) return; cloudBackup(false); }
+  function autoBackup() { if (S.race || !UI.hadSave) return; if (S.cloud && S.cloud.auto === false) return; if (!NET.ok) return; if (S.cloud && Date.now() - (S.cloud.at || 0) < 10 * 60000) return; cloudBackup(false); }
   async function findBackup(code) {
     code = cleanCode(code); UI.rest = { busy: true, code }; renderTitle();
     if (code.length !== 12) { UI.rest = { err: 'Backup codes are 12 letters and numbers, like ABCD-EFGH-JKMN.', code }; renderTitle(); return; }
@@ -947,6 +947,11 @@
   async function pingPresence() { try { const n = await rpc('presence_ping', { p_inst: INST }); if (typeof n === 'number') { NET.open = Math.max(1, n); renderOpen(); } } catch (e) { } }
   function renderOpen() { const el = $('#online'); if (!el) return; el.hidden = !NET.open; if (!NET.open) return;
     el.innerHTML = `<i></i><b>${NET.open}</b>`; el.title = `${NET.open} cop${NET.open === 1 ? 'y' : 'ies'} of Harvest Valley open right now`; }
+  /* Unique visitors: the market sync sends this device's random player id (the one used for names and scores); the server counts
+     each id once and returns the total, shown beside the open-copies count. Existing players were counted when this began. */
+  function renderVisitors() { const el = $('#visitors'); if (!el) return; el.hidden = !NET.visitors; if (!NET.visitors) return;
+    el.innerHTML = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="5" r="2.6" fill="currentColor"/><path d="M2 14c0-3 2.3-5 5-5s5 2 5 5z" fill="currentColor"/><circle cx="13" cy="3.2" r="2.6" class="gd"/></svg><b>${NET.visitors.toLocaleString()}</b>`;
+    el.title = `${NET.visitors.toLocaleString()} unique visitors to Harvest Valley so far`; el.setAttribute('aria-label', el.title); }
   window.addEventListener('pagehide', () => { try { fetch(NET.url + 'presence_leave', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_inst: INST }) }); } catch (e) { } });
   /* Market polling is kept light: one request (prices that differ from normal, the clock and the open-copies count, with
      the presence ping folded in) every 90 s while the tab is showing, a bare presence ping every 90 s while it's hidden,
@@ -967,11 +972,12 @@
   const tradesWanted = () => !!(S && S.tick && S.tick.open !== false);
   async function pullMarket() {
     try { let m;
-      try { m = await rpc('market_sync', { p_inst: INST }); if (!m || !m.prices) throw new Error('no sync'); NET.sync = true; }
+      try { m = await rpc('market_sync', { p_inst: INST, p_player: PLAYER }); if (!m || !m.prices) throw new Error('no sync'); NET.sync = true; }
       catch (e) { m = await rpc('get_market'); NET.sync = false; }
       NET.prices = m.prices || {}; NET.active = m.active || 1; NET.recov = m.recovery_hours; NET.ok = true;
       if (m.trades) NET.trades = m.trades;
       if (typeof m.open === 'number') { NET.open = Math.max(1, m.open); renderOpen(); }
+      if (typeof m.visitors === 'number') { NET.visitors = m.visitors; renderVisitors(); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now();
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
       if (NET.sync && tradesWanted()) { try { const t = await rpc('get_trades', { p_limit: 25 }); if (Array.isArray(t)) NET.trades = t; } catch (e) { } }
@@ -3330,7 +3336,7 @@
         ${UI.hadSave && !S.race ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · ${MODES[S.mode || 'online'].name} · Day ${S.day} · ${S.gold}g</small></button>` : ''}
         <div class="modegrid">
           <button class="btn ${UI.hadSave ? '' : 'pri'} big" data-t="mode" data-m="online">Online Valley<small>Shared prices and the leaderboard</small></button>
-          <button class="btn big" data-t="mode" data-m="private">Private farm<small>Just you, on your own time</small></button>
+          ${firstTime() ? '' : `<button class="btn big" data-t="mode" data-m="private">Private farm<small>Just you, on your own time</small></button>`}
           <button class="btn big" data-t="race">Race<small>Race friends to a target score</small></button>
           <button class="btn big" data-t="weekly">Weekly challenge<small>${esc(weekTheme(weekOf(srvNow())).name)}</small></button></div>
         ${(() => { const o = weekRun(); return o && !o.race.done && Date.now() < o.race.end ? `<button class="btn pri big" data-t="wresume">Back to your weekly run<small>${esc(weekTheme(o.race.week).name)} · ${fmtTime(o.race.end - Date.now())} left</small></button>` : ''; })()}
@@ -3421,10 +3427,10 @@
     else if (t === 'confirm') h = `<div class="tcard"><h2>Start a new farm?</h2>
         <p class="sub">This replaces <b>${esc(S.name)}’s farm</b> (day ${S.day}, ${S.gold}g) in this browser. Download a save file first if you might want it back.</p>
         <div class="tmenu"><button class="btn big" data-t="dl">Download save file</button><button class="btn danger big" data-t="name">Replace it and start fresh</button>${back}</div></div>`;
-    else if (t === 'name') { const first = firstOnline(); h = `<div class="tcard"><h2>${first ? 'What’s your name?' : 'Name your farmer'}</h2>
-        <label class="field tname">${first ? 'Your name' : 'Name'} <input id="tname" maxlength="14" placeholder="${first ? 'Pick a name' : 'Farmer'}" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
-        ${first ? `<p class="hint small ${UI.nameErr ? 'err' : ''}">${UI.nameErr ? 'Please type a name to play in the Online Valley. ' : ''}It’s locked to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals, on every farm you play. If it’s taken you’ll get the next free number (Name1, Name2…).</p>` : ''}
-        <div class="modepick">${['online', 'private'].map(m => `<button class="modeopt ${(UI.newMode || 'online') === m ? 'on' : ''}" data-t="pickmode" data-m="${m}"><b>${MODES[m].name}</b><small>${MODES[m].blurb}</small></button>`).join('')}</div>
+    else if (t === 'name') { if (firstTime()) UI.newMode = 'online'; const first = firstOnline(), ft = firstTime(), off = offlineNow(); h = `<div class="tcard"><h2>${first ? 'What’s your name?' : 'Name your farmer'}</h2>
+        <label class="field tname">${first ? 'Your name' : 'Name'} <input id="tname" maxlength="14" placeholder="${first && !off ? 'Pick a name' : 'Farmer'}" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
+        ${first && off ? `<p class="hint small">The valley can’t be reached right now, so you can start without a name and lock one in later (Menu → Settings). You’ll still count as a visitor once you’re online.</p>` : ''}${first && !off ? `<p class="hint small ${UI.nameErr ? 'err' : ''}">${UI.nameErr ? 'Please type a name to play in the Online Valley. ' : ''}${ft ? 'Your first farm lives in the Online Valley, and it’s where the tutorial runs. You can make it private any time in Menu → Settings. ' : ''}It’s locked to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals, on every farm you play. If it’s taken you’ll get the next free number (Name1, Name2…).</p>` : ''}
+        ${ft ? '' : `<div class="modepick">${['online', 'private'].map(m => `<button class="modeopt ${(UI.newMode || 'online') === m ? 'on' : ''}" data-t="pickmode" data-m="${m}"><b>${MODES[m].name}</b><small>${MODES[m].blurb}</small></button>`).join('')}</div>`}
         <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
         <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`; }
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
@@ -3462,12 +3468,16 @@
   }
   // Your first Online Valley farm asks for a name and locks it to this player (a taken name gets the next free number).
   const firstOnline = () => (UI.newMode || 'online') !== 'private' && !NET.myName;
+  // Someone's very first farm: always in the Online Valley, named, and it's how they play the tutorial. They can make it private later.
+  const firstTime = () => !UI.hadSave && !NET.myName && ![0, 1, 2].some(k => slotInfo(k));
+  const offlineNow = () => !!NET.tried && !NET.ok; // can't reach the valley: naming can wait
   async function lockFirstName(name) {
     await claimName(name); const c = UI.claim || {};
     if (c.taken && c.suggestion) { await claimName(c.suggestion);
       if (UI.claim && UI.claim.done) toast(`<b>${esc(name)} was already taken</b>, so you’re <b>${esc(UI.claim.done)}</b> in the valley.`, 'info'); }
     if (NET.myName && S && S.name !== NET.myName && online()) { S.name = NET.myName; save(); dirty(); } }
   function startNewFarm(name, tut) {
+    if (firstTime()) UI.newMode = 'online';
     const lock = (UI.newMode || 'online') !== 'private' && !NET.myName && name;
     if (UI.newSlot != null) { if (!S.race) save(); setSlot(UI.newSlot); UI.newSlot = null; }
     if (S.race) { if (!S.race.weekly) try { localStorage.removeItem(RINFO); localStorage.removeItem(RACE_KEY); } catch (e) { } S.race = null; }
@@ -3476,7 +3486,7 @@
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
     if (tut) startTut(); else toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
-    if (lock) lockFirstName(name);
+    if (lock) lockFirstName(name); else if (online()) setTimeout(() => { sendScore(); autoBackup(); }, 4000);
   }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
@@ -3526,7 +3536,7 @@
       toast(`<b>Farm loaded.</b> Welcome back, ${esc(S.name)}: day ${S.day}, ${S.gold}g.`, 'goal'); logAct('Loaded this farm from a save file', 'you'); }
     else if (a === 'pickmode') { UI.tnameDraft = ($('#tname') || {}).value || ''; UI.newMode = el.dataset.m; renderTitle(); }
     else if (a === 'go' || a === 'go-tut') { const n = (($('#tname') || {}).value || '').trim();
-      if (firstOnline() && !n) { UI.nameErr = true; UI.tnameDraft = ''; renderTitle(); const f = $('#tname'); if (f) f.focus(); return; }
+      if (firstOnline() && !n && !offlineNow()) { UI.nameErr = true; UI.tnameDraft = ''; renderTitle(); const f = $('#tname'); if (f) f.focus(); return; }
       UI.nameErr = false; startNewFarm(n, a === 'go-tut'); }
   });
   titleEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rjoin') { e.preventDefault(); joinRace(e.target.value); } });

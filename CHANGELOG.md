@@ -3,6 +3,16 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.70 — 2026-10-23
+- Unique visitors: table `visitors (player uuid pk, first_seen)` (RLS on, no policies), backfilled from every table holding a player id (39 at the time).
+  `market_sync(p_inst, p_player)` records the device's random player id and returns `visitors` (the old one-arg version was dropped; defaults keep old clients working).
+  Client sends `p_player: PLAYER`, stores `NET.visitors`, `renderVisitors()` fills `#visitors` (person icon with gold dot) beside `#online`, wrapped in `.pills`
+  (stacked on phones). Migration `unique_visitors`.
+- First-run flow: `firstTime()` (no saves in any slot, no locked name) forces the Online Valley, hides the mode picker and the main-menu Private button, and requires a name
+  (`lockFirstName`, taken names take the suggestion). `offlineNow()` (sync tried and failed) makes the name optional. Make-private stays in Settings.
+- Fix: the placeholder farm shown before anyone starts one was being backed up and sent to the leaderboard ~3 s after the first successful sync, which also created a "Farmer's farm"
+  in slot 1. `sendScore` and `autoBackup` now need `UI.hadSave`; `startNewFarm` sends the first score and backup itself. Test: t_first.py.
+
 ## v0.69 — 2026-10-23
 - `btn()` matches the queued task on a, i, p and n, so only the pressed button (×1 vs ×5) becomes Cancel. Queued tasks carry `at` (ms); a `.cancelbtn` press within 400 ms of it is ignored (double-tap guard). Tests: t_buy2.py.
 
