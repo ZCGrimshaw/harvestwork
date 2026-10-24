@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.71 — 2026-10-23
+- `seedNudge(i)` (called from `clickTile`): a raw or tilled Farm Plot tapped with no seeds in storage toasts "No seeds yet" (at most every 10 s). The plot panel's no-seeds hint gets a `data-goto` link to the market. New test hook `HW.click(i)`. Test: t_seed.py.
+
 ## v0.70 — 2026-10-23
 - Unique visitors: table `visitors (player uuid pk, first_seen)` (RLS on, no policies), backfilled from every table holding a player id (39 at the time).
   `market_sync(p_inst, p_player)` records the device's random player id and returns `visitors` (the old one-arg version was dropped; defaults keep old clients working).

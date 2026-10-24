@@ -840,6 +840,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.71', at: '2026-10-23 18:50', notes: ['Tapping a farm plot when you have no seeds now reminds you to buy some at the Open Market, and the plot’s menu has a “Show me the market” link that jumps there.'] },
   { v: '0.70', at: '2026-10-23 17:40', notes: ['New players now start their first farm in the Online Valley: pick a name (if it’s taken you’ll be offered the next free one) and play the tutorial from there. You can make the farm private any time in Menu → Settings. If the valley can’t be reached, you can start without a name and lock one in later.', 'A new counter beside the online count (a little person with a gold dot) shows how many different players have ever visited Harvest Valley.'] },
   { v: '0.69', at: '2026-10-23 17:10', notes: ['Buying now swaps only the button you pressed (×1 or ×5) for Cancel, not both. A quick second tap on that spot no longer cancels the purchase you just made.'] },
   { v: '0.68', at: '2026-10-23 16:40', notes: ['Panel action buttons now turn into a red × Cancel button in the same spot as soon as the action is queued or under way, instead of a separate × beside them.'] },
