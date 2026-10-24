@@ -276,6 +276,15 @@ window.HW_ART = (function () {
       for (let i = 0; i < 7; i++) { r('#5c5c66', 16 - (3 + i), 9 + i, 3 + i, 1); r('#4a4a52', 16, 9 + i, 3 + i, 1); }
       r('#7a7a84', 19, 3, 3, 8); r('#a8703a', 11, 21, 2, 4); r('#a8703a', 14, 21, 2, 4); r('#a8703a', 18, 21, 2, 4);
     }),
+    brewhouse: () => mk(32, 36, (g, r) => {
+      shadow(r, 36, 12);
+      // a brick firebox under a copper kettle with a tall flue, and a barrel beside it
+      r('#b5523b', 6, 22, 16, 9); r('#97412e', 14, 22, 8, 9); for (let y = 24; y < 31; y += 3) r('#7e3426', 6, y, 16, 1);
+      r('#2a1a14', 9, 26, 5, 4); r('#f06a20', 10, 27, 3, 2);
+      ell(r, '#d9824a', 14, 18, 8, 5); ell(r, '#b8642e', 17, 19, 5, 3); r('#f0b080', 9, 16, 3, 1); r('#9a5a2e', 6, 21, 16, 1);
+      r('#d9824a', 12, 9, 4, 4); r('#b8642e', 14, 9, 2, 4); r('#c8ccd4', 18, 3, 3, 12); r('#9aa0aa', 20, 3, 1, 12); r('#7a7a84', 18, 3, 3, 1);
+      ell(r, '#8a5a2e', 26, 28, 3, 4); r('#5e3519', 23, 26, 7, 1); r('#5e3519', 23, 30, 7, 1); r('#e0a030', 25, 25, 2, 1);
+    }),
     smelter: () => mk(32, 38, (g, r) => {
       shadow(r, 38, 12);
       r('#8a8a94', 6, 18, 20, 14); r('#6e6e78', 16, 18, 10, 14); r('#b5523b', 6, 17, 20, 2);
@@ -427,6 +436,31 @@ window.HW_ART = (function () {
           if (stage === 2) { r('#d23a3a', x - 2, y - 7); r('#d23a3a', x + 2, y - 6); r('#d23a3a', x, y - 9); }
         } else if (kind === 'flax') {
           for (let k = -1; k <= 1; k++) { r('#6f9a3a', x + k * 2, y - 6, 1, 6); if (stage === 2) r('#8aa0e8', x + k * 2, y - 7, 1, 1); }
+        } else if (kind === 'pears' || kind === 'cherries' || kind === 'plums') {
+          // small fruit trees like the apples, each with its own leaf shade and fruit
+          const leaf = { pears: ['#4a8a2e', '#6ab84a'], cherries: ['#3a7a2a', '#5aa83f'], plums: ['#3f6a2a', '#5a9a3a'] }[kind];
+          r('#7a4b28', x, y - 5, 1, 5); ell(r, leaf[0], x, y - 7, 3, 3); ell(r, leaf[1], x - 1, y - 8, 2, 1);
+          if (stage === 2) {
+            if (kind === 'pears') { r('#d8d050', x - 2, y - 7, 1, 2); r('#d8d050', x + 2, y - 6, 1, 2); r('#c8c040', x, y - 9); }
+            else if (kind === 'cherries') { r('#b0182a', x - 2, y - 6); r('#b0182a', x - 1, y - 6); r('#c8203a', x + 2, y - 7); r('#b0182a', x + 1, y - 9); }
+            else { r('#6a2a7a', x - 2, y - 7, 1, 2); r('#7a3a8a', x + 2, y - 6, 1, 2); r('#6a2a7a', x, y - 9); }
+          }
+        } else if (kind === 'corn') {
+          const st = stage === 2 ? '#7aa83a' : '#8ac04a';
+          for (let k = -1; k <= 1; k += 2) { r(st, x + k, y - (stage === 2 ? 9 : 6), 1, stage === 2 ? 9 : 6); r('#5a9a2a', x + k - 1, y - 4, 1, 1); r('#5a9a2a', x + k + 1, y - 5, 1, 1); }
+          if (stage === 2) { r('#f2c832', x - 2, y - 6, 1, 3); r('#f2c832', x + 2, y - 7, 1, 3); r('#e8d8a0', x - 1, y - 10); r('#e8d8a0', x + 1, y - 10); }
+        } else if (kind === 'onions') {
+          r('#5ec24a', x - 1, y - 5, 1, 4); r('#4caf3a', x + 1, y - 6, 1, 5);
+          if (stage === 2) { ell(r, '#c87aa8', x, y - 1, 2, 1); r('#e8b0d0', x - 1, y - 1); }
+        } else if (kind === 'peppers') {
+          r('#5a9a2a', x, y - 6, 1, 6); ell(r, '#4c8a30', x, y - 5, 2, 2);
+          if (stage === 2) { r('#d8301e', x - 2, y - 4, 1, 2); r('#e8c020', x + 2, y - 5, 1, 2); r('#3f8a3a', x + 1, y - 2, 1, 2); }
+        } else if (kind === 'cabbage') {
+          ell(r, '#4c8a30', x, y - 2, stage === 2 ? 3 : 2, 2); ell(r, '#8ac05a', x, y - 3, stage === 2 ? 2 : 1, stage === 2 ? 2 : 1);
+          if (stage === 2) r('#b8e08a', x - 1, y - 4);
+        } else if (kind === 'hops') {
+          r('#7a5a38', x, y - (stage === 2 ? 10 : 7), 1, stage === 2 ? 10 : 7); r('#5aa83f', x - 1, y - 5); r('#5aa83f', x + 1, y - 7);
+          if (stage === 2) { r('#b8d870', x - 1, y - 8, 1, 2); r('#b8d870', x + 1, y - 5, 1, 2); r('#a8c860', x - 1, y - 3, 1, 2); }
         } else if (kind === 'berries') {
           ell(r, '#3f7a2a', x, y - 3, 3, 3); ell(r, '#4c8a30', x - 1, y - 4, 2, 2);
           if (stage === 2) { r('#d6334a', x - 2, y - 3); r('#d6334a', x + 1, y - 5); r('#e8506a', x + 2, y - 2); r('#d6334a', x, y - 1); }
@@ -506,6 +540,19 @@ window.HW_ART = (function () {
         case 'curtain': r('#7a4b28', 1, 2, 14, 1); r('#bfe6ee', 6, 3, 4, 11); r('#ffffff', 7, 4, 1, 3); r(a, 2, 3, 4, 11); r(a, 10, 3, 4, 11);
           r(b, 3, 3, 1, 11); r(b, 12, 3, 1, 11); r('rgba(0,0,0,.2)', 5, 3, 1, 11); r('rgba(0,0,0,.2)', 10, 3, 1, 11); r('#e8c04a', 2, 9, 4, 1); r('#e8c04a', 10, 9, 4, 1); break;
         case 'lamp': r(a, 4, 13, 8, 2); r('#9a5a2e', 4, 14, 8, 1); r(a, 7, 10, 2, 3); r(a, 5, 9, 6, 1); r('#d4f0f6', 6, 3, 4, 6); r('rgba(255,255,255,.7)', 6, 4, 1, 3); ell(r, b, 8, 6, 1, 2); r('#f06a20', 8, 7); r(a, 6, 2, 4, 1); break;
+        case 'pear': r(b, 8, 1, 1, 3); r('#5aa83f', 9, 2, 2, 1); ell(r, a, 8, 7, 2, 3); ell(r, a, 8, 11, 4, 3); r('rgba(255,255,255,.35)', 6, 9, 1, 2); r('rgba(0,0,0,.12)', 10, 11, 2, 2); break;
+        case 'cob': for (let y = 0; y < 10; y++) r(a, 6 + (y > 1 && y < 8 ? 0 : 1), 3 + y, y > 1 && y < 8 ? 5 : 3, 1); for (let y = 4; y < 12; y += 2) r('#d8a820', 7, y, 3, 1);
+          line(r, b, 4, 14, 6, 6); line(r, b, 12, 14, 10, 6); r(b, 5, 13, 7, 2); break;
+        case 'onion': ell(r, a, 8, 10, 5, 4); r(a, 7, 5, 2, 2); r(b, 7, 3, 1, 2); r(b, 9, 2, 1, 3); r('rgba(255,255,255,.35)', 5, 9, 1, 3); r('rgba(0,0,0,.15)', 8, 7, 1, 7); r('#e8d8c0', 6, 14, 4, 1); break;
+        case 'pepper': r(b, 7, 1, 2, 3); r(b, 6, 3, 4, 1); ell(r, a, 8, 9, 4, 5); r(a, 6, 13, 4, 2); r('rgba(255,255,255,.35)', 6, 7, 1, 4); r('rgba(0,0,0,.15)', 10, 7, 1, 6); break;
+        case 'cabbage': ell(r, b, 8, 9, 6, 5); ell(r, a, 8, 9, 4, 4); line(r, b, 8, 6, 8, 12); r('#c8e8a0', 6, 7, 1, 1); r('#c8e8a0', 10, 8, 1, 1); break;
+        case 'hop': r('#7a5a38', 8, 1, 1, 3); for (let y = 0; y < 9; y++) { const w = y < 2 ? 2 : y < 6 ? 4 : y < 8 ? 3 : 1; r(y % 2 ? b : a, 8 - w + 1, 4 + y, w * 2 - 1, 1); } r(b, 11, 3, 3, 2); break;
+        case 'gem': for (let y = 0; y < 3; y++) r('#e8fffc', 5 - y + 1, 3 + y, 4 + y * 2, 1); r(a, 3, 6, 10, 2); for (let y = 0; y < 6; y++) r(y % 2 ? b : a, 4 + y, 8 + y, 8 - y * 2, 1); r(b, 3, 6, 10, 1); r('#ffffff', 6, 4); break;
+        case 'ring': ell(r, a, 8, 10, 5, 4); ell(r, 'rgba(0,0,0,0)', 8, 10, 3, 2); r('#2a1a14', 6, 9, 5, 3); r(a, 5, 8, 1, 1); for (let y = 0; y < 3; y++) r(b, 7 - y, 2 + y, 2 + y * 2, 1); r('#ffffff', 7, 2); break;
+        case 'necklace': for (let k = 0; k < 14; k++) { const t = k / 13 * Math.PI; r(a, Math.round(8 - Math.cos(t) * 6), Math.round(2 + Math.sin(t) * 8)); } ell(r, b, 8, 12, 2, 2); r('#ffffff', 7, 11); r(b, 4, 8); r(b, 12, 8); break;
+        case 'mug': r(b, 3, 3, 9, 3); ell(r, b, 5, 3, 2, 1); ell(r, b, 9, 2, 2, 1); r(a, 3, 6, 9, 8); r('rgba(255,255,255,.3)', 4, 6, 1, 7); r('#7a4b28', 12, 7, 2, 1); r('#7a4b28', 13, 7, 1, 5); r('#7a4b28', 12, 11, 2, 1); r('#7a4b28', 3, 13, 9, 1); break;
+        case 'pizza': ell(r, '#c08040', 8, 9, 7, 5); ell(r, a, 8, 9, 6, 4); [[5, 8], [10, 7], [8, 11], [11, 10], [6, 11]].forEach(([x, y]) => ell(r, b, x, y, 1, 1)); r('#5aa83f', 9, 9); r('#5aa83f', 6, 9); break;
+        case 'jbox': r('#4a1a2a', 2, 7, 12, 7); r(a, 2, 4, 12, 4); r(a, 3, 3, 10, 1); r('#e8c040', 2, 7, 12, 1); r('#e8c040', 7, 8, 2, 2); r(b, 5, 5, 2, 1); r(b, 9, 5, 2, 1); r('#ffffff', 5, 5); r('rgba(0,0,0,.25)', 2, 13, 12, 1); break;
         default: r(a, 4, 4, 8, 8);
       }
     });
@@ -682,7 +729,7 @@ window.HW_ART = (function () {
      building above its footing: the rows most like the row above them go first, so long walls and roofs
      get shorter while 1-pixel details (trim, windows, sails) survive. Animated frames share one row set. */
   const SHRINK = .25, FOOT = 8;
-  const SHORT = new Set(['homestead', 'stove', 'stove_on', 'market', 'board', 'mill', 'sawmill', 'preserver', 'workbench', 'compost', 'kiln', 'oven', 'press', 'loom', 'hive', 'shed', 'smokehouse', 'smelter', 'barn', 'warehouse']);
+  const SHORT = new Set(['homestead', 'stove', 'stove_on', 'market', 'board', 'mill', 'sawmill', 'preserver', 'workbench', 'compost', 'kiln', 'oven', 'press', 'loom', 'hive', 'shed', 'smokehouse', 'smelter', 'brewhouse', 'barn', 'warehouse']);
   const FRAMES = { mill: [0, 1], sawmill: [0, 1] };
   const rowSets = {};
   function shortRows(k) {

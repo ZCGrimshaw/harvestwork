@@ -1169,6 +1169,10 @@
   function gatherOut(terrain, act) { const o = Object.assign({}, D.gather[terrain].out), main = Object.keys(o)[0]; o[main] += toolStat(act, 'bonus', 0);
     if (terrain === 'boulder' && unlocked('prospecting')) o.copper_ore = 1;
     if (terrain === 'water' && unlocked('glassworks')) o.sand = 1; return o; }
+  // Jeweler: every third dig at an Iron Seam also turns up a rough gem (counted per farm in S.gemN)
+  const gemsHere = T => T.t === 'ore' && unlocked('jeweler');
+  const gemDue = T => gemsHere(T) && ((S.gemN || 0) + 1) % 3 === 0;
+  function gatherGive(T) { const o = Object.assign({}, D.gather[T.t].out); if (gemDue(T)) o.rough_gem = 1; return o; }
   function waterPlot(b) { b.wet = true; b.dry = 0; b.w[b.half ? 1 : 0] = 1; }
 
   /* station work, shared by the farmer, the farmhand and station automation */
@@ -1278,10 +1282,11 @@
       check: t => { const T = T_(t.i), G = D.gather[T.t]; if (!G || !T.r) return 'Nothing to gather here';
         if (!unlocked(G.needs)) return `Unlock ${D.discoveries.find(d => d.id === G.needs).name} first`;
         if (worked(T)) return `${D.terrain[T.t].name} is worked out. Reopen it with Deep Quarrying, or change the land`;
-        if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(G.out) ? null : FULL; },
-      run: t => { const T = T_(t.i), G = D.gather[T.t]; T.r.stock--; useDep(T); const got = [];
-        for (const k in G.out) { addItem(k, G.out[k]); got.push(`+${G.out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
-        float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i, 'gather', ...Object.keys(G.out)); emit('gather'); } },
+        if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(gatherGive(T)) ? null : FULL; },
+      run: t => { const T = T_(t.i), out = gatherGive(T); T.r.stock--; useDep(T); const got = [];
+        if (gemsHere(T)) S.gemN = (S.gemN || 0) + 1;
+        for (const k in out) { addItem(k, out[k]); got.push(`+${out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
+        float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i, 'gather', ...Object.keys(D.gather[T.t].out)); emit('gather'); } },
     survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
       check: t => { if (!unlocked('surveying')) return 'Unlock Land Surveying in Discovery'; if (!surveyable(t.p)) return 'Survey land next to an area you already have'; return canPay(surveyCost()); },
       run: t => { pay(surveyCost()); S.regions[t.p].open = true; genRegion(t.p); S.surveys = (S.surveys || 0) + 1; UI.live = null; UI.bounds = null;
@@ -1975,7 +1980,7 @@
           if (b.q) { const j = b.q.find(j => !j.done), dn = b.q.find(j => j.done);
             if (dn) bubble(sx, sy - (img.height - 2) * p, p, ART.iconCanvas(Object.keys(D.recipes[dn.r].out)[0], D.items));
             if (j) bar(sx, sy + 3 * p, p, j.t / j.dur, '#f0a030');
-            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter', 'forge', 'glassworks'].includes(b.type) && active && !again && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
+            if (['stove', 'kiln', 'oven', 'smokehouse', 'smelter', 'forge', 'glassworks', 'brewhouse'].includes(b.type) && active && !again && Math.random() < .08) UI.parts.push({ x: sx + 5 * p, y: sy - (img.height - 8) * p, t: 0, vx: (Math.random() - .5) * p * 4 }); }
         }
       } else if (T.r) {
         if (T.t === 'forest') { const img = ART.get(T.r.st); blit(img, sx, sy, p, 16, img.height - 4, a);
@@ -2041,6 +2046,7 @@
     if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
     if (crop) P.push(`Grown on a Farm Plot from ${esc(D.items[crop.seed].name)}.`);
     const g = Object.entries(D.gather).filter(([t, G]) => G.out[id]).map(([t]) => D.terrain[t].name); if (g.length) P.push(`Gathered from ${esc(nmList(g))} tiles.`);
+    if (id === 'rough_gem') P.push(`Every third dig at an Iron Seam turns one up${unlocked('jeweler') ? '' : ', once you have the Jeweler discovery'}.`);
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
@@ -2143,6 +2149,7 @@
     const crop = Object.values(D.crops).find(c => c.item === id);
     if (crop) { const sd = D.items[crop.seed], need = sd.requires && !unlocked(sd.requires) ? D.discoveries.find(d => d.id === sd.requires).name : null;
       return need ? `Grow ${crop.name.toLowerCase()} · unlock “${need}” first` : `Grow ${crop.name.toLowerCase()} on a farm plot (${sd.name.toLowerCase()} at the market)`; }
+    if (id === 'rough_gem') return unlocked('jeweler') ? 'Every third dig at an Iron Seam turns one up' : 'Dig Iron Seams · unlock “Jeweler” first';
     for (const [ter, G] of Object.entries(D.gather)) if (G.out[id] || (id === 'copper_ore' && ter === 'boulder')) {
       const req = id === 'copper_ore' ? 'prospecting' : G.needs, name = D.terrain[ter].name;
       return unlocked(req) ? `Gather from a ${name}` : `Gather from a ${name} · unlock “${D.discoveries.find(d => d.id === req).name}” first`; }
@@ -2221,7 +2228,7 @@
       h += `<p class="state">Tilled and ready for seeds.</p><p class="hint small">For ${QN[1]} crops, water at both growth stages. Add fertilizer too for ${QN[2]}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
       if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
       const seeds = Object.keys(D.crops).filter(k => count(D.crops[k].seed) > 0);
-      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s${cropInSeason(k) ? ' · in season' : ''}` })).join('')}</div>${wxNow() === 'snow' && seeds.some(snowBlocks) ? `<p class="hint small">Snow day: only hardy crops (carrots, potatoes, wheat, apple trees) can be planted today.</p>` : ''}`
+      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s${cropInSeason(k) ? ' · in season' : ''}` })).join('')}</div>${wxNow() === 'snow' && seeds.some(snowBlocks) ? `<p class="hint small">Snow day: only hardy crops (${esc(cropList(Object.keys(D.crops).filter(k => D.crops[k].hardy)).toLowerCase())}) can be planted today.</p>` : ''}`
         : `<p class="hint"><b>No seeds.</b> Buy some at the Open Market.${marketIdx() >= 0 ? ` <button class="linkish small" data-goto="${marketIdx()}">Show me the market</button>` : ''}</p>`;
     } else {
       const cr = D.crops[b.crop];
@@ -2378,7 +2385,7 @@
         + `<p class="hint small">Or change the land below. The market also sells ${esc(D.items[unit].name.toLowerCase())}${D.items[unit].buy ? '' : ' once you’ve dug some'}; a new ${T.t === 'clay' ? 'Clay Banks area' : 'Iron Hills area'} brings fresh deposits.</p>`; }
     if (T.t === 'forest') {} else if (G.action === 'gather') {
       h += `<div class="row"><div class="grow1">${esc(G.what)} available: <b>${T.r.stock}/${G.stock}</b>${T.r.stock < G.stock ? pbar('r:' + i, 'thin') : ''}</div></div>`;
-      h += btn({ a: 'gather', i }, G.verb, { cls: 'pri', sub: Object.entries(G.out).map(([k, n]) => `+${n} ${D.items[k].name}`).join(' · ') });
+      h += btn({ a: 'gather', i }, G.verb, { cls: 'pri', sub: Object.entries(G.out).map(([k, n]) => `+${n} ${D.items[k].name}`).join(' · ') + (gemsHere(T) ? (gemDue(T) ? ' · +1 Rough Gem this time' : ` · a rough gem in ${3 - (S.gemN || 0) % 3} digs`) : '') });
     } else {
       h += `<div class="row"><div class="grow1">${T.t === 'water' ? 'Fish' : 'Boulders'} available: <b>${T.r.stock}/${G.stock}</b>${T.r.stock < G.stock ? pbar('r:' + i, 'thin') : ''}</div></div>`;
       h += btn({ a: G.action, i }, T.t === 'water' ? 'Fish' : 'Break stone', { cls: 'pri', sub: T.t === 'water' ? `+${gatherOut('water', 'fish').fish} fish` : `+${gatherOut('boulder', 'mine').stone} stone` });

@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.72 — 2026-10-24
+- Fifth wave of content, six Discoveries (45 DT; tree is now 70 Discoveries, 231 DT): `orchard` (6, req apples), `marketgarden` (5, req compostbin),
+  `gourmet` (7, req oven + creamery), `brewery` (9, req winemaking + wheat), `cheesecave` (8, req creamery + cellar), `jeweler` (10, req ironworking + glassworks).
+- 8 crops (pears, cherries, plums, corn, onions, peppers, cabbage, hops; onions, cabbage and pears hardy) with seeds, crop sprites, seasons, Mastery entries,
+  Daily Puzzle riddles and uses. 26 new goods and 24 recipes, priced inside the existing value bands (1.3–2.5× inputs; nothing beats stained glass per second).
+- New station Brewhouse (`brewhouse`, kit 180g, place 6 planks + 4 stone) with sprite. New icon shapes: pear, cob, onion, pepper, cabbage, hop, gem, ring, necklace, mug, pizza, jbox.
+- Rough gems: `gatherGive(T)` adds one on every third Iron Seam dig once Jeweler is unlocked (counter `S.gemN`); the gather button says when the next one comes.
+  Jewel Box is decor (carpenter). Snow-day hint now lists hardy crops from the data. Test: t_wave5.py (Joel's save: unlock by clicking, grow all eight, craft at every station, gems).
+
 ## v0.71 — 2026-10-23
 - `seedNudge(i)` (called from `clickTile`): a raw or tilled Farm Plot tapped with no seeds in storage toasts "No seeds yet" (at most every 10 s). The plot panel's no-seeds hint gets a `data-goto` link to the market. New test hook `HW.click(i)`. Test: t_seed.py.
 

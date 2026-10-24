@@ -72,7 +72,8 @@ window.HW_DATA = {
      need more units. Perks apply to that good only and are off in races and weekly challenges. extra: every Nth
      harvest or batch gives one more (if there's room). */
   mastery: {
-    items: ['carrot', 'potato', 'wheat', 'berries', 'tomato', 'pumpkin', 'apple', 'flax', 'egg', 'milk', 'wool', 'honey', 'mushrooms'],
+    items: ['carrot', 'potato', 'wheat', 'berries', 'tomato', 'pumpkin', 'apple', 'flax', 'egg', 'milk', 'wool', 'honey', 'mushrooms',
+            'pear', 'cherries', 'plum', 'corn', 'onion', 'pepper', 'cabbage', 'hops'],
     tiers: [
       { id: 'bronze', name: 'Bronze', pts: 1000,  sell: 0.05, speed: 0,    extra: 0, dp: 1 },
       { id: 'silver', name: 'Silver', pts: 5000,  sell: 0.10, speed: 0.10, extra: 0, dp: 1 },
@@ -109,7 +110,16 @@ window.HW_DATA = {
       clay: ['Dig me wet and red from the bank. Fire me and I hold water or keep out the rain.'],
       reeds: ['I grow tall and hollow by the water, and you can weave me into a basket.'],
       iron_ore: ['Dark, heavy rock from the hills. The forge melts me down for tools.'],
-      sand: ['Fine and golden, I come up with your fishing line. Melt me and you can see right through me.']
+      sand: ['Fine and golden, I come up with your fishing line. Melt me and you can see right through me.'],
+      pear: ['I hang from a tree, round at the bottom and narrow at the top, and pressed I make perry.'],
+      cherries: ['Small, dark red and shiny, I grow in pairs on a tree and hide a stone in my heart.'],
+      plum: ['Purple and dusty-skinned with a stone inside; dried, I am a prune.'],
+      corn: ['I grow tall in rows, wrapped in green husks, with golden kernels on the cob.'],
+      onion: ['I grow in layers under the soil and make the cook cry when I am cut.'],
+      pepper: ['Green, red or yellow, crisp and hollow inside; some of my cousins are very hot.'],
+      cabbage: ['A tight round head of leaves, green as a garden; shred me and pickle me into kraut.'],
+      hops: ['I climb tall poles in green, papery cones, and the brewer adds me for bitterness.'],
+      rough_gem: ['Dull and cloudy, I hide in the dark iron rock; cut and polished, I sparkle.']
     },
     // a real-world description of each good, added to its clue as “In the real world, it …” (so a clue says what a thing is for, not just where it is made)
     uses: {
@@ -181,11 +191,43 @@ window.HW_DATA = {
       custard: 'is a smooth, sweet cream made from eggs and milk',
       cake: 'is a sweet baked treat with candles on birthdays',
       yarn: 'is spun fibre, ready for knitting',
-      blanket: 'is a soft cover that keeps you warm in bed'
+      blanket: 'is a soft cover that keeps you warm in bed',
+      pear: 'is a sweet, juicy fruit with a narrow top',
+      cherries: 'are small red fruits with a stone in the middle',
+      plum: 'is a purple stone fruit that dries into a prune',
+      corn: 'is golden kernels on a cob, lovely with butter',
+      onion: 'is a layered bulb that makes you cry when you chop it',
+      pepper: 'is a crunchy, colourful vegetable, hollow inside',
+      cabbage: 'is a tight head of leaves for slaws and soups',
+      hops: 'are green cones that give beer its bitter taste',
+      perry: 'is a sparkling drink pressed from pears',
+      cherry_pie: 'is a sweet red pie with a lattice crust',
+      plum_jam: 'is a dark, sticky spread made from plums',
+      cornbread: 'is a crumbly golden bread baked with corn',
+      onion_soup: 'is a rich, savoury soup topped with toast and cheese',
+      pepper_relish: 'is a tangy, chunky condiment in a jar',
+      sauerkraut: 'is shredded cabbage left to sour in a crock',
+      salsa: 'is a chopped, zesty dip for chips',
+      pizza: 'is a flat bread with sauce and melted cheese',
+      quiche: 'is an egg-and-cheese tart served in slices',
+      jam_tart: 'is a little pastry filled with sweet jam',
+      fish_pie: 'is fish and potato baked under a buttery crust',
+      harvest_roast: 'is a big tray of roasted vegetables for a feast',
+      malt: 'is sprouted, dried grain that brewers start from',
+      ale: 'is a golden, foamy drink brewed from malt and hops',
+      stout: 'is a dark, roasty drink with a creamy head',
+      cherry_ale: 'is a fruity red brew made with cherries',
+      aged_cheddar: 'is a sharp, crumbly cheese aged for months',
+      blue_cheese: 'is a strong cheese with blue veins of mould',
+      smoked_cheese: 'is cheese with a smoky brown rind',
+      rough_gem: 'is a cloudy crystal waiting to be cut',
+      cut_gem: 'is a polished stone that catches the light',
+      gem_ring: 'is a band worn on a finger, set with a stone',
+      gem_necklace: 'is a chain of jewels worn around the neck'
     },
     made: { stove: 'cooked on the stove', mill: 'ground at the mill', sawmill: 'sawn', preserver: 'preserved', kiln: 'fired in a kiln',
       oven: 'baked', press: 'pressed', loom: 'woven', creamery: 'churned or aged', smokehouse: 'smoked', smelter: 'smelted',
-      dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace',
+      dyevat: 'dyed', potter: 'shaped on a wheel', forge: 'forged', glassworks: 'melted and shaped in a furnace', brewhouse: 'brewed',
       coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
     steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
     reward: { stepGold: 1.5, doneBonus: 0.5, doneCut: 0.15, streakEvery: 7, streakBonus: 1, // no Discovery tokens: finishing pays a gold bonus of doneBonus × what the steps paid (less 15% per name-hint or 3+ wrong guesses, at least 20%); every 7th day in a row adds streakBonus × the steps' pay
@@ -227,7 +269,18 @@ window.HW_DATA = {
     tomatoes: { name: 'Tomatoes', seed: 'tomato_seed', item: 'tomato', grow: 30, yield: 3 },
     pumpkins: { name: 'Pumpkins', seed: 'pumpkin_seed', item: 'pumpkin', grow: 50, yield: 2 },
     apples:   { name: 'Apple Trees', seed: 'apple_seedling', item: 'apple', grow: 60, yield: 4, hardy: true },
-    flax:     { name: 'Flax', seed: 'flax_seed', item: 'flax', grow: 25, yield: 3 }
+    flax:     { name: 'Flax', seed: 'flax_seed', item: 'flax', grow: 25, yield: 3 },
+    // Orchard Grove (Discovery 'orchard')
+    pears:    { name: 'Pear Trees', seed: 'pear_seedling', item: 'pear', grow: 60, yield: 4, hardy: true },
+    cherries: { name: 'Cherry Trees', seed: 'cherry_seedling', item: 'cherries', grow: 50, yield: 5 },
+    plums:    { name: 'Plum Trees', seed: 'plum_seedling', item: 'plum', grow: 55, yield: 4 },
+    // Market Garden (Discovery 'marketgarden')
+    corn:     { name: 'Corn', seed: 'corn_seed', item: 'corn', grow: 35, yield: 4 },
+    onions:   { name: 'Onions', seed: 'onion_seed', item: 'onion', grow: 24, yield: 3, hardy: true },
+    peppers:  { name: 'Peppers', seed: 'pepper_seed', item: 'pepper', grow: 32, yield: 3 },
+    cabbage:  { name: 'Cabbage', seed: 'cabbage_seed', item: 'cabbage', grow: 34, yield: 2, hardy: true },
+    // Brewery (Discovery 'brewery')
+    hops:     { name: 'Hops', seed: 'hop_cutting', item: 'hops', grow: 36, yield: 3 }
   },
 
   /* Seasons: a 28-day year of four 7-day seasons (day 1 is the first day of spring), lined up with the weekly report.
@@ -236,14 +289,14 @@ window.HW_DATA = {
      weekly challenges have no seasons or weather, so every run stays fair. */
   seasonRules: { len: 7, grow: 1.25, sell: 1.2, winterGrow: 0.8, sunGrow: 1.1, frostGrow: 0.5, frostEnds: 10, mistEnds: 10, heatDry: 12, demandPick: 0.6 },
   seasons: [
-    { id: 'spring', name: 'Spring', blurb: 'Blossom, soft showers and morning mist.', crops: ['carrot', 'flax'],
-      goods: ['flowers', 'honey', 'honey_cake', 'egg', 'omelette'], wx: { clear: 30, sun: 20, rain: 32, mist: 18 } },
-    { id: 'summer', name: 'Summer', blurb: 'Long sunny days, with spells of heat that dry the soil.', crops: ['tomatoes', 'berries', 'wheat'],
-      goods: ['berry_juice', 'jam', 'berry_pie', 'tomato_sauce', 'cooked_fish', 'berry_wine'], wx: { clear: 25, sun: 32, heat: 28, rain: 15 } },
-    { id: 'autumn', name: 'Autumn', blurb: 'Golden leaves, harvest suppers, fog, and the first frosts late on.', crops: ['pumpkins', 'apples', 'potato'],
-      goods: ['pumpkin_soup', 'pumpkin_pie', 'apple_pie', 'cider', 'bread', 'mushrooms', 'apple_brandy'], wx: { clear: 28, rain: 24, mist: 16, fog: 18, sun: 14 }, late: { frost: 30 } },
-    { id: 'winter', name: 'Winter', blurb: 'Snow days and frosty mornings. Tender crops grow slowly; hardy roots do fine.', crops: ['carrot', 'potato'],
-      goods: ['veggie_stew', 'baked_potato', 'smoked_fish', 'mead', 'cheese', 'cake', 'yarn', 'blanket'], wx: { clear: 26, snow: 36, frost: 22, fog: 16 } }
+    { id: 'spring', name: 'Spring', blurb: 'Blossom, soft showers and morning mist.', crops: ['carrot', 'flax', 'onions', 'hops'],
+      goods: ['flowers', 'honey', 'honey_cake', 'egg', 'omelette', 'quiche'], wx: { clear: 30, sun: 20, rain: 32, mist: 18 } },
+    { id: 'summer', name: 'Summer', blurb: 'Long sunny days, with spells of heat that dry the soil.', crops: ['tomatoes', 'berries', 'wheat', 'cherries', 'plums', 'peppers'],
+      goods: ['berry_juice', 'jam', 'berry_pie', 'tomato_sauce', 'cooked_fish', 'berry_wine', 'cherry_pie', 'plum_jam', 'salsa', 'ale', 'cherry_ale'], wx: { clear: 25, sun: 32, heat: 28, rain: 15 } },
+    { id: 'autumn', name: 'Autumn', blurb: 'Golden leaves, harvest suppers, fog, and the first frosts late on.', crops: ['pumpkins', 'apples', 'potato', 'pears', 'corn'],
+      goods: ['pumpkin_soup', 'pumpkin_pie', 'apple_pie', 'cider', 'bread', 'mushrooms', 'apple_brandy', 'perry', 'cornbread', 'harvest_roast'], wx: { clear: 28, rain: 24, mist: 16, fog: 18, sun: 14 }, late: { frost: 30 } },
+    { id: 'winter', name: 'Winter', blurb: 'Snow days and frosty mornings. Tender crops grow slowly; hardy roots do fine.', crops: ['carrot', 'potato', 'cabbage'],
+      goods: ['veggie_stew', 'baked_potato', 'smoked_fish', 'mead', 'cheese', 'cake', 'yarn', 'blanket', 'onion_soup', 'sauerkraut', 'stout', 'aged_cheddar', 'fish_pie'], wx: { clear: 26, snow: 36, frost: 22, fog: 16 } }
   ],
   weather: {
     clear: { name: 'Fair', text: 'Fair weather. Nothing out of the ordinary.' },
@@ -253,7 +306,7 @@ window.HW_DATA = {
     mist:  { name: 'Mist', text: 'Morning mist. Just pretty; it lifts by 10:00.' },
     fog:   { name: 'Fog', text: 'A soft fog all day. Just pretty.' },
     frost: { name: 'Frost', text: 'A frosty morning: tender crops grow at half speed until the frost melts at 10:00. Hardy crops don’t mind.' },
-    snow:  { name: 'Snow', text: 'Snow on the ground: only hardy crops (carrots, potatoes, wheat and apple trees) can be planted today. Crops already in the ground keep growing.' }
+    snow:  { name: 'Snow', text: 'Snow on the ground: only hardy crops (carrots, potatoes, wheat, onions, cabbage, and apple and pear trees) can be planted today. Crops already in the ground keep growing.' }
   },
 
   // cat: seed | supply | crop | gathered | good | component | kit
@@ -267,6 +320,14 @@ window.HW_DATA = {
     pumpkin_seed: { name: 'Pumpkin Seeds', cat: 'seed', buy: 10, requires: 'pumpkins', icon: ['seed', '#f08a24', '#d8b27a'] },
     apple_seedling:{ name: 'Apple Tree Seedling', cat: 'seed', buy: 14, requires: 'apples', icon: ['sapling', '#5aa83f', '#c22a2a'] },
     flax_seed:    { name: 'Flax Seeds', cat: 'seed', buy: 6, requires: 'flax', icon: ['seed', '#6f8fd8', '#d8b27a'] },
+    pear_seedling:  { name: 'Pear Tree Seedling', cat: 'seed', buy: 16, requires: 'orchard', icon: ['sapling', '#5aa83f', '#c8c84a'] },
+    cherry_seedling:{ name: 'Cherry Tree Seedling', cat: 'seed', buy: 15, requires: 'orchard', icon: ['sapling', '#5aa83f', '#b0182a'] },
+    plum_seedling:  { name: 'Plum Tree Seedling', cat: 'seed', buy: 15, requires: 'orchard', icon: ['sapling', '#5aa83f', '#6a2a7a'] },
+    corn_seed:    { name: 'Corn Seeds', cat: 'seed', buy: 6, requires: 'marketgarden', icon: ['seed', '#f2c832', '#d8b27a'] },
+    onion_seed:   { name: 'Onion Sets', cat: 'seed', buy: 5, requires: 'marketgarden', icon: ['seed', '#c87aa8', '#d8b27a'] },
+    pepper_seed:  { name: 'Pepper Seeds', cat: 'seed', buy: 8, requires: 'marketgarden', icon: ['seed', '#d8301e', '#d8b27a'] },
+    cabbage_seed: { name: 'Cabbage Seeds', cat: 'seed', buy: 7, requires: 'marketgarden', icon: ['seed', '#7cc04b', '#d8b27a'] },
+    hop_cutting:  { name: 'Hop Cuttings', cat: 'seed', buy: 8, requires: 'brewery', icon: ['sapling', '#7cc04b', '#b8d870'] },
     sapling:      { name: 'Sapling', cat: 'supply', buy: 3, requires: 'woodcutting', icon: ['sapling', '#5aa83f', '#7a4b28'] },
     fertilizer:   { name: 'Fertilizer', cat: 'supply', buy: 8, requires: 'compost', icon: ['sack', '#7a9a3a', '#4f6a24'] },
 
@@ -333,6 +394,39 @@ window.HW_DATA = {
     stained_glass: { name: 'Stained Glass', cat: 'good', value: 190, icon: ['block', '#e86aa8', '#4aa3d8'] },
     berry_wine:    { name: 'Berry Wine', cat: 'good', value: 165, icon: ['bottle', '#7a1a3a', '#3a5a2a'] },
     apple_brandy:  { name: 'Apple Brandy', cat: 'good', value: 185, icon: ['bottle', '#c8782a', '#7a4b28'] },
+    // fifth wave (Orchard Grove, Market Garden, Gourmet Kitchen, Brewery, Cheese Cave, Jeweler)
+    pear:          { name: 'Pear', cat: 'crop', value: 10, icon: ['pear', '#c8c84a', '#7a4b28'] },
+    cherries:      { name: 'Cherries', cat: 'crop', value: 8, icon: ['berry', '#b0182a', '#3f8a3a'] },
+    plum:          { name: 'Plum', cat: 'crop', value: 10, icon: ['tuber', '#6a2a7a', '#5aa83f'] },
+    corn:          { name: 'Corn', cat: 'crop', value: 8, icon: ['cob', '#f2c832', '#6fa83a'] },
+    onion:         { name: 'Onion', cat: 'crop', value: 8, icon: ['onion', '#c87aa8', '#f2e6d0'] },
+    pepper:        { name: 'Pepper', cat: 'crop', value: 11, icon: ['pepper', '#d8301e', '#3f8a3a'] },
+    cabbage:       { name: 'Cabbage', cat: 'crop', value: 16, icon: ['cabbage', '#8ac05a', '#4c8a30'] },
+    hops:          { name: 'Hops', cat: 'crop', value: 8, icon: ['hop', '#a8d060', '#6f9a3a'] },
+    perry:         { name: 'Perry', cat: 'good', value: 58, icon: ['jar', '#c8d070', '#7a7a84'] },
+    cherry_pie:    { name: 'Cherry Pie', cat: 'good', value: 72, icon: ['pie', '#b0182a', '#d99a4a'] },
+    plum_jam:      { name: 'Plum Jam', cat: 'good', value: 44, icon: ['jar', '#6a2a7a', '#e8e0d0'] },
+    cornbread:     { name: 'Cornbread', cat: 'good', value: 62, icon: ['loaf', '#f0c040', '#c08a2a'] },
+    onion_soup:    { name: 'Onion Soup', cat: 'good', value: 48, icon: ['bowl', '#c8904a', '#8a5a3a'] },
+    pepper_relish: { name: 'Pepper Relish', cat: 'good', value: 40, icon: ['jar', '#d8301e', '#e8e0d0'] },
+    sauerkraut:    { name: 'Sauerkraut', cat: 'good', value: 50, icon: ['jar', '#e0e0a0', '#e8e0d0'] },
+    salsa:         { name: 'Garden Salsa', cat: 'good', value: 54, icon: ['bowl', '#d84a2a', '#c8a060'] },
+    pizza:         { name: 'Farmhouse Pizza', cat: 'good', value: 165, icon: ['pizza', '#e8c060', '#c8301e'] },
+    quiche:        { name: 'Quiche', cat: 'good', value: 128, icon: ['pie', '#f2d06a', '#d99a4a'] },
+    jam_tart:      { name: 'Jam Tart', cat: 'good', value: 140, icon: ['pie', '#c22a44', '#e8b870'] },
+    fish_pie:      { name: 'Fish Pie', cat: 'good', value: 122, icon: ['pie', '#f2e6d0', '#c08040'] },
+    harvest_roast: { name: 'Harvest Roast', cat: 'good', value: 92, icon: ['plate', '#c97a3a', '#fff2d8'] },
+    malt:          { name: 'Malt', cat: 'good', value: 28, icon: ['sack', '#d8a85a', '#a8783a'] },
+    ale:           { name: 'Ale', cat: 'good', value: 80, icon: ['mug', '#e0a030', '#f6f0e0'] },
+    stout:         { name: 'Stout', cat: 'good', value: 118, icon: ['mug', '#3a2418', '#e8dcc0'] },
+    cherry_ale:    { name: 'Cherry Ale', cat: 'good', value: 158, icon: ['bottle', '#a0182a', '#5a3a2a'] },
+    aged_cheddar:  { name: 'Aged Cheddar', cat: 'good', value: 140, icon: ['wedge', '#e8a830', '#b07a1a'] },
+    blue_cheese:   { name: 'Blue Cheese', cat: 'good', value: 162, icon: ['wedge', '#eef0e4', '#6a8ac8'] },
+    smoked_cheese: { name: 'Smoked Cheese', cat: 'good', value: 84, icon: ['wedge', '#d8963a', '#8a5a2a'] },
+    rough_gem:     { name: 'Rough Gem', cat: 'gathered', value: 30, icon: ['stone', '#7ac0b8', '#5a6a6e'] },
+    cut_gem:       { name: 'Cut Gem', cat: 'component', value: 75, icon: ['gem', '#3ae0d0', '#1a8a9a'] },
+    gem_ring:      { name: 'Gem Ring', cat: 'good', value: 185, icon: ['ring', '#d9824a', '#3ae0d0'] },
+    gem_necklace:  { name: 'Gem Necklace', cat: 'good', value: 440, icon: ['necklace', '#d9824a', '#e8406a'] },
     // home decor (Discovery 'homemaking'): shown inside your house; the market buys them too, but orders never ask for them
     chair:         { name: 'Wooden Chair', cat: 'decor', value: 38, icon: ['chair', '#c98a4a', '#8a5a2e'] },
     table:         { name: 'Farmhouse Table', cat: 'decor', value: 70, icon: ['table', '#b07a42', '#7a4b28'] },
@@ -343,6 +437,7 @@ window.HW_DATA = {
     rug:           { name: 'Woven Rug', cat: 'decor', value: 155, icon: ['rug', '#c8483a', '#e8c04a'] },
     curtains:      { name: 'Curtains', cat: 'decor', value: 115, icon: ['curtain', '#9a4ac8', '#efe6cf'] },
     lamp:          { name: 'Oil Lamp', cat: 'decor', value: 130, icon: ['lamp', '#d9824a', '#f6e27a'] },
+    jewel_box:     { name: 'Jewel Box', cat: 'decor', value: 380, icon: ['jbox', '#7a2a4a', '#3ae0d0'] },
 
     sawmill_kit:  { name: 'Sawmill Kit', cat: 'kit', buy: 50, building: 'sawmill', requires: 'sawmill', icon: ['kit', '#c98a4a', '#9aa0aa'] },
     mill_kit:     { name: 'Flour Mill Kit', cat: 'kit', buy: 70, building: 'mill', requires: 'mill', icon: ['kit', '#c98a4a', '#f2ead8'] },
@@ -384,7 +479,8 @@ window.HW_DATA = {
     potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
     forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] },
     glassworks_kit: { name: 'Glass Furnace Kit', cat: 'kit', buy: 220, building: 'glassworks', requires: 'glassworks', icon: ['kit', '#7fb8c8', '#f06a20'] },
-    carpenter_kit: { name: 'Carpenter’s Bench Kit', cat: 'kit', buy: 150, building: 'carpenter', requires: 'homemaking', icon: ['kit', '#c98a4a', '#8a5a2e'] }
+    carpenter_kit: { name: 'Carpenter’s Bench Kit', cat: 'kit', buy: 150, building: 'carpenter', requires: 'homemaking', icon: ['kit', '#c98a4a', '#8a5a2e'] },
+    brewhouse_kit: { name: 'Brewhouse Kit', cat: 'kit', buy: 180, building: 'brewhouse', requires: 'brewery', icon: ['kit', '#d9824a', '#e0a030'] }
   },
 
   // Categories used to sort lists in the market, storage and Discovery screens.
@@ -395,10 +491,10 @@ window.HW_DATA = {
     { id: 'crops', name: 'Crops', cats: ['crop'] },
     { id: 'animal', name: 'From your animals', items: ['egg', 'milk', 'wool'] },
     { id: 'raw', name: 'Raw materials', cats: ['gathered'] },
-    { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey', 'butter', 'cheese'] },
-    { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake'] },
-    { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead', 'berry_wine', 'apple_brandy'] },
-    { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket', 'glass_jar', 'stained_glass'] },
+    { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey', 'butter', 'cheese', 'malt', 'aged_cheddar', 'blue_cheese', 'smoked_cheese'] },
+    { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake', 'cherry_pie', 'cornbread', 'onion_soup', 'pizza', 'quiche', 'jam_tart', 'fish_pie', 'harvest_roast'] },
+    { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead', 'berry_wine', 'apple_brandy', 'perry', 'plum_jam', 'pepper_relish', 'sauerkraut', 'salsa', 'ale', 'stout', 'cherry_ale'] },
+    { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket', 'glass_jar', 'stained_glass', 'cut_gem', 'gem_ring', 'gem_necklace'] },
     { id: 'decor', name: 'Home decor', cats: ['decor'] },
     { id: 'materials', name: 'Building materials', cats: ['component'] },
     { id: 'kits', name: 'Station kits', cats: ['kit'] },
@@ -406,9 +502,9 @@ window.HW_DATA = {
   ],
   discoveryBranches: [
     { id: 'gathering', name: 'Gathering', ids: ['woodcutting', 'fishing', 'stonecutting', 'prospecting', 'deepquarry'] },
-    { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin', 'seedsaving', 'coldframes'] },
-    { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking'] },
-    { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks'] },
+    { id: 'farming', name: 'Farming', ids: ['wheat', 'berries', 'compost', 'tomatoes', 'pumpkins', 'apples', 'flax', 'compostbin', 'seedsaving', 'coldframes', 'orchard', 'marketgarden'] },
+    { id: 'kitchen', name: 'Kitchen & cellar', ids: ['stew', 'baking', 'preserver', 'oven', 'press', 'beekeeping', 'mushrooms', 'smokehouse', 'winemaking', 'gourmet', 'brewery', 'cheesecave'] },
+    { id: 'workshops', name: 'Workshops', ids: ['sawmill', 'mill', 'workbench', 'kiln', 'loom', 'smelter', 'tinkering', 'glassworks', 'jeweler'] },
     { id: 'automation', name: 'Automation & tools', ids: ['tools', 'repeat', 'autocollect', 'irrigation', 'farmhand', 'errands', 'crew'] },
     { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders', 'salvage'] },
     { id: 'home', name: 'Home & decor', ids: ['homemaking', 'additions'] },
@@ -458,6 +554,7 @@ window.HW_DATA = {
     forge:     { name: 'Forge', kind: 'station', slots: 2, place: { brick: 8, stone: 6 }, desc: 'Smelts iron ore over charcoal and hammers ingots into tools.' },
     glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' },
     carpenter: { name: 'Carpenter’s Bench', kind: 'station', slots: 2, place: { plank: 6, brick: 2 }, desc: 'Builds furniture, frames pictures and mounts fish trophies for your house.' },
+    brewhouse: { name: 'Brewhouse', kind: 'station', slots: 2, place: { plank: 6, stone: 4 }, desc: 'Malts wheat, then brews it with hops into ale and stout.' },
     house:     { name: 'House', kind: 'house', desc: 'Your family home. Put the decor you make on display inside it.' }
   },
 
@@ -578,7 +675,32 @@ window.HW_DATA = {
     vase:           { station: 'potter', in: { clay_pot: 1, flowers: 4 }, out: { vase: 1 }, time: 18, requires: ['homemaking', 'wildflowers'] },
     rug:            { station: 'loom', in: { yarn: 3, dye: 1 }, out: { rug: 1 }, time: 34, requires: ['homemaking', 'dyeing'] },
     curtains:       { station: 'loom', in: { linen: 2, dye: 1 }, out: { curtains: 1 }, time: 26, requires: ['homemaking', 'dyeing'] },
-    lamp:           { station: 'glassworks', in: { glass_jar: 1, copper_ingot: 1 }, out: { lamp: 1 }, time: 28, requires: 'homemaking' }
+    lamp:           { station: 'glassworks', in: { glass_jar: 1, copper_ingot: 1 }, out: { lamp: 1 }, time: 28, requires: 'homemaking' },
+    // fifth wave
+    perry:          { station: 'press', in: { pear: 3 }, out: { perry: 1 }, time: 20, requires: 'orchard' },
+    cherry_pie:     { station: 'oven', in: { flour: 1, cherries: 2 }, out: { cherry_pie: 1 }, time: 20, requires: 'orchard' },
+    plum_jam:       { station: 'preserver', in: { plum: 2 }, out: { plum_jam: 1 }, time: 18, requires: 'orchard' },
+    cornbread:      { station: 'oven', in: { flour: 1, corn: 2 }, out: { cornbread: 1 }, time: 18, requires: 'marketgarden' },
+    onion_soup:     { station: 'stove', in: { onion: 2, potato: 1 }, out: { onion_soup: 1 }, time: 14, requires: 'marketgarden' },
+    pepper_relish:  { station: 'preserver', in: { pepper: 2 }, out: { pepper_relish: 1 }, time: 16, requires: 'marketgarden' },
+    sauerkraut:     { station: 'preserver', in: { cabbage: 2 }, out: { sauerkraut: 1 }, time: 20, requires: 'marketgarden' },
+    salsa:          { station: 'preserver', in: { tomato: 1, pepper: 1, onion: 1 }, out: { salsa: 1 }, time: 18, requires: ['marketgarden', 'tomatoes'] },
+    pizza:          { station: 'oven', in: { flour: 1, tomato_sauce: 1, cheese: 1 }, out: { pizza: 1 }, time: 30, requires: ['gourmet', 'tomatoes'] },
+    quiche:         { station: 'oven', in: { flour: 1, egg: 2, cheese: 1 }, out: { quiche: 1 }, time: 26, requires: 'gourmet' },
+    jam_tart:       { station: 'oven', in: { flour: 1, jam: 1, butter: 1 }, out: { jam_tart: 1 }, time: 24, requires: ['gourmet', 'preserver', 'berries'] },
+    fish_pie:       { station: 'oven', in: { fish: 2, potato: 2, butter: 1 }, out: { fish_pie: 1 }, time: 28, requires: ['gourmet', 'fishing'] },
+    harvest_roast:  { station: 'stove', in: { potato: 2, carrot: 2, pumpkin: 1 }, out: { harvest_roast: 1 }, time: 22, requires: ['gourmet', 'pumpkins'] },
+    malt:           { station: 'brewhouse', in: { wheat: 3 }, out: { malt: 1 }, time: 16 },
+    ale:            { station: 'brewhouse', in: { malt: 1, hops: 2 }, out: { ale: 1 }, time: 30 },
+    stout:          { station: 'brewhouse', in: { malt: 2, hops: 1, charcoal: 1 }, out: { stout: 1 }, time: 40, requires: ['brewery', 'kiln'] },
+    cherry_ale:     { station: 'brewhouse', in: { ale: 1, cherries: 3 }, out: { cherry_ale: 1 }, time: 36, requires: ['brewery', 'orchard'] },
+    aged_cheddar:   { station: 'creamery', in: { cheese: 2 }, out: { aged_cheddar: 1 }, time: 60, requires: 'cheesecave' },
+    blue_cheese:    { station: 'creamery', in: { cheese: 2, mushrooms: 2 }, out: { blue_cheese: 1 }, time: 60, requires: ['cheesecave', 'mushrooms'] },
+    smoked_cheese:  { station: 'smokehouse', in: { cheese: 1, charcoal: 1 }, out: { smoked_cheese: 1 }, time: 30, requires: ['cheesecave', 'smokehouse'] },
+    cut_gem:        { station: 'forge', in: { rough_gem: 1 }, out: { cut_gem: 1 }, time: 24, requires: 'jeweler' },
+    gem_ring:       { station: 'forge', in: { copper_ingot: 1, cut_gem: 1 }, out: { gem_ring: 1 }, time: 30, requires: 'jeweler' },
+    gem_necklace:   { station: 'forge', in: { copper_ingot: 2, cut_gem: 3 }, out: { gem_necklace: 1 }, time: 45, requires: 'jeweler' },
+    jewel_box:      { station: 'carpenter', in: { plank: 4, cut_gem: 2, dyed_cloth: 1 }, out: { jewel_box: 1 }, time: 40, requires: ['jeweler', 'homemaking', 'dyeing'] }
   },
 
   // Spend Discovery here. Each states what it enables and where to find it.
@@ -654,7 +776,15 @@ window.HW_DATA = {
 
     // home & decor
     { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Put the decor you make on display inside the house. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
-    { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size holds more decor. It needs free grass beside it.', where: 'Select your house → Grow the house.' }
+    { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size holds more decor. It needs free grass beside it.', where: 'Select your house → Grow the house.' },
+
+    // fifth wave: late-game content to spend tokens on
+    { id: 'orchard', pic: ['farm_tilled', 'crop:pears.2', 'pear'], name: 'Orchard Grove', cost: 6, req: ['apples'], text: 'Pear, cherry and plum trees join the market. Press pears into perry, bake cherry pie and make plum jam. Pear trees are hardy.', where: 'Open Market → Buy; Cider Press → Perry; Oven → Cherry Pie; Preserver → Plum Jam.' },
+    { id: 'marketgarden', pic: ['farm_tilled', 'crop:corn.2', 'corn'], name: 'Market Garden', cost: 5, req: ['compostbin'], text: 'Corn, onions, peppers and cabbage join the market. Bake cornbread, cook onion soup, and preserve pepper relish, sauerkraut and salsa. Onions and cabbage are hardy.', where: 'Open Market → Buy; Oven, Stove and Preserver → recipes.' },
+    { id: 'gourmet', pic: ['grass:0', 'oven', 'pizza'], name: 'Gourmet Kitchen', cost: 7, req: ['oven', 'creamery'], text: 'Fine dishes from goods you already make: pizza, quiche, jam tarts and fish pie in the Oven, and a harvest roast on the Stove.', where: 'Oven and Stove → recipes.' },
+    { id: 'brewery', pic: ['grass:1', 'brewhouse', 'ale'], name: 'Brewery', cost: 9, req: ['winemaking', 'wheat'], text: 'A Brewhouse and hop cuttings. Malt your wheat, then brew it with hops into ale, or into stout over charcoal. Cherries make cherry ale.', where: 'Open Market → Stations → Brewhouse kit; Open Market → Buy → Hop Cuttings.' },
+    { id: 'cheesecave', pic: ['grass:0', 'creamery', 'aged_cheddar'], name: 'Cheese Cave', cost: 8, req: ['creamery', 'cellar'], text: 'Age cheese into sharp cheddar, or with mushrooms into blue cheese, at the Creamery. Smoke it at the Smokehouse.', where: 'Creamery and Smokehouse → recipes.' },
+    { id: 'jeweler', pic: ['ore:0', 'forge', 'gem_ring'], name: 'Jeweler', cost: 10, req: ['ironworking', 'glassworks'], text: 'Every third dig at an Iron Seam turns up a rough gem. Cut gems at the Forge and set them in copper rings and necklaces, or make a jewel box for your house.', where: 'Iron Seam tiles; Forge → Cut Gem, Gem Ring, Gem Necklace; Carpenter’s Bench → Jewel Box.' }
   ],
 
   // Tools: tier 0 is what you start with. area = extra radius worked around the target tile;
@@ -840,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.72', at: '2026-10-24 16:30', notes: ['Six new Discoveries to spend your tokens on (45 in all): Orchard Grove (pear, cherry and plum trees), Market Garden (corn, onions, peppers and cabbage), Gourmet Kitchen (pizza, quiche, jam tarts, fish pie and harvest roast), Brewery (a new Brewhouse station, hops, ale, stout and cherry ale), Cheese Cave (aged cheddar, blue cheese and smoked cheese) and Jeweler (rough gems from Iron Seams, cut into rings, necklaces and a jewel box for your house).', 'The new crops have their own seasons, count toward Mastery, and onions, cabbage and pear trees are hardy enough for snow days.'] },
   { v: '0.71', at: '2026-10-23 18:50', notes: ['Tapping a farm plot when you have no seeds now reminds you to buy some at the Open Market, and the plot’s menu has a “Show me the market” link that jumps there.'] },
   { v: '0.70', at: '2026-10-23 17:40', notes: ['New players now start their first farm in the Online Valley: pick a name (if it’s taken you’ll be offered the next free one) and play the tutorial from there. You can make the farm private any time in Menu → Settings. If the valley can’t be reached, you can start without a name and lock one in later.', 'A new counter beside the online count (a little person with a gold dot) shows how many different players have ever visited Harvest Valley.'] },
   { v: '0.69', at: '2026-10-23 17:10', notes: ['Buying now swaps only the button you pressed (×1 or ×5) for Cancel, not both. A quick second tap on that spot no longer cancels the purchase you just made.'] },

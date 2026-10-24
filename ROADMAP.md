@@ -109,7 +109,7 @@ Not built yet; picked up when we choose to.
   day). Plan by phase. Early = learning: steady cheap DT (1-2) from tutorial goals and first-times. Middle = planning: DT from
   contracts, mastery to Gold and deeper chains; costs 3-6 plus some goods; branching choices. Late = systems: DT from top mastery,
   monuments, supply contracts, medals and throughput goals; costs 8-15 plus goods; unlocks automation, factories, more workers.
-  Target tree about 350-450 DT. Existing saves keep their tokens; only new prices apply. First step: tag all 60 Discoveries
+  Target tree about 350-450 DT. (v0.72 added six late Discoveries for 45 DT: tree now 70 / 231 DT.) Existing saves keep their tokens; only new prices apply. First step: tag all 60 Discoveries
   early/mid/late and set DT and goods costs in a table for approval (best done on Opus).
   (3) More than one farmhand (today exactly one: 4 jobs, 8 with Seasoned Farmhand).
 - **Time on work (to discuss, pinned 2026-10-20):** put a duration on every task that needs work (tilling, building, crafting,
