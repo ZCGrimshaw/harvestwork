@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.75 — 2026-10-25
+- `clickTile`: the first tap on one of your own ripe farm plots now queues Harvest (it still selects the plot, so the panel shows Cancel). Skipped while moving a house or
+  placing a model/medal, and silent if that harvest is already queued or under way; a full storage shows the usual warning. The second-tap primary action also no longer
+  toasts "already in the task queue" for a harvest that is queued. Test: t_tapharv.py.
+
 ## v0.74 — 2026-10-25
 - Phone layout (≤760 px wide, and landscape phones): the bottom-left Activity / Updates / Puzzle buttons collapse into one `Info ▾` button (`data-drawer="vinfo"`,
   `vinfoDrawer()`), whose panel links to Weather and season (opens the season drawer), Updates, Activity and the Daily Puzzle (`data-vinfo` closes the panel and opens

@@ -1816,7 +1816,10 @@
   function clickTile(i) {
     if (i < 0) { UI.sel = -1; dirty(); return; }
     if (i !== UI.sel) frameTile(i);
-    if (i === UI.sel) { const pa = primaryAction(i); if (pa) { const t = Object.assign({ i }, pa); const e = checkTask(t); if (e && !['load'].includes(t.a)) toast(esc(e), 'warn'); else queueTask(t); } }
+    if (i === UI.sel) { const pa = primaryAction(i); if (pa && !(pa.a === 'harvest' && (S.cur && S.cur.a === 'harvest' && S.cur.i === i || S.queue.some(x => x.a === 'harvest' && x.i === i)))) { const t = Object.assign({ i }, pa); const e = checkTask(t); if (e && !['load'].includes(t.a)) toast(esc(e), 'warn'); else queueTask(t); } }
+    else if (UI.moving == null && !UI.placeMon && !UI.placeMedal) { // a ripe crop is harvested by the first tap; no need to open the panel and press Harvest
+      const pa = primaryAction(i); if (pa && pa.a === 'harvest') { const t = Object.assign({ i }, pa); const same = x => x && x.a === t.a && x.i === t.i;
+        if (!same(S.cur) && !S.queue.some(same)) { const e = checkTask(t); if (e) toast(esc(e), 'warn'); else queueTask(t); } } }
     UI.sel = i; dirty(); seedNudge(i);
   }
   // Tapping a plot (raw or tilled) with no seeds in storage: remind them where seeds come from (at most every 10 s).
