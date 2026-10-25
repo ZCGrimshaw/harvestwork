@@ -24,7 +24,7 @@
 - Code: vanilla JS. `src/game.js` (game, UI, online features), `src/data.js` (all content: items, recipes, buildings,
   discoveries, contracts, weekly themes, update log), `src/art.js` (procedural pixel art), `src/sound.js` (Web Audio).
 - Online features use Supabase project `xtbsmtystiozdogielrd` (Supabase connector): market prices, leaderboard,
-  names, cloud backups, races, weekly challenge + medals, player keys, presence count, unique visitors (`visitors` table, returned by `market_sync`), Valley Monuments
+  names, cloud backups, races, weekly challenge + medals, player keys, presence count, unique visitors (`visitors` table, returned by `market_sync`), player feedback (`feedback` table + `send_feedback` RPC; the `feedback-mail` edge function emails it to the developer via Resend, secret RESEND_API_KEY), Valley Monuments
   (mon_projects + mon_gifts; a new monument is a new mon_projects row). All RPCs are SECURITY DEFINER
   with RLS on and no policies (intentional). Test SQL inside `begin; … rollback;`.
 - Testing: Playwright with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, opening `src/index.html`

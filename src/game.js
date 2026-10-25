@@ -952,6 +952,39 @@
   function renderVisitors() { const el = $('#visitors'); if (!el) return; el.hidden = !NET.visitors; if (!NET.visitors) return;
     el.innerHTML = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="5" r="2.6" fill="currentColor"/><path d="M2 14c0-3 2.3-5 5-5s5 2 5 5z" fill="currentColor"/><circle cx="13" cy="3.2" r="2.6" class="gd"/></svg><b>${NET.visitors.toLocaleString()}</b>`;
     el.title = `${NET.visitors.toLocaleString()} unique visitors to Harvest Valley so far`; el.setAttribute('aria-label', el.title); }
+  /* Feedback: players send ideas and bug reports from Menu → Send feedback (or the speech-bubble button in the top bar).
+     send_feedback saves it (rate-limited per device); the feedback-mail edge function then emails every unsent note to the
+     developer. With no connection the note waits in this browser and goes out at the next successful sync. */
+  const FB_KINDS = { idea: ['Idea', 'What would make the game more fun?'], bug: ['Bug', 'What went wrong, and what were you doing?'], other: ['Other', 'Anything you’d like to say.'] };
+  const FBQ = 'harvestworks.fbq';
+  const fbState = () => UI.fb || (UI.fb = { kind: 'idea', msg: '', name: NET.myName || (S && S.name !== 'Farmer' ? S.name : '') || '' });
+  const fbCtx = () => ({ v: latest().v, build: BUILD, day: S.day, score: Math.floor(S.score), disc: S.unl.length, mode: S.race ? (S.race.weekly ? 'weekly' : 'race') : (S.mode || 'online'),
+    device: isTouch() ? 'touch' : 'mouse', screen: `${innerWidth}×${innerHeight}` });
+  const pingFeedbackMail = () => { try { fetch(NET.url.replace('/rest/v1/rpc/', '/functions/v1/') + 'feedback-mail', { method: 'POST', keepalive: true, headers: { apikey: NET.key, 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {}); } catch (e) { } };
+  async function sendFeedback() { const F = fbState(), msg = F.msg.trim();
+    if (msg.length < 3) { F.err = 'Please write a little more.'; dirty(); return; }
+    const note = { p_player: PLAYER, p_kind: F.kind, p_msg: msg.slice(0, 1000), p_name: (F.name || '').trim().slice(0, 30) || null, p_ctx: fbCtx() };
+    F.busy = true; F.err = null; dirty();
+    try { const r = await rpc('send_feedback', note);
+      if (r && r.ok) { F.done = 'sent'; F.msg = ''; pingFeedbackMail(); } else F.err = (r && r.error) || 'Couldn’t send that. Try again in a moment.'; }
+    catch (e) { const q = lsGet(FBQ, []); q.push(note); lsSet(FBQ, q.slice(-10)); F.done = 'queued'; F.msg = ''; }
+    F.busy = false; dirty(); }
+  async function flushFeedback() { const q = lsGet(FBQ, []); if (!q.length) return; const left = []; let sent = 0;
+    for (const n of q) { try { const r = await rpc('send_feedback', n); if (r && r.ok) sent++; } catch (e) { left.push(n); } }
+    lsSet(FBQ, left); if (sent) { pingFeedbackMail(); toast(`<b>Feedback sent.</b> Thanks for your ${sent === 1 ? 'note' : sent + ' notes'}!`, 'info'); } }
+  function feedbackDrawer() { const F = fbState(), K = FB_KINDS[F.kind];
+    let h = `<div class="phead"><div><h2>Send feedback</h2><p class="sub">Ideas, bugs, anything at all. It goes straight to the developer, who reads every one.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+    if (F.done) return h + `<div class="fbdone"><p class="state">${F.done === 'sent' ? '<b>Thanks! Sent.</b> ✓' : '<b>Saved.</b> The valley can’t be reached right now, so it will be sent the next time you’re online.'}</p>
+      <div class="menu"><button class="btn" data-fb-new>Send another</button><button class="btn ghost" data-close-drawer>Back to the farm</button></div></div>`;
+    return h + `<div class="tabs" role="tablist">${Object.entries(FB_KINDS).map(([k, [nm]]) => `<button class="tab ${F.kind === k ? 'on' : ''}" data-fb-kind="${k}" role="tab" aria-selected="${F.kind === k}">${nm}</button>`).join('')}</div>
+      <label class="eyebrow" for="fbmsg">${esc(K[1])}</label>
+      <textarea id="fbmsg" class="fbmsg" rows="6" maxlength="1000" placeholder="Type here…">${esc(F.msg)}</textarea>
+      <p class="hint small fbcount"><span id="fbcount">${F.msg.length}</span>/1000</p>
+      <label class="eyebrow" for="fbname">Name to credit (optional)</label>
+      <input id="fbname" class="fbname" maxlength="30" autocomplete="off" value="${esc(F.name)}" placeholder="Anonymous">
+      ${F.err ? `<p class="hint err">${esc(F.err)}</p>` : ''}
+      <div class="menu"><button class="btn pri" data-fb-send ${F.busy ? 'disabled' : ''}>${F.busy ? 'Sending…' : 'Send feedback'}</button></div>
+      <p class="hint small">Sent along with it: the game version, your farm’s day and score, and whether you’re on a touch screen, so bugs are easier to track down. Nothing else.</p>`; }
   window.addEventListener('pagehide', () => { try { fetch(NET.url + 'presence_leave', { method: 'POST', keepalive: true, headers: { apikey: NET.key, Authorization: 'Bearer ' + NET.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_inst: INST }) }); } catch (e) { } });
   /* Market polling is kept light: one request (prices that differ from normal, the clock and the open-copies count, with
      the presence ping folded in) every 90 s while the tab is showing, a bare presence ping every 90 s while it's hidden,
@@ -982,6 +1015,7 @@
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
       if (NET.sync && tradesWanted()) { try { const t = await rpc('get_trades', { p_limit: 25 }); if (Array.isArray(t)) NET.trades = t; } catch (e) { } }
       if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon();
+      flushFeedback();
       if (S && S.wkAlert !== false && online() && !S.race && wkRec() && Date.now() - (NET.wkAt || 0) > 150000) checkWeeklyPass(); }
     catch (e) { NET.ok = false; }
     NET.tried = true; UI.tickDirty = true; dirty();
@@ -2717,6 +2751,8 @@
       h = seasonDrawer();
     } else if (UI.drawer === 'manual') {
       h = manualDrawer();
+    } else if (UI.drawer === 'feedback') {
+      h = feedbackDrawer();
     } else if (UI.drawer === 'spread') {
       h = `<div class="phead"><div></div><button class="close" data-close-drawer aria-label="Close">×</button></div><div class="supportbox">${spreadHTML()}<div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div></div>`;
     } else if (UI.drawer === 'support') {
@@ -2828,7 +2864,7 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         `, false, !!(UI.fileInfo || UI.fileErr || UI.importOpen || UI.exportCode || UI.cloudBusy))}
-        ${msec('game', 'Game', 'Manual, settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="manual">Manual<small>Search every good, building, upgrade and discovery</small></button><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
+        ${msec('game', 'Game', 'Feedback, manual, settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="feedback">Send feedback<small>Ideas, bugs and suggestions, straight to the developer</small></button><button class="btn" data-drawer="manual">Manual<small>Search every good, building, upgrade and discovery</small></button><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
         ${msec('controls', 'Controls', isTouch() ? 'Taps, drags and pinches' : 'Mouse and keyboard', `${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>`, false)}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
@@ -3014,6 +3050,9 @@
     else if ('tickToggle' in ds) { S.tick.open = !S.tick.open; save(); if (S.tick.open && online() && Date.now() - (NET.at || 0) > 15000) pullMarket(); }
     else if ('tickSpeed' in ds) { S.tick.spd = S.tick.spd === 'slow' ? 'fast' : 'slow'; save(); }
     else if (ds.mtab) UI.mtab = ds.mtab;
+    else if (ds.fbKind) { const F = fbState(); const m = $('#fbmsg'); if (m) F.msg = m.value; F.kind = ds.fbKind; F.err = null; }
+    else if ('fbSend' in ds) { const F = fbState(), m = $('#fbmsg'), n = $('#fbname'); if (m) F.msg = m.value; if (n) F.name = n.value; sendFeedback(); return; }
+    else if ('fbNew' in ds) { const F = fbState(); F.done = null; F.err = null; }
     else if (ds.cat) { const [k, v] = ds.cat.split(':'); UI.cat[k] = v; try { localStorage.setItem('harvestworks.tabs', JSON.stringify(UI.cat)); } catch (e) { } }
     else if (ds.cancel) { const ct = S.cur && S.cur.id === +ds.cancel ? S.cur : S.queue.find(t => t.id === +ds.cancel); if (el.classList.contains('cancelbtn') && ct && ct.at && Date.now() - ct.at < 400) return; // a quick second tap on the same spot doesn't cancel what it just queued
       if (S.cur && S.cur.id === +ds.cancel) { S.cur = null; S.av.path = []; } else S.queue = S.queue.filter(t => t.id !== +ds.cancel); dirty(); }
@@ -3169,6 +3208,8 @@
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
     if (e.target.id === 'manq') { UI.manQ = e.target.value; UI.manOpen = null; const r = $('#manres'); if (r) r.innerHTML = manualList(); return; }
+    if (e.target.id === 'fbmsg') { fbState().msg = e.target.value; const c = $('#fbcount'); if (c) c.textContent = e.target.value.length; return; }
+    if (e.target.id === 'fbname') { fbState().name = e.target.value; return; }
     if (e.target.id === 'lbname') { UI.lbDraft = e.target.value; if (UI.claim && UI.claim.taken) UI.claim = null; return; }
     if (e.target.dataset && e.target.dataset.vol) { SND.unlock(); SND.set(e.target.dataset.vol, (+e.target.value) / 100); return; }
     if (e.target.id === 'impcode') { UI.importText = e.target.value; UI.confirmImport = false; UI.importData = null; UI.importErr = UI.importInfo = null;
@@ -3200,7 +3241,7 @@
     if (UI.idle) return;
     if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
     else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual') && S.menuPause !== false;
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;

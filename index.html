@@ -89,6 +89,15 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .status { align-self: center; font-size: 12px; color: var(--paper); background: rgba(20,12,8,.55); padding: 4px 10px; border-radius: 99px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #topbtns { display: flex; gap: 6px; }
 .ibtn { cursor: pointer; padding: 8px 12px; font-family: var(--f-display); font-size: 15px; background: var(--wood); border: 2px solid var(--wood-lo); box-shadow: inset 0 0 0 2px var(--wood-hi), 0 3px 0 rgba(0,0,0,.35); border-radius: var(--r); }
+.fbbtn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 9px; color: var(--paper); }
+.fbbtn svg { display: block; }
+.fbmsg { box-sizing: border-box; width: 100%; min-height: 120px; padding: 10px; font: 600 15px/1.45 var(--f-body); color: var(--paper); background: var(--wood-lo); border: 2px solid var(--wood-hi); border-radius: var(--r); resize: vertical; }
+.fbname { box-sizing: border-box; width: 100%; padding: 9px 10px; font: 600 15px var(--f-body); color: var(--paper); background: var(--wood-lo); border: 2px solid var(--wood-hi); border-radius: var(--r); margin-bottom: 4px; }
+.fbmsg:focus, .fbname:focus { outline: 2px solid var(--sun); outline-offset: 1px; }
+.fbcount { text-align: right; margin: 2px 0 8px; }
+@media (pointer: coarse) { .fbbtn { min-width: 40px; min-height: 40px; } }
+/* phones: the top bar is full, so the feedback button floats above the bottom-right controls instead */
+@media (max-width: 700px) { #topbtns .fbbtn { position: fixed; right: 10px; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); width: 42px; height: 42px; min-width: 0; min-height: 0; padding: 0; border-radius: 50%; z-index: 6; } }
 .ibtn:hover { box-shadow: inset 0 0 0 2px var(--sun), 0 3px 0 rgba(0,0,0,.35); }
 
 /* goal card */
@@ -784,6 +793,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
     <div id="ticker" aria-label="Recent valley market trades"></div>
     <div id="topbtns">
       <span class="pills"><span id="visitors" class="online visitors" hidden></span><span id="online" class="online" hidden></span></span>
+      <button class="ibtn fbbtn" data-drawer="feedback" aria-label="Send feedback" title="Send feedback: ideas, bugs, suggestions"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M2 3h12v8H7l-3 3v-3H2z" fill="currentColor"/><rect x="5" y="6" width="2" height="2" fill="#24160d"/><rect x="9" y="6" width="2" height="2" fill="#24160d"/></svg></button>
       <button class="ibtn inv" data-drawer="inv">Storage</button>
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
@@ -813,9 +823,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261024-222726"></script>
-<script src="art.js?v=20261024-222726"></script>
-<script src="sound.js?v=20261024-222726"></script>
-<script src="game.js?v=20261024-222726"></script>
+<script src="data.js?v=20261025-063803"></script>
+<script src="art.js?v=20261025-063803"></script>
+<script src="sound.js?v=20261025-063803"></script>
+<script src="game.js?v=20261025-063803"></script>
 
 </body></html>

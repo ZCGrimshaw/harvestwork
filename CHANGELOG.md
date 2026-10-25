@@ -3,6 +3,15 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.73 — 2026-10-24
+- Player feedback. Table `feedback` (RLS on, no policies) and RPC `send_feedback(p_player, p_kind, p_msg, p_name, p_ctx)`: idea/bug/other, 3–1000 chars,
+  5 per device per hour, 500 a day overall; ctx = version, build, day, score, discoveries, mode, device, screen. Migration `player_feedback`.
+- Edge function `feedback-mail` (verify_jwt off; it only sends rows with `emailed_at` null, at most 10 per call, then stamps them): emails each note via Resend
+  from onboarding@resend.dev to zerocrunchgames@gmail.com (override with the FEEDBACK_TO secret). Needs the RESEND_API_KEY secret; until it is set, notes are
+  only saved, and the backlog goes out on the first call after it is added.
+- Client: drawer `feedback` (Menu → Game → Send feedback, and a speech-bubble `.fbbtn` in the top bar; floats above the bottom-right controls on phones). Offline notes
+  queue in localStorage `harvestworks.fbq` and flush after the next successful sync. Pauses the game like the menu. Test: t_fb.py.
+
 ## v0.72 — 2026-10-24
 - Fifth wave of content, six Discoveries (45 DT; tree is now 70 Discoveries, 231 DT): `orchard` (6, req apples), `marketgarden` (5, req compostbin),
   `gourmet` (7, req oven + creamery), `brewery` (9, req winemaking + wheat), `cheesecave` (8, req creamery + cellar), `jeweler` (10, req ironworking + glassworks).
