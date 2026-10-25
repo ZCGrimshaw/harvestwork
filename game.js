@@ -372,7 +372,18 @@
   // main-screen button label and dropdown (Activity / Updates / Puzzle row)
   function dqBarBtn() { if (!S || S.race || S.goal < D.goals.length) return ''; const P = dqToday(); if (!P) return '';
     const fresh = !P.done && P.at === 0;
-    return `<button class="ibtn lg ${UI.logOpen === 'dq' ? 'on' : ''}" data-log="dq" aria-expanded="${UI.logOpen === 'dq'}">Puzzle ${P.done ? '✓' : `${P.at + 1}/${P.steps.length}`} ▾${fresh ? '<i class="dot"></i>' : ''}</button>`; }
+    return `<button class="ibtn lg desk ${UI.logOpen === 'dq' ? 'on' : ''}" data-log="dq" aria-expanded="${UI.logOpen === 'dq'}">Puzzle ${P.done ? '✓' : `${P.at + 1}/${P.steps.length}`} ▾${fresh ? '<i class="dot"></i>' : ''}</button>`; }
+  // Phones: the Activity / Updates / Puzzle row collapses into one Info button; this is its panel
+  function dqFresh() { if (!S || S.race || S.goal < D.goals.length) return null; const P = dqToday(); return P ? P : null; }
+  function vinfoDrawer() {
+    const close = `<button class="close" data-close-drawer aria-label="Close">×</button>`, P = dqFresh(), up = latest();
+    let b = '';
+    if (!noSeasons()) b += `<button class="btn" data-drawer="season">Weather and season<small>${esc(season().name)}, day ${seasonDay()} · today ${esc(wxName(wxNow()))}, tomorrow ${esc(wxName(weatherOn(S.day + 1)))}</small></button>`;
+    b += `<button class="btn" data-vinfo="upd">Updates${unseen() ? ' <span class="new">new</span>' : ''}<small>What changed in the game · v${up.v}</small></button>`;
+    b += `<button class="btn" data-vinfo="act">Activity<small>Everything you and your farmhand finished lately</small></button>`;
+    if (P) b += `<button class="btn" data-vinfo="dq">Daily Puzzle${!P.done && P.at === 0 ? ' <span class="new">new</span>' : ''}<small>${P.done ? 'Solved today' : `Step ${P.at + 1} of ${P.steps.length}`}</small></button>`;
+    const v = [NET.visitors ? `${NET.visitors.toLocaleString()} unique visitors so far` : '', NET.open ? `${NET.open} open right now` : ''].filter(Boolean).join(' · ');
+    return `<div class="phead"><div><h2>Valley info</h2><p class="sub">The extras, out of the way of the farm.</p></div>${close}</div><div class="menu vinfo">${b}</div>${v ? `<p class="hint small vplayers">${v}</p>` : ''}`; }
   function dqDrop() { const P = dqToday(); let h = `<div class="lphead"><b>Daily Puzzle</b><span class="muted">${P ? (P.done ? 'Solved' : `Step ${P.at + 1} of ${P.steps.length}`) : ''}${dqStreak() ? ` · ${dqStreak()}-day streak` : ''}</span><button class="close" data-log="dq" aria-label="Close">×</button></div>`;
     if (!P) return h + '<p class="hint">No puzzle right now.</p>';
     if (P.done) h += `<div class="dqdone"><b>Solved today!</b> You earned ${P.gold}g. Next puzzle in ${dqLeft()}.</div>`;
@@ -2143,7 +2154,7 @@
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
-        : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}">${wxName(wxNow())}</span></button>`}
+        : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}${['clear', 'mist', 'fog'].includes(wxNow()) ? ' calm' : ''}">${wxName(wxNow())}</span></button>`}
       ${S.goalMin ? (() => { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
         return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; })() : ''}
       <div class="status">${status}</div>`);
@@ -2749,6 +2760,8 @@
       h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
       h = seasonDrawer();
+    } else if (UI.drawer === 'vinfo') {
+      h = vinfoDrawer();
     } else if (UI.drawer === 'manual') {
       h = manualDrawer();
     } else if (UI.drawer === 'feedback') {
@@ -2957,8 +2970,10 @@
     const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
     return `${mon} ${dd}, ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'} PT`; }
   function renderLogs() {
-    setHTML('#logbar', `<button class="ibtn lg ${UI.logOpen === 'act' ? 'on' : ''}" data-log="act" aria-expanded="${UI.logOpen === 'act'}">Activity ▾</button>
-      <button class="ibtn lg ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>${dqBarBtn()}`);
+    const P = dqFresh(), infoDot = unseen() || (P && !P.done && P.at === 0);
+    setHTML('#logbar', `<button class="ibtn lg desk ${UI.logOpen === 'act' ? 'on' : ''}" data-log="act" aria-expanded="${UI.logOpen === 'act'}">Activity ▾</button>
+      <button class="ibtn lg desk ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>${dqBarBtn()}
+      <button class="ibtn infobtn ${UI.drawer === 'vinfo' || UI.logOpen ? 'on' : ''}" data-drawer="vinfo" aria-label="Valley info: weather, updates, activity" title="Valley info">Info ▾${infoDot ? '<i class="dot"></i>' : ''}</button>`);
     const el = $('#logpanel');
     if (!UI.logOpen) { el.hidden = true; UI.html['#logpanel'] = ''; return; }
     el.hidden = false;
@@ -3043,6 +3058,7 @@
     else if ('tutReplay' in ds) { UI.drawer = null; startTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
     else if ('tutSkip' in ds) { endTut(true); }
+    else if (ds.vinfo) { UI.drawer = null; UI.logOpen = ds.vinfo; } // from the phone Info panel: close it and open that list
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false; }
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
@@ -3272,7 +3288,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261025-063803';
+  const BUILD = '20261025-182609';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.74 — 2026-10-25
+- Phone layout (≤760 px wide, and landscape phones): the bottom-left Activity / Updates / Puzzle buttons collapse into one `Info ▾` button (`data-drawer="vinfo"`,
+  `vinfoDrawer()`), whose panel links to Weather and season (opens the season drawer), Updates, Activity and the Daily Puzzle (`data-vinfo` closes the panel and opens
+  that `logpanel` list) and shows the visitor / online counts. The `.pills` counts are hidden in the top bar on phones, and fair/mist/fog weather tags (`.wxtag.calm`)
+  too. A dot on Info means an unread update or a fresh puzzle. Desktop is unchanged. Fixes the overlapping bottom buttons on 360 px phones.
+
 ## v0.73 — 2026-10-24
 - Player feedback. Table `feedback` (RLS on, no policies) and RPC `send_feedback(p_player, p_kind, p_msg, p_name, p_ctx)`: idea/bug/other, 3–1000 chars,
   5 per device per hour, 500 a day overall; ctx = version, build, day, score, discoveries, mode, device, screen. Migration `player_feedback`.
