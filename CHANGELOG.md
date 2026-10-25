@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.76 — 2026-10-25
+- Phones: the minimized Goal / Contract button is rendered by `goalBtn()` into a new `#goalchip` at the top of `#hud` (under the gold counter, below the ticker) and hidden
+  in `#stats`; elsewhere it stays in the top bar. New per-device setting (localStorage `harvestworks.counts`, `countsOn()` / `applyCounts()`, body class `counts-on`):
+  Settings → Top of the screen → show the players-online / unique-visitor pills on phones (off by default). Test: t_goalchip.py.
+
 ## v0.75 — 2026-10-25
 - `clickTile`: the first tap on one of your own ripe farm plots now queues Harvest (it still selects the plot, so the panel shows Cancel). Skipped while moving a house or
   placing a model/medal, and silent if that harvest is already queued or under way; a full storage shows the usual warning. The second-tap primary action also no longer

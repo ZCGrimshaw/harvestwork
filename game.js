@@ -544,6 +544,10 @@
   const MEDAL = { 1: ['Gold', 'Weekly Challenge champion'], 2: ['Silver', '2nd place in the Weekly Challenge'], 3: ['Bronze', '3rd place in the Weekly Challenge'] };
   const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
+  // Phones: the players-online / unique-visitors counters are hidden unless this device opts in (Settings → Top of the screen).
+  const countsOn = () => lsGet('harvestworks.counts', false) === true;
+  const applyCounts = () => document.body.classList.toggle('counts-on', countsOn());
+  applyCounts();
   NET.medals = lsGet('harvestworks.medals', []);
   const medalKey = m => `${m.week}-${m.place}`;
   const medalImg = place => ART.get('medal:' + place).toDataURL();
@@ -2158,16 +2162,19 @@
       <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
         : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}${['clear', 'mist', 'fog'].includes(wxNow()) ? ' calm' : ''}">${wxName(wxNow())}</span></button>`}
-      ${S.goalMin ? (() => { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
-        return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; })() : ''}
+      ${S.goalMin ? goalBtn() : ''}
       <div class="status">${status}</div>`);
   }
+  // The minimized goal / contract button. On phones it is drawn under the gold counter (#goalchip) and hidden in the top bar; elsewhere it stays in the top bar.
+  function goalBtn() { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
+    return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; }
   // The goal / contract card: full, title only, or minimized into a button in the top bar.
   function renderGoals() {
     const g = D.goals[S.goal], m = curMs();
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
     const title = g ? g.title : m ? m.name : 'All contracts complete';
     const el = $('#goals'); el.hidden = !!S.goalMin;
+    setHTML('#goalchip', S.goalMin ? goalBtn() : '');
     if (S.goalMin) { UI.html['#goals'] = ''; return; }
     const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
     let body = '';
@@ -2825,6 +2832,9 @@
         <span class="optlabel">Pause when I haven’t done anything for</span>
         <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
         <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
+        <span class="eyebrow">Top of the screen</span><div class="opts">
+        <button class="toggle ${countsOn() ? 'on' : ''}" data-counts aria-pressed="${countsOn()}"><i></i>Show players online and unique visitors</button>
+        <p class="hint small">The two counters by the Menu button. Always shown on computers; off by default on phones to save room. They’re also in the Info panel. Remembered on this device.</p></div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone takes #1 from me in the weekly challenge</button>
         <p class="hint small">You get one notice when you lose first place. If you win #1 back and lose it again, you get one more.</p></div>
@@ -3107,6 +3117,7 @@
     else if ('toggleGoals' in ds) UI.goalsOpen = !UI.goalsOpen;
     else if ('goalMin' in ds) { S.goalMin = true; save(); }
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
+    else if ('counts' in ds) { lsSet('harvestworks.counts', !countsOn()); applyCounts(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
     else if (ds.msec) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), cur = f[ds.msec] != null ? f[ds.msec] : !['save', 'controls'].includes(ds.msec); f[ds.msec] = !cur; lsSet('harvestworks.mfold', f); }
     else if ('autosell' in ds) { S.autoSell = !S.autoSell; save(); }
@@ -3291,7 +3302,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261025-183604';
+  const BUILD = '20261025-191454';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
