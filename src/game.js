@@ -2738,7 +2738,7 @@
   function nameHTML() { const c = UI.claim || {};
           if (NET.myName && !UI.lbEdit) return `<p class="state">Locked in as <b>${esc(NET.myName)}</b> ✓ No one else in the valley can use it.</p><button class="btn ghost sm" data-lb-edit>Change it</button>`;
           let h = `<p class="hint small">Lock in a name so it’s yours alone across the valley. If it’s taken, you’ll get the next free number (Name1, Name2…).</p>
-            <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || S.name || ''))}" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
+            <div class="fhrow"><input id="lbname" maxlength="14" value="${esc(UI.lbDraft != null ? UI.lbDraft : (NET.myName || (S.name !== 'Farmer' ? S.name : '') || ''))}" placeholder="Pick a name" autocomplete="off" aria-label="Leaderboard name"><button class="btn pri sm" data-lb-claim ${c.busy ? 'disabled' : ''}>${c.busy ? 'Checking…' : 'Lock in name'}</button>${UI.lbEdit ? '<button class="btn ghost sm" data-lb-edit-cancel>Cancel</button>' : ''}</div>`;
           if (c.taken) h += `<p class="hint">“${esc(c.taken)}” is already taken. How about <b>${esc(c.suggestion)}</b>?</p><button class="btn sm" data-lb-take="${esc(c.suggestion)}">Use ${esc(c.suggestion)}</button>`;
           if (c.err) h += `<p class="hint err">${esc(c.err)}</p>`;
           return h; }
@@ -2880,7 +2880,9 @@
         const rows = (L[tab] || []);
         h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
           : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
-        h += `<p class="hint small">${S.lbShow !== false ? (NET.myName ? `Shown as <b>${esc(NET.myName)}</b> ✓ (locked in).` : `Shown as <b>${esc(S.name)}</b>. Lock in a name that’s yours alone in Settings.`) : 'You’re hidden: others see “A farmer”. Change this in Settings.'}</p>`; }
+        const tmp = me && me.temp && me.name ? me.name : null;
+        h += `<p class="hint small">${S.lbShow !== false ? (NET.myName ? `Shown as <b>${esc(NET.myName)}</b> ✓ (locked in).` : tmp ? `You’re showing as <b>${esc(tmp)}</b>, a temporary name made for you. Pick your own below.` : `Shown as <b>${esc(S.name)}</b>. Lock in a name that’s yours alone below.`) : `You’re hidden: others see a made-up name${tmp ? ` (<b>${esc(tmp)}</b>)` : ''}. Change this in Settings.`}</p>`;
+        if (!NET.myName || UI.lbEdit) h += `<span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}</div>`; }
       h += `<div class="menu"><button class="btn ghost" data-lb-refresh>Refresh</button><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'settings') {
       h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
@@ -2907,7 +2909,7 @@
         ${online() ? `<button class="toggle ${S.tick && S.tick.open ? 'on' : ''}" data-tick-toggle aria-pressed="${!!(S.tick && S.tick.open)}"><i></i>Show the valley market ticker at the top</button>
         <p class="hint small">The scrolling list of recent trades. Hiding it gives the map more room, especially on a phone.</p>` : ''}
         ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
-        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : 'your farmer’s name'} and your score.` : 'Your score still counts, but others see “A farmer”.'}</p>` : ''}</div>
+        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : S.name && S.name !== 'Farmer' ? 'your farmer’s name' : 'a temporary made-up name (pick your own under Your player name)'} and your score.` : 'Your score still counts, but others see a made-up name instead of yours.'}</p>` : ''}</div>
         <span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p></div>
         ${S.race ? '' : `<span class="eyebrow">This farm</span><div class="opts"><p class="state">${S.mode === 'private' ? '<b>Private farm.</b> No leaderboard and no shared prices. Private farms can’t join the Online Valley later.' : '<b>Online Valley farm.</b> Shared market prices, the valley ticker and the leaderboard.'}</p>
           ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}</div>`}

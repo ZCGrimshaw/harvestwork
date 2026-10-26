@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.85 — 2026-10-26
+- Temp names: `get_leaderboard().me` now returns `name` and `temp` (migration `leaderboard_me_name`). The leaderboard drawer says when you have a temporary name and embeds `nameHTML()` (claim box) while no name is locked; the box no longer prefills "Farmer". Settings text updated. Test: t_tempname.py.
+
 ## v0.84 — 2026-10-26
 - Auto repeat control: `renderQueue` adds an "Auto repeat" chip after the farmhand chip (needs the `repeat` discovery). `S.repOn` (false = all stations paused; missing = on) and per-station `b.rpause` gate the Repeat reload in the station update loop (`b.rep` is kept, so nothing has to be set up again). `data-drawer="repeats"` lists `repStations()` with an On/Paused switch each (`data-rpause`), the master switch is `data-rall`. Test: t_repeat.py.
 
