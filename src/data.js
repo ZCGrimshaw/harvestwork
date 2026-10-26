@@ -430,7 +430,7 @@ window.HW_DATA = {
     // home decor (Discovery 'homemaking'): shown inside your house; the market buys them too, but orders never ask for them
     chair:         { name: 'Wooden Chair', cat: 'decor', value: 38, icon: ['chair', '#c98a4a', '#8a5a2e'] },
     table:         { name: 'Farmhouse Table', cat: 'decor', value: 70, icon: ['table', '#b07a42', '#7a4b28'] },
-    fish_trophy:   { name: 'Fish Trophy', cat: 'decor', value: 75, icon: ['trophy', '#6fb3d9', '#8a5a2e'] },
+    fish_trophy:   { name: 'Fish Trophy', cat: 'decor', trophy: true, value: 75, icon: ['trophy', '#6fb3d9', '#8a5a2e'] },
     vase:          { name: 'Flower Vase', cat: 'decor', value: 72, icon: ['vase', '#c8703a', '#e86aa8'] },
     bookshelf:     { name: 'Bookshelf', cat: 'decor', value: 135, icon: ['shelf', '#9a6a3c', '#c22a44'] },
     painting:      { name: 'Painted Picture', cat: 'decor', value: 150, icon: ['frame', '#c99a1e', '#4aa3d8'] },
@@ -555,7 +555,7 @@ window.HW_DATA = {
     glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' },
     carpenter: { name: 'Carpenter’s Bench', kind: 'station', slots: 2, place: { plank: 6, brick: 2 }, desc: 'Builds furniture, frames pictures and mounts fish trophies for your house.' },
     brewhouse: { name: 'Brewhouse', kind: 'station', slots: 2, place: { plank: 6, stone: 4 }, desc: 'Malts wheat, then brews it with hops into ale and stout.' },
-    house:     { name: 'House', kind: 'house', desc: 'Your family home. Put the decor you make on display inside it.' }
+    house:     { name: 'House', kind: 'house', desc: 'Your family home. Put the decor you make on display inside it, and keep your medals, monument models and fish trophies in its trophy case.' }
   },
 
   /* Your house (Discovery 'homemaking'): one per farm, built on empty grass. It holds decor on display, one piece per spot.
@@ -565,10 +565,10 @@ window.HW_DATA = {
     build: { gold: 400, plank: 20, brick: 10 },
     move: { gold: 120, plank: 4 }, // moving it (Rollers & Skids) costs this for every size it has reached, plus the usual surcharge after recent moves
     levels: [
-      { name: 'Cottage', w: 1, h: 1, slots: 3 },
-      { name: 'House', w: 1, h: 2, slots: 6, cost: { gold: 1500, plank: 30, brick: 24 } },
-      { name: 'Farmhouse', w: 2, h: 2, slots: 10, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
-      { name: 'Manor', w: 2, h: 3, slots: 15, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
+      { name: 'Cottage', w: 1, h: 1, slots: 3, trophy: 3 },
+      { name: 'House', w: 1, h: 2, slots: 6, trophy: 5, cost: { gold: 1500, plank: 30, brick: 24 } },
+      { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 8, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
+      { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 12, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
     ]
   },
 
@@ -775,7 +775,7 @@ window.HW_DATA = {
     { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' },
 
     // home & decor
-    { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Put the decor you make on display inside the house. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
+    { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Put the decor you make on display inside the house. Every house also has a trophy case for Weekly Challenge medals, Valley Monument models and fish trophies. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
     { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size holds more decor. It needs free grass beside it.', where: 'Select your house → Grow the house.' },
 
     // fifth wave: late-game content to spend tokens on
@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.79', at: '2026-10-25 21:00', notes: ['Every house now has a Trophy Case, separate from the decor spots, for your Weekly Challenge medals, Valley Monument models and fish trophies. Select your house → Trophy case to put them in or take them out. It starts with 3 spots and grows with the house (5, 8, then 12). Medals and models can still stand on the grass too, but each one can only be in one place on a farm. Fish trophies now go in the case instead of the decor spots (ones already on display stay where they are).'] },
   { v: '0.78', at: '2026-10-25 19:50', notes: ['Weekly challenge medals now record the week’s theme: Menu → Medals shows the theme (like Pantry Week) and its special rule under each medal, and so do the medal’s own panel and the win screen.'] },
   { v: '0.77', at: '2026-10-25 19:30', notes: ['Weekly challenge medals now show up without restarting the game: opening Menu → Medals checks for new ones, and a game left open over the end of the week picks up the medals just awarded. Before, they only appeared after reloading.'] },
   { v: '0.76', at: '2026-10-25 13:20', notes: ['On phones, the little Goal / Contract button (when you minimize the goal card) now sits under your gold counter instead of in the top bar.', 'New setting: Settings → Top of the screen → “Show players online and unique visitors” brings the two counters back beside the Menu button on phones (they’re always shown on computers, and are also in the Info panel).'] },

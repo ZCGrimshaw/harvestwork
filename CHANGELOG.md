@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.79 — 2026-10-25
+- Trophy case. Every house has one, separate from the decor spots: `b.tc` on the house tile (`{ t: 'medal'|'model'|'item', k, q? }`; medals/models are references by key/id, items are taken out of storage with their quality), capacity from `D.house.levels[].trophy` (3 / 5 / 8 / 12). Missing `tc` reads as empty, so old saves need no migration. Items flagged `trophy: true` (fish_trophy) are offered only in the case; ones already in `b.d` stay. A medal or model is in the case or on grass, not both (`caseHas`, checked in the place lists and handlers; Menu → Medals and the monument panel show "In the trophy case"). Housing moves/growth keep `tc` because they keep the same house object. Test: t_case.py.
+
 ## v0.78 — 2026-10-25
 - Medals record the weekly theme. Migration `medal_theme`: `medals.theme` (backfilled: week 2962 quarry, 2963 pantry), RPC `medal_theme(p_player, p_week, p_theme)` (sets it once, only on that player's own medal, id must match `^[a-z_]{2,20}$`), `my_medals` returns `theme`. Client: `medalTheme(m)` uses the recorded id, else the schedule's theme for that week; `fetchMedals` records the theme on any medal that has none. Shown (name + the rule blurb) in the Medals list, the medal panel, Place-medal buttons and the win screen. Test: t_medals.py.
 

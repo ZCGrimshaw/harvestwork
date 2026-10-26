@@ -1086,7 +1086,7 @@
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
     if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
     if (it.cat === 'kit') return 'Select empty grass you own → Place.';
-    if (it.cat === 'decor') return 'Put it on display: select your house → Display.';
+    if (it.cat === 'decor') return it.trophy ? 'Put it in your house’s trophy case: select your house → Trophy case.' : 'Put it on display: select your house → Display.';
     return ''; }
   function rollMarket() {
     const kits = Object.keys(D.items).filter(id => D.items[id].cat === 'kit' && D.items[id].buy && unlocked(D.items[id].requires));
@@ -1292,6 +1292,26 @@
     return { tiles, bad }; }
   const decoSlots = b => houseLv(b).slots;
   const decoUsed = b => (b.d || []).filter(Boolean).length;
+  /* Trophy case: every house has one, separate from the decor spots. b.tc lists what is in it: { t: 'medal', k: '2963-3' } (a medal's key),
+     { t: 'model', k: monument id } or { t: 'item', k: item id, q: quality } (a trophy item, taken out of storage). Medals and models are
+     references: they can be in the case or on grass, never both on one farm. Slots come from the house size (D.house.levels[].trophy). */
+  const caseSlots = b => houseLv(b).trophy || 3;
+  const caseOf = b => b.tc || (b.tc = []);
+  const caseHas = (t, k) => { const o = houseIdx(); return o >= 0 && (T_(o).b.tc || []).some(e => e.t === t && e.k === k); };
+  const MEDAL_NAMES = { 1: 'Gold', 2: 'Silver', 3: 'Bronze' };
+  function caseEntry(e) {
+    if (e.t === 'medal') { const [w, p] = String(e.k).split('-').map(Number), m = NET.medals.find(x => medalKey(x) === e.k) || { week: w, place: p };
+      return { img: `<img class="cimg" src="${medalImg(p)}" alt="">`, name: `${MEDAL_NAMES[p] || 'Medal'} medal`, sub: `${weekLabel(w)} · ${esc(medalTheme(m).name)}`, info: null }; }
+    if (e.t === 'model') { const x = earnedModels().find(p => p.id === e.k), K = (x && D.monuments[x.kind]) || D.monuments.pyramid, kind = (x && x.kind) || 'pyramid';
+      return { img: `<img class="cimg" src="${ART.get(`mon:${kind}.${monStageOf(e.k)}.deco`).toDataURL()}" alt="">`, name: `${monShort(x ? x.name : K.name)} model`, sub: 'Valley Monument', info: null }; }
+    return { img: ico(e.k), name: D.items[e.k] ? D.items[e.k].name : e.k, sub: e.q ? qtag(e.q) : '', info: e.k }; }
+  // what could go into the case right now
+  function caseOffers() { const out = [];
+    if (!S.race) {
+      NET.medals.filter(m => medalAt(m) === undefined && !caseHas('medal', medalKey(m))).forEach(m => out.push({ t: 'medal', k: medalKey(m), name: `${MEDAL[m.place][0]} medal`, sub: `${weekLabel(m.week)} · ${medalTheme(m).name}`, img: `<img class="cimg" src="${medalImg(m.place)}" alt="">` }));
+      earnedModels().filter(p => modelAt(p.id) === undefined && !caseHas('model', p.id)).forEach(p => out.push({ t: 'model', k: p.id, name: `${monShort(p.name)} model`, sub: 'Valley Monument', img: `<img class="cimg" src="${ART.get(`mon:${p.kind || 'pyramid'}.${monStageOf(p.id)}.deco`).toDataURL()}" alt="">` })); }
+    Object.keys(S.inv).filter(id => D.items[id] && D.items[id].trophy && count(id) > 0).forEach(id => out.push({ t: 'item', k: id, name: D.items[id].name, sub: `×${count(id)}`, img: ico(id) }));
+    return out; }
 
   const TASKS = {
     till: { label: () => 'Till soil', check: t => { const b = T_(t.i).b; return b && b.type === 'farm' && b.st === 'raw' ? null : 'Soil is already prepared'; },
@@ -2106,7 +2126,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
-    if (it.cat === 'decor') P.push('Home decor: put it on display in your house (select the house → Display). Orders never ask for decor, but the market buys it.');
+    if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: put it on display in your house (select the house → Display). Orders never ask for decor, but the market buys it.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
@@ -2470,7 +2490,7 @@
   }
   function medalPanel(i) { const m = T_(i).b.m;
     return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(medalTheme(m).name)}) with <b>${m.score.toLocaleString()}</b> points.</p><p class="hint small mtheme"><b>${esc(medalTheme(m).name)}:</b> ${esc(medalTheme(m).blurb)}</p></div>
-      <button class="btn ghost" data-medal-away="${i}">Put it away</button><p class="hint small">It goes back to your trophy case (Menu → Medals). Place it again any time, on any farm.</p>`; }
+      <button class="btn ghost" data-medal-away="${i}">Put it away</button><p class="hint small">It goes back to your medals (Menu → Medals). Place it again any time, on any farm, or put it in your house’s trophy case.</p>`; }
   /* ---------- Valley Monument panels (Depot, the monument's tiles, the Homestead drawer) ---------- */
   function monHelpHTML(m) { const k = monKind(m), cap = m ? m.cap : 800, km = m ? m.keep_min : 150;
     return `<div class="qhelp monhelp"><b>How Valley Monuments work</b>
@@ -2488,7 +2508,7 @@
   function modelLine(m) { const id = m.id, km = m.keep_min || 0, K = monKind(m);
     if ((m.mine || 0) < km) return `<p class="hint small">Give <b>${(km - (m.mine || 0)).toLocaleString()} more points</b> to earn a model of ${esc(m.name)} for your farm.</p>`;
     if (S.race) return '';
-    const at = modelAt(id); return at !== undefined ? `<p class="state">Your ${esc(monShort(m.name))} model is on show on this farm ✓</p><button class="btn ghost sm" data-goto="${at}">Show me the model</button>`
+    const at = modelAt(id); if (at === undefined && caseHas('model', id)) return `<p class="state">Your ${esc(monShort(m.name))} model is in your house’s trophy case ✓</p><button class="btn ghost sm" data-goto="${houseIdx()}">Show me the house</button>`; return at !== undefined ? `<p class="state">Your ${esc(monShort(m.name))} model is on show on this farm ✓</p><button class="btn ghost sm" data-goto="${at}">Show me the model</button>`
       : `<p class="state">You’ve earned the ${esc(monShort(m.name))} model ✓</p><button class="btn ${UI.placeMon === id ? 'pri' : ''}" data-mon-place="${id}">Place the model on this farm<small>Free · it shows the monument’s current stage</small></button>`; }
   const placedModels = () => S.tiles.map((T, i) => T.b && T.b.type === 'monument' ? i : -1).filter(i => i >= 0);
   const modelAt = id => placedModels().find(i => S.tiles[i].b.m.id === id);
@@ -2558,15 +2578,24 @@
     h += `<span class="eyebrow">On display</span><div class="decogrid">` + Array.from({ length: sl }, (_, k) => { const x = d[k];
       return x ? `<div class="deco" data-info="${x[0]}">${ico(x[0])}<small>${esc(D.items[x[0]].name)}${x[1] ? ' ' + qtag(x[1]) : ''}</small><button class="linkish small" data-deco-take="${o}:${k}">Store</button></div>` : ''; }).join('')
       + (sl > n ? `<div class="deco empty"><small>${sl - n} empty spot${sl - n === 1 ? '' : 's'}</small></div>` : '') + `</div>`;
-    const own = Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'decor' && count(id) > 0);
+    const own = Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'decor' && !D.items[id].trophy && count(id) > 0);
     h += `<span class="eyebrow">Decor in storage</span>`;
     h += own.length ? own.map(id => `<div class="row">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> <small class="muted">×${count(id)}</small></div><button class="btn sm" data-deco-put="${o}:${id}" ${full ? 'disabled' : ''}>Display</button></div>`).join('')
         + (full ? `<p class="hint small">Every spot is filled. Store a piece to swap it${HZ().levels[(b.lv || 0) + 1] ? ', or grow the house for more spots' : ''}.</p>` : '')
       : `<p class="hint">No decor in storage. ${esc(decoWhere())}</p>`;
+    h += trophyCaseHTML(o, b);
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
     h += `<p class="hint small">Pieces on display leave your storage, so they don’t take up room. Store one to take it back.</p>`;
     if (UI.moving === o) return head(`Moving the ${L.name}`, 'Choose where its top corner goes.') + houseMoveHere(i, o);
     return h + houseMoveHTML(o, i); }
+  function trophyCaseHTML(o, b) { const tc = caseOf(b), cs = caseSlots(b), full = tc.length >= cs, offers = caseOffers();
+    let h = `<span class="eyebrow">Trophy case · ${tc.length} of ${cs} spots</span><div class="decogrid">` + tc.map((e, k) => { const c = caseEntry(e);
+      return `<div class="deco" ${c.info ? `data-info="${esc(c.info)}"` : ''}>${c.img}<small>${esc(c.name)}${c.sub ? `<br>${c.sub}` : ''}</small><button class="linkish small" data-case-take="${o}:${k}">Take out</button></div>`; }).join('')
+      + (cs > tc.length ? `<div class="deco empty"><small>${cs - tc.length} empty spot${cs - tc.length === 1 ? '' : 's'}</small></div>` : '') + `</div>`;
+    h += offers.length ? offers.map(x => `<div class="row">${x.img.startsWith('<img') ? x.img.replace('class="cimg"', 'class="cimg sm"') : x.img}<div class="grow1"><b>${esc(x.name)}</b> <small class="muted">${esc(x.sub || '')}</small></div><button class="btn sm" data-case-put="${o}:${x.t}:${esc(x.k)}" ${full ? 'disabled' : ''}>Put in case</button></div>`).join('')
+        + (full ? `<p class="hint small">The case is full. Take one out to swap it${HZ().levels[(b.lv || 0) + 1] ? ', or grow the house for more spots' : ''}.</p>` : '')
+      : `<p class="hint">Nothing to show yet. Weekly Challenge medals, Valley Monument models and fish trophies can go in the case.</p>`;
+    return h; }
   function houseMoveHere(i, o) { const b = T_(o).b, s = houseSpot(i, b.w, b.h);
     return `<p class="state">${s.bad ? `${esc(s.bad.charAt(0).toUpperCase() + s.bad.slice(1))} is in the way here.` : `The ${b.w}×${b.h} house would cover the lit tiles.`}</p>`
       + btn({ a: 'housemove', i, p: o }, 'Move the house here', { cls: 'pri', sub: costTxt(houseMoveCost(b)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
@@ -2575,8 +2604,8 @@
     if (UI.moving != null && T_(UI.moving).b && T_(UI.moving).b.type === 'house') return head('Move the house', 'Choose where its top corner goes.') + houseMoveHere(i, UI.moving);
     if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
       h += btn({ a: 'move', i, p: UI.moving, nm }, `Move the ${esc(nm)} here`, { cls: 'pri', sub: costTxt(moveCost(b.type)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
-    if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)} · ${esc(medalTheme(m).name)}</small></button>`; });
-    if (!S.race) earnedModels().filter(p => modelAt(p.id) === undefined).forEach(p => { h += `<button class="btn ${UI.placeMon === p.id ? 'pri' : 'ghost'}" data-mon-put="${p.id}" data-i="${i}">Place the ${esc(monShort(p.name))} model here<small>Free · it shows the monument’s current stage</small></button>`; });
+    if (!S.race) NET.medals.filter(m => medalAt(m) === undefined && !caseHas('medal', medalKey(m))).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)} · ${esc(medalTheme(m).name)}</small></button>`; });
+    if (!S.race) earnedModels().filter(p => modelAt(p.id) === undefined && !caseHas('model', p.id)).forEach(p => { h += `<button class="btn ${UI.placeMon === p.id ? 'pri' : 'ghost'}" data-mon-put="${p.id}" data-i="${i}">Place the ${esc(monShort(p.name))} model here<small>Free · it shows the monument’s current stage</small></button>`; });
     h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal || UI.placeMon ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
     if (unlocked('homemaking') && houseIdx() < 0 && !S.race) h += btn({ a: 'housebuild', i }, `Build your ${HZ().levels[0].name} here`, { sub: `${costTxt(HZ().build)} · one per farm, for showing off decor` });
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
@@ -2789,7 +2818,7 @@
       if (!NET.medals.length) h += `<p class="hint">No medals yet. Finish in the top three of a Weekly Challenge to win one.</p><div class="menu"><button class="btn pri" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button></div>`;
       else h += `<div class="medals">${NET.medals.map(m => { const at = S.race ? undefined : medalAt(m);
         return `<div class="medalrow"><img src="${medalImg(m.place)}" alt=""><div class="grow1"><b>${MEDAL[m.place][0]} · ${MEDAL[m.place][1]}</b><small>${weekLabel(m.week)} · ${esc(medalTheme(m).name)} · ${m.score.toLocaleString()} points</small><small class="mtheme">${esc(medalTheme(m).blurb)}</small></div>
-          ${S.race ? '' : at !== undefined ? `<button class="btn ghost sm" data-medal-show="${at}">On show ✓</button>` : `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : ''} sm" data-medal-place="${medalKey(m)}">Place on this farm</button>`}</div>`; }).join('')}</div>
+          ${S.race ? '' : at !== undefined ? `<button class="btn ghost sm" data-medal-show="${at}">On show ✓</button>` : caseHas('medal', medalKey(m)) ? `<button class="btn ghost sm" data-goto="${houseIdx()}">In the trophy case ✓</button>` : `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : ''} sm" data-medal-place="${medalKey(m)}">Place on this farm</button>`}</div>`; }).join('')}</div>
         <p class="hint small">${S.race ? 'Medals can’t be placed during a race or challenge run.' : 'Placing a medal is free. Select it on the farm to put it away again.'}</p>`;
     } else if (UI.drawer === 'hands') {
       const hands = S.helper ? [S.helper] : [], hi = homeIdx();
@@ -3172,7 +3201,7 @@
     else if ('copyPkey' in ds) { copyText(fmtCode(NET.pkey), () => { UI.pkCopied = true; dirty(); setTimeout(() => { UI.pkCopied = false; dirty(); }, 2500); }); return; }
     else if ('medalPlace' in ds) { UI.placeMedal = ds.medalPlace; UI.drawer = null; toast('Select any empty grass you own, then press <b>Place medal</b>.', 'info'); }
     else if ('medalPut' in ds) { const m = NET.medals.find(x => medalKey(x) === ds.medalPut), i = +ds.i;
-      if (m && isEmptyGrass(i) && medalAt(m) === undefined) { T_(i).b = { type: 'medal', m: { week: m.week, place: m.place, score: m.score } }; UI.placeMedal = null; save(); SND.play('contract');
+      if (m && isEmptyGrass(i) && medalAt(m) === undefined && !caseHas('medal', medalKey(m))) { T_(i).b = { type: 'medal', m: { week: m.week, place: m.place, score: m.score } }; UI.placeMedal = null; save(); SND.play('contract');
         float(i, `${MEDAL[m.place][0]} medal on show`, '#f6e27a'); } }
     else if (ds.man) { UI.manOpen = UI.manOpen === ds.man ? null : ds.man; }
     else if (ds.growPick) { UI.growPick = UI.growPick === ds.growPick ? null : ds.growPick; }
@@ -3181,7 +3210,17 @@
       if (k === undefined || !a || count(id) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; d[k] = [id, q]; save(); SND.play('contract'); float(+o, `${D.items[id].name} on display`, '#f6e27a'); }
     else if (ds.decoTake) { const [o, k] = ds.decoTake.split(':').map(Number), b = T_(o).b, x = b && b.d && b.d[k]; if (!x) return;
       if (room() < 1) { toast(esc(FULL), 'warn'); return; } addItem(x[0], 1, x[1], true); b.d[k] = null; save(); }
-    else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your trophy case (Menu → Medals).', 'info'); } }
+    else if (ds.casePut) { const [o, t, ...r] = ds.casePut.split(':'), k = r.join(':'), b = T_(+o).b; if (!b || b.type !== 'house' || S.race) return;
+      const tc = caseOf(b); if (tc.length >= caseSlots(b) || tc.some(e => e.t === t && e.k === k)) return;
+      if (t === 'medal') { const m = NET.medals.find(x => medalKey(x) === k); if (!m || medalAt(m) !== undefined) return; tc.push({ t, k }); }
+      else if (t === 'model') { const p = earnedModels().find(x => x.id === k); if (!p || modelAt(p.id) !== undefined) return; tc.push({ t, k }); }
+      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !D.items[k].trophy || !a || count(k) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q }); }
+      else return;
+      save(); SND.play('contract'); float(+o, 'In the trophy case', '#f6e27a'); }
+    else if (ds.caseTake) { const [o, k] = ds.caseTake.split(':').map(Number), b = T_(o).b, e = b && b.tc && b.tc[k]; if (!e) return;
+      if (e.t === 'item') { if (room() < 1) { toast(esc(FULL), 'warn'); return; } addItem(e.k, 1, e.q || 0, true); }
+      b.tc.splice(k, 1); save(); }
+    else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your medals (Menu → Medals).', 'info'); } }
     else if (ds.monAuto) { const id = ds.monAuto; S.monAuto = S.monAuto || {}; S.monAuto[id] = !S.monAuto[id]; if (!S.monAuto[id]) delete S.monAuto[id];
       toast(S.monAuto[id] ? `<b>Auto-give on</b> for ${esc(D.items[id].name)}. It goes to the monument by itself while there’s allowance left today.` : `Auto-give off for ${esc(D.items[id].name)}.`, 'info'); save(); dirty(); if (S.monAuto[id]) setTimeout(autoMonGive, 600); return; }
     else if (ds.monGive) { const inp = $('#mg-' + ds.monGive); monGive(ds.monGive, inp ? Math.max(1, parseInt(inp.value, 10) || 1) : 1); return; }
@@ -3190,7 +3229,7 @@
     else if ('monHelp' in ds) { UI.monHelp = !UI.monHelp; }
     else if (ds.monPlace) { UI.placeMon = ds.monPlace; UI.drawer = null; UI.sel = -1; toast('Select any empty grass you own, then press <b>Place the model here</b>.', 'info'); }
     else if (ds.monPut) { const p = earnedModels().find(x => x.id === ds.monPut), i = +ds.i;
-      if (p && isEmptyGrass(i) && modelAt(p.id) === undefined) { T_(i).b = { type: 'monument', m: { id: p.id, kind: p.kind } }; UI.placeMon = null; save(); SND.play('contract'); float(i, `${monShort(p.name)} model on show`, '#f6e27a'); } }
+      if (p && isEmptyGrass(i) && modelAt(p.id) === undefined && !caseHas('model', p.id)) { T_(i).b = { type: 'monument', m: { id: p.id, kind: p.kind } }; UI.placeMon = null; save(); SND.play('contract'); float(i, `${monShort(p.name)} model on show`, '#f6e27a'); } }
     else if ('monAway' in ds) { const i = +ds.monAway; if (T_(i).b && T_(i).b.type === 'monument') { T_(i).b = null; UI.sel = -1; save(); toast('Model put away. Place it again from the Monument Depot or Menu → Valley Monument.', 'info'); } }
     else if ('goto' in ds) { const g = +ds.goto; if (g >= 0) { UI.sel = g; centerOn(g); clampCam(); } }
     else if ('medalShow' in ds) { const i = +ds.medalShow; UI.drawer = null; UI.sel = i; centerOn(i); clampCam(); }
@@ -3307,7 +3346,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261026-020517';
+  const BUILD = '20261026-021316';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
