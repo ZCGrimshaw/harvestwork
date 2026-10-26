@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.84 — 2026-10-26
+- Auto repeat control: `renderQueue` adds an "Auto repeat" chip after the farmhand chip (needs the `repeat` discovery). `S.repOn` (false = all stations paused; missing = on) and per-station `b.rpause` gate the Repeat reload in the station update loop (`b.rep` is kept, so nothing has to be set up again). `data-drawer="repeats"` lists `repStations()` with an On/Paused switch each (`data-rpause`), the master switch is `data-rall`. Test: t_repeat.py.
+
 ## v0.83 — 2026-10-26
 - Weekly challenge: `weekWarn()` shows a centered `#wkwarn` banner for 2 s at 1:00 and at 0:30 left (once each per run, keyed on `R.end` in `UI.ww`; resuming under 30 s skips the 1:00 one). Called from `tickWeekly`.
 - Server (migrations `generated_default_names`, `leaderboard_default_names`, `leaderboard_hidden_names`): `hw_default_name(uuid)` makes a stable name (60 first names + 1–50 from the player uuid hash). `hw_display_name` uses it when there is no picked name or the name is "Farmer"; `get_leaderboard` uses it for "Farmer" names and for hidden players (a name clash still shows "A farmer").

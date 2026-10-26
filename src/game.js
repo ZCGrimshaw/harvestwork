@@ -1676,7 +1676,7 @@
         const j = b.q.find(x => !x.done);
         if (j) { j.t += dt; if (j.t >= j.dur) { j.done = true; if (!b.auto) float(i, 'Done!', '#b8f08a'); SND.play('done', b.auto ? 0.5 : 1); dirty(); } }
         if (b.auto && unlocked('autocollect') && !collectErr(i)) { doCollect(i); dirty(); }
-        if (b.rep && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty();
+        if (b.rep && !b.rpause && S.repOn !== false && unlocked('repeat') && !loadErr(i, b.rep)) { doLoad(i, b.rep); dirty();
           b.repDone = (b.repDone || 0) + 1;
           if (b.repN && b.repDone >= b.repN) { { const R = D.recipes[b.rep]; toast(`<b>${esc(D.buildings[b.type].name)}</b> finished its repeats of ${esc(R.label || D.items[Object.keys(R.out)[0]].name)}. Repeat is off.`, 'info'); b.rep = null; b.repN = null; b.repDone = 0; } }
           if (b.repDay !== S.day) { b.repDay = S.day; const R = D.recipes[b.rep]; logAct(`${D.buildings[b.type].name} on Repeat: using ${inTxtPlain(R.in)} for ${R.label || D.items[Object.keys(R.out)[0]].name} (logged once a day)`, 'auto'); } }
@@ -2227,8 +2227,13 @@
     const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${F.errand ? `errand for ${esc(D.items[Object.keys(D.recipes[F.errand.r].out)[0]].name)} (${{ go: 'walking to the market', shop: 'shopping', back: 'heading back', load: 'loading' }[F.errand.ph]})` : !F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
       <button class="fhb" data-fh-toggle aria-label="${F.on ? 'Pause farmhand' : 'Start farmhand'}" title="${F.on ? 'Pause' : 'Start'}">${F.on ? '❚❚' : '▶'}</button>
       <button class="fhb spd" data-fh-speed aria-label="Farmhand speed ${F.spd || 1}×, tap to change" title="Speed">${F.spd || 1}×</button><button class="fhb" data-drawer="hands" aria-label="Manage farmhand jobs" title="Manage jobs">Jobs</button>${F.steps.length ? `<button class="fhb clr ${UI.fhClear ? 'arm' : ''}" data-fh-clear aria-label="${UI.fhClear ? 'Tap again to clear all farmhand jobs' : 'Clear all farmhand jobs'}" title="Clear all jobs">${UI.fhClear ? 'Clear all?' : 'Clear'}</button>` : ''}</div>` : '';
-    setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh);
+    const reps = repStations(), ron = S.repOn !== false;
+    const rp = unlocked('repeat') ? `<div class="chip helper ${ron ? '' : 'off'}"><span>Auto repeat: ${ron ? (reps.length ? reps.filter(r => !r.b.rpause).length + ' of ' + reps.length + ' running' : 'on') : 'paused'}</span>
+      <button class="fhb" data-rall aria-label="${ron ? 'Pause all auto repeat' : 'Turn auto repeat on'}" title="${ron ? 'Turn off' : 'Turn on'}">${ron ? 'On' : 'Off'}</button><button class="fhb" data-drawer="repeats" aria-label="Manage auto repeat" title="Manage auto repeat">Stations</button></div>` : '';
+    setHTML('#queue', (all.length ? all.map((t, k) => `<div class="chip ${k === 0 && S.cur ? 'cur' : ''}"><span>${esc(TASKS[t.a].label(t))}</span>${k === 0 && S.cur ? pbar('task', 'thin') : `<button class="x" data-cancel="${t.id}" aria-label="Cancel">×</button>`}</div>`).join('') : `<div class="chip idle">Click a tile, then pick an action. Your farmer queues up to ${C.maxQueue} tasks.</div>`) + fh + rp);
   }
+  // stations currently set to Repeat
+  function repStations() { return S.tiles.map((t, i) => ({ b: t.b, i })).filter(x => x.b && x.b.rep && D.recipes[x.b.rep]); }
 
   function needRow(need) {
     return need.map(([id, n, q]) => { const have = count(id, q), ok = have >= n, known = S.disc.includes(id);
@@ -2854,6 +2859,15 @@
         if (F.steps.length) h += `<button class="btn ${UI.fhClear ? 'danger' : 'ghost'} sm" data-fh-clear>${UI.fhClear ? 'Tap again to clear all ' + F.steps.length + ' jobs' : 'Clear all jobs'}</button>`;
         h += `</div>`; });
       if (hands.length) h += `<p class="hint small">${unlocked('crew') ? 'Seasoned farmhand: 8 jobs, full speed.' : 'Unlock Seasoned Farmhand in Discovery for 8 jobs and full walking speed.'} Only one farmhand for now.</p>`;
+    } else if (UI.drawer === 'repeats') {
+      const reps = repStations(), ron = S.repOn !== false;
+      h = `<div class="phead"><div><h2>Auto repeat</h2><p class="sub">Stations on Repeat reload their recipe whenever a slot is free and the ingredients are in storage. Pause one to keep its ingredients.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <div class="handctl"><button class="toggle ${ron ? 'on' : ''}" data-rall aria-pressed="${ron}"><i></i>${ron ? 'Auto repeat on' : 'Auto repeat off (every station paused)'}</button></div>`;
+      if (!unlocked('repeat')) h += `<p class="hint">Unlock <b>Repeat Recipes</b> in Discovery first.</p>`;
+      else if (!reps.length) h += `<p class="hint">No stations are on Repeat yet. Select a station, pick a recipe and turn Repeat on.</p>`;
+      else h += `<ol class="routine jobs">${reps.map(({ b, i }) => { const R = D.recipes[b.rep], nm = R.label || D.items[Object.keys(R.out)[0]].name, on = !b.rpause;
+        return `<li><button class="linkish" data-goto="${i}" title="Show on the map">${esc(D.buildings[b.type].name)}: ${esc(nm)}${b.repN ? ` (${b.repDone || 0}/${b.repN})` : ''}</button>
+          <span class="jobbtns"><button class="toggle ${on && ron ? 'on' : ''}" data-rpause="${i}" aria-pressed="${on}"><i></i>${on ? 'On' : 'Paused'}</button></span></li>`; }).join('')}</ol>`;
     } else if (UI.drawer === 'lb') {
       const L = UI.lb || {}, tab = UI.lbTab || 'top', fmt = n => Number(n).toLocaleString();
       h = `<div class="phead"><div><h2>Leaderboard</h2><p class="sub">Every farm in the valley. <b>Top score</b> is total score; <b>Best pace</b> is score per day played, for farms at least ${LB_MIN_DAYS} days old.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -3157,6 +3171,8 @@
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhFert' in ds) { if (S.helper) { S.helper.fert = !S.helper.fert; save(); } }
     else if ('fhSeeds' in ds) { if (S.helper) { S.helper.seeds = !S.helper.seeds; save(); } }
+    else if ('rall' in ds) { S.repOn = S.repOn === false; save(); }
+    else if ('rpause' in ds) { const b = S.tiles[+ds.rpause].b; if (b) { b.rpause = !b.rpause; save(); } }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }
     else if (ds.goto !== undefined) { UI.sel = +ds.goto; centerOn(+ds.goto); }
     else if (ds.shirt !== undefined) S.shirt = +ds.shirt;
