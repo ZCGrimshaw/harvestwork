@@ -552,7 +552,7 @@
   const medalKey = m => `${m.week}-${m.place}`;
   const medalImg = place => ART.get('medal:' + place).toDataURL();
   async function fetchMedals(quiet) {
-    try { const list = await rpc('my_medals', { p_player: PLAYER }); if (!Array.isArray(list)) return;
+    try { const list = await rpc('my_medals', { p_player: PLAYER }); if (!Array.isArray(list)) return; NET.medalAt = Date.now();
       NET.medals = list; lsSet('harvestworks.medals', list); const seen = lsGet('harvestworks.medalseen', []);
       const fresh = list.filter(m => !seen.includes(medalKey(m)));
       if (quiet) lsSet('harvestworks.medalseen', list.map(medalKey)); else if (fresh.length) UI.medalPend = fresh;
@@ -1027,6 +1027,7 @@
       if (typeof m.open === 'number') { NET.open = Math.max(1, m.open); renderOpen(); }
       if (typeof m.visitors === 'number') { NET.visitors = m.visitors; renderVisitors(); }
       NET.skew = Date.now() - Date.parse(m.now); NET.at = Date.now();
+      { const wk = weekOf(srvNow()); if (UI.medalWk != null && wk !== UI.medalWk && UI.sentScore) fetchMedals(); UI.medalWk = wk; } // a new weekly challenge week began while the game was open: pick up the medals it just awarded
       if (!UI.sentScore) { UI.sentScore = true; sendScore(); fetchMyName(); fetchMedals(); setTimeout(autoBackup, 3000); setTimeout(linkAllFarms, 6000); }
       if (NET.sync && tradesWanted()) { try { const t = await rpc('get_trades', { p_limit: 25 }); if (Array.isArray(t)) NET.trades = t; } catch (e) { } }
       if (online() && Date.now() - (NET.monAt || 0) > 120000) fetchMon();
@@ -3072,7 +3073,8 @@
     else if ('tutNext' in ds) { tutAdvance(); }
     else if ('tutSkip' in ds) { endTut(true); }
     else if (ds.vinfo) { UI.drawer = null; UI.logOpen = ds.vinfo; } // from the phone Info panel: close it and open that list
-    else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false; }
+    else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false;
+      if (ds.drawer === 'medals' && UI.drawer === 'medals' && NET.ok && !S.race && Date.now() - (NET.medalAt || 0) > 60000) fetchMedals(); } // opening Medals checks for new ones
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
       if (was === 'upd' && UI.logOpen !== 'upd') { S.seenUpdate = latest().v; save(); } } // closing Updates marks it as read
@@ -3302,7 +3304,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261025-191454';
+  const BUILD = '20261026-020048';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

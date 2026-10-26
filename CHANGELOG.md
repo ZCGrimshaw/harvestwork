@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.77 — 2026-10-25
+- Medals were only fetched once per page load (first sync), so a medal awarded while the game was open (weeks close lazily on the first `my_medals` / `weekly_board` call after Monday 00:00 UTC) stayed invisible until a reload. Now `pullMarket` refetches when the server week changes, and opening the Medals drawer refetches if the list is over a minute old (`NET.medalAt`). Test: t_medals.py.
+
 ## v0.76 — 2026-10-25
 - Phones: the minimized Goal / Contract button is rendered by `goalBtn()` into a new `#goalchip` at the top of `#hud` (under the gold counter, below the ticker) and hidden
   in `#stats`; elsewhere it stays in the top bar. New per-device setting (localStorage `harvestworks.counts`, `countsOn()` / `applyCounts()`, body class `counts-on`):
