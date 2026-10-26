@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.86 — 2026-10-26
+- Tutorial resume: new-farm choice already offered "Start with a quick tutorial" / "Start without". Now `S.tutOff` remembers the step when it was skipped (or 0 when declined); Menu → Game shows "Turn the tutorial back on" (`resumeTut()`), which restarts at that step (skipping the camera steps if the farm plot is already tilled). Finishing sets `S.tutDone`; the button reads "Replay the tutorial" again. Test: t_tutresume.py.
+
 ## v0.85 — 2026-10-26
 - Temp names: `get_leaderboard().me` now returns `name` and `temp` (migration `leaderboard_me_name`). The leaderboard drawer says when you have a temporary name and embeds `nameHTML()` (claim box) while no name is locked; the box no longer prefills "Farmer". Settings text updated. Test: t_tempname.py.
 

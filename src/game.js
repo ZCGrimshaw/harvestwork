@@ -2952,7 +2952,7 @@
           <div id="impstatus">${UI.importErr ? `<p class="hint err">${esc(UI.importErr)}</p>` : UI.importInfo ? `<p class="hint">${UI.importInfo}</p>` : ''}</div>
           <div class="menu"><button class="btn ${UI.confirmImport ? 'danger' : 'pri'}" data-import ${UI.importInfo ? '' : 'disabled'}>${UI.confirmImport ? 'Tap again to replace this farm' : 'Import this farm'}</button></div>` : ''}
         `, false, !!(UI.fileInfo || UI.fileErr || UI.importOpen || UI.exportCode || UI.cloudBusy))}
-        ${msec('game', 'Game', 'Feedback, manual, settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="feedback">Send feedback<small>Ideas, bugs and suggestions, straight to the developer</small></button><button class="btn" data-drawer="manual">Manual<small>Search every good, building, upgrade and discovery</small></button><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>Replay the tutorial</button></div>`, true)}
+        ${msec('game', 'Game', 'Feedback, manual, settings, sharing, support and the title screen', `<div class="menu"><button class="btn" data-drawer="feedback">Send feedback<small>Ideas, bugs and suggestions, straight to the developer</small></button><button class="btn" data-drawer="manual">Manual<small>Search every good, building, upgrade and discovery</small></button><button class="btn" data-drawer="settings">Settings<small>Pausing, selling, weekly report, sound</small></button><button class="btn" data-drawer="support">Show your support<small>Harvest Valley is free; a little help keeps updates coming</small></button><button class="btn" data-drawer="spread">Spread the word<small>Share Harvest Valley with a friend</small></button><a class="btn" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a><button class="btn ghost" data-title-open>Main menu</button><button class="btn ghost" data-tut-replay>${tutBtnLabel()}</button></div>`, true)}
         ${msec('controls', 'Controls', isTouch() ? 'Taps, drags and pinches' : 'Mouse and keyboard', `${isTouch() ? `<ul class="help"><li>Tap a tile to select it; tap it again to repeat its main action.</li><li>Drag with one finger to move around. Pinch to zoom.</li><li>Twist two fingers to turn the world; slide two fingers up or down together to tilt the view.</li><li>⟲ ⟳ turn a quarter; ⌂ recentres and resets the tilt.</li><li>The eye button shows the name of every building.</li><li>Your farmer works through queued tasks in order. Cancel with ×.</li></ul>` : ''}<ul class="help ${isTouch() ? 'desk' : ''}"><li>Click a tile to select it; the panel lists its actions.</li><li>Click a selected tile again to repeat its main action.</li><li>Hold the right mouse button and push the mouse away from where you pressed, like a thumbstick: left and right turn the world, up and down tilt the view. The further you push, the faster it moves. ⌂ recentres and resets the tilt. Q / E or the ⟲ ⟳ buttons glide a quarter turn. Left- or middle-drag to pan. Scroll or pinch to zoom. Arrow keys and +/− work too.</li><li>The eye button or X shows the name of every building.</li><li>Your farmer walks to each queued task in order. Cancel with ×.</li><li>Later, Discovery unlocks tool upgrades, repeating recipes, auto-collect, sprinklers and a farmhand.</li></ul>`, false)}
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
@@ -3130,7 +3130,7 @@
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
     else if ('titleOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; openTitle('main'); }
-    else if ('tutReplay' in ds) { UI.drawer = null; startTut(); }
+    else if ('tutReplay' in ds) { UI.drawer = null; resumeTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
     else if ('tutSkip' in ds) { endTut(true); }
     else if (ds.vinfo) { UI.drawer = null; UI.logOpen = ds.vinfo; } // from the phone Info panel: close it and open that list
@@ -3643,7 +3643,7 @@
     newState(); S.mode = UI.newMode || 'online'; migrate(); S.name = name || 'Farmer'; S.seenUpdate = latest().v; UI.tnameDraft = '';
     UI.yaw = 0; UI.yawTo = null; UI.tilt = 1; setView(0, 1); centerOn(homeIdx()); UI.sel = -1; UI.drawer = null; UI.html = {}; UI.logOpen = null;
     UI.hadSave = true; closeTitle(); save();
-    if (tut) startTut(); else toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going.`, 'goal');
+    if (tut) startTut(); else { S.tutOff = 0; save(); toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going. The tutorial is off; turn it on any time in Menu → Game.`, 'goal'); }
     if (lock) lockFirstName(name); else if (online()) setTimeout(() => { sendScore(); autoBackup(); }, 4000);
   }
   titleEl.addEventListener('click', e => {
@@ -3722,10 +3722,14 @@
     { t: 'You’re all set', d: () => 'Storage and the Menu are at the top right. The Menu saves, loads, lists every control, and can replay this tutorial. Have fun!', next: 'Start farming' }
   ];
   let tutBase = null;
+  // The tutorial can be turned back on any time and carries on from the first step not done yet.
+  const tutLeft = () => S.tutOff != null && !S.tut;
+  const tutBtnLabel = () => tutLeft() ? `Turn the tutorial back on<small>Carries on from where you left off</small>` : 'Replay the tutorial';
+  function resumeTut() { let n = 0; if (tutLeft()) { n = S.tutOff; if (n === 0 && S.tiles[farmIdx()].b.st !== 'raw') n = 2; } S.tutOff = null; startTut(Math.min(n, TUT.length - 1)); save(); }
   function startTut(n = 0) { S.tut = { n }; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt }; UI.html['#coach'] = null; dirty(); }
-  function tutAdvance() { if (!S.tut) return; S.tut.n++; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
+  function tutAdvance() { if (!S.tut) return; S.tut.n++; S.tutOff = null; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
     if (S.tut.n >= TUT.length) endTut(false); else dirty(); }
-  function endTut(skipped) { S.tut = null; $('#coach').hidden = true; UI.html['#coach'] = null; save(); if (skipped) toast('Tutorial skipped. You can replay it from the Menu.', 'info'); else toast('<b>Tutorial done.</b> Keep following the goal card.', 'goal'); }
+  function endTut(skipped) { const at = S.tut ? S.tut.n : 0; S.tutOff = skipped ? at : null; S.tutDone = !skipped; S.tut = null; $('#coach').hidden = true; UI.html['#coach'] = null; save(); if (skipped) toast('Tutorial off. Turn it back on in Menu → Game and it picks up where you left off.', 'info'); else toast('<b>Tutorial done.</b> Keep following the goal card.', 'goal'); }
   function tutTick() { if (!S || !S.tut || UI.title) return; const st = TUT[S.tut.n]; if (!st) return endTut(false);
     if (!tutBase) tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
     if ((st.done && st.done(tutBase)) || (st.skip && st.skip())) { tutAdvance(); } }
