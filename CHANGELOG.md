@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.82 — 2026-10-26
+- Grand orders: at most `C.grand.perDay` (4) new ones appear per UTC day (`S.advDay = { d, n }`, counted when one is posted, so passing doesn't help; missing = 0). The hour wait after filling or passing is unchanged; once the cap is hit the next one waits for the next UTC day (`grandWait()`), and the Order Board / toasts show that wait. Orders already on the board are kept. Test: t_grandcap.py.
+
 ## v0.81 — 2026-10-25
 - `btn()`: a Cancel button replacing a compact (`sm`) button (market ×1 / ×5, price buttons) now carries `sm` and shows only the red ×, instead of the full-width Cancel card that squeezed the row's text into a narrow column. Full-size buttons are unchanged. Test: t_cancel.py (extended).
 

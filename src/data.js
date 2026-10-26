@@ -13,7 +13,7 @@ window.HW_DATA = {
     walkSpeed: 3.2,                        // tiles per second
     maxQueue: 5,
     orderSlots: 3, orderSlotEvery: 14, orderSlotMax: 6, // the board grows by one request for every 14 discoveries unlocked, up to 6
-    grand: { slots: 2, refill: 3600, goods: 5, fill: 0.22, min: 6, goldMult: 1.5 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
+    grand: { slots: 2, refill: 3600, perDay: 4, goods: 5, fill: 0.22, min: 6, goldMult: 1.5 }, // Grand orders (Discovery 'grandorders'): 5 goods, quantities scale with storage
     orderRefill: 15,
     marketOffers: 3,
     qualityNames: ['Basic', 'Good', 'Excellent'],
@@ -771,7 +771,7 @@ window.HW_DATA = {
     { id: 'coldcellar', pic: ['grass:0', 'coldcellar', 'jam'], name: 'Cold Cellars', cost: 4, req: ['cellar', 'preserver'], text: 'A Cold Cellar that holds 200 eggs, milk, dishes, preserves, bakes and drinks apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 12 bricks and 8 stone to place. One per area you own.' },
     { id: 'yard', pic: ['grass:0', 'yard', 'log'], name: 'Material Yards', cost: 3, req: ['cellar', 'workbench'], text: 'A Material Yard that holds 250 logs, stone, ore, clay, wool and building parts apart from your main storage, and can be expanded four times.', where: 'Open Market → Stations. Needs 10 planks and 2 Land Kits to place. One per area you own.' },
     { id: 'granary', pic: ['grass:0', 'homestead', 'wheat'], name: 'Granary', cost: 5, req: ['cellar', 'warehouse'], text: 'Every Homestead storage level past the first five holds 100 items instead of 60, including the levels you’ve already built.', where: 'Select the Homestead → Expand storage.' },
-    { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold and score. The bigger your storage, the bigger they get.', where: 'Order Board → Grand orders.' },
+    { id: 'grandorders', pic: ['grass:0', 'board', 'crate'], name: 'Grand Orders', cost: 6, req: ['granary', 'mastery'], text: 'The Order Board posts Grand orders: five different goods, many of each, for big gold and score. The bigger your storage, the bigger they get. Up to 4 new ones come up a day.', where: 'Order Board → Grand orders.' },
     { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' },
 
     // home & decor
@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.82', at: '2026-10-26 10:00', notes: ['Grand orders now come up at most 4 times a day, so the Order Board is easier to keep up with. It counts new orders, so passing one doesn’t bring the next sooner, and the board tells you when the next one comes. The daily count restarts at midnight UTC (5 PM Pacific). Orders already on your board stay.'] },
   { v: '0.81', at: '2026-10-25 21:50', notes: ['Fixed the Open Market list squashing when you pressed a ×1 or ×5 button: Cancel is now a small red × the same size as the button it replaces, so the item names stay readable.'] },
   { v: '0.80', at: '2026-10-25 21:30', notes: ['Daily Puzzle: a wrong guess now costs 2% of the gold you have. Read the clue (or buy a hint) before you hand something in. Three or more wrong guesses still lower the day’s bonus too.'] },
   { v: '0.79', at: '2026-10-25 21:00', notes: ['Every house now has a Trophy Case, separate from the decor spots, for your Weekly Challenge medals, Valley Monument models and fish trophies. Select your house → Trophy case to put them in or take them out. It starts with 3 spots and grows with the house (5, 8, then 12). Medals and models can still stand on the grass too, but each one can only be in one place on a farm. Fish trophies now go in the case instead of the decor spots (ones already on display stay where they are).'] },

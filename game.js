@@ -1138,7 +1138,12 @@
   }
   const fmtWait = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} hour${m >= 120 ? 's' : ''}${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`; };
   // after a Grand order leaves the board (delivered or passed) the next one comes an hour later, unless one is already on its way
-  function grandNext(wasFull) { if (wasFull) S.advAt = Date.now() + C.grand.refill * 1000; return fmtWait(Math.max(0, S.advAt - Date.now())); }
+  // at most C.grand.perDay new Grand orders appear per (UTC) day, however fast you fill or pass them; the count is S.advDay = { d: day, n }
+  const grandToday = () => S.advDay && S.advDay.d === utcDay() ? S.advDay.n : 0;
+  const grandCapped = () => grandToday() >= C.grand.perDay;
+  const msToNewDay = () => Date.parse(utcDay() + 'T00:00:00Z') + 864e5 - (Date.now() - (NET.monSkew || 0));
+  const grandWait = () => Math.max(Math.max(0, S.advAt - Date.now()), grandCapped() ? msToNewDay() : 0);
+  function grandNext(wasFull) { if (wasFull) S.advAt = Date.now() + C.grand.refill * 1000; return fmtWait(grandWait()); }
   const findOrder = id => S.orders.find(o => o.id === id) || (S.adv || []).find(o => o.id === id);
   const canFill = need => need.every(([id, n, q]) => count(id, q) >= n);
   /* ================= rock bottom =================
@@ -1679,7 +1684,7 @@
       else { const G = D.gather[T.t]; if (R.stock < (finite(T) ? Math.min(G.stock, R.dep) : G.stock)) { R.rt += dt * (T.t === 'water' ? wrule('fish', 1) : 1) * (bd ? 2 : 1); if (R.rt >= G.regen) { R.rt = 0; R.stock++; dirty(); } } else R.rt = 0; }
     });
     if (S.orders.length < orderSlots()) { S.refill -= dt * wrule('orders', 1); if (S.refill <= 0) { const o = genOrder(); if (o) S.orders.push(o); S.refill = C.orderRefill; dirty(); } }
-    if (unlocked('grandorders') && !S.race && S.adv.length < C.grand.slots && Date.now() >= S.advAt) { const o = genGrand(); if (o) S.adv.push(o); S.advAt = Date.now() + C.grand.refill * 1000; dirty(); }
+    if (unlocked('grandorders') && !S.race && S.adv.length < C.grand.slots && Date.now() >= S.advAt && !grandCapped()) { const o = genGrand(); if (o) { S.adv.push(o); S.advDay = { d: utcDay(), n: grandToday() + 1 }; } S.advAt = Date.now() + C.grand.refill * 1000; dirty(); }
     updateAvatar(dt); updateHelper(dt); checkBroke(dt);
     const g = D.goals[S.goal]; if (g && goalStateDone(g)) completeGoal();
     UI.saveIn -= dt; if (UI.saveIn <= 0) save();
@@ -2445,10 +2450,10 @@
     h += S.orders.map(o => `<div class="order"><div class="otop"><span class="eyebrow">${o.kind === 'trap' ? 'Special request' : o.kind === 'crafted' ? 'Crafted delivery' : 'Delivery'}</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
       <div class="oreward">+${o.gold}g · +${o.score} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
     if (S.orders.length < orderSlots()) h += `<p class="hint">New request in ${Math.ceil(Math.max(0, S.refill))}s.</p>`;
-    if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does.</p>`;
+    if (unlocked('grandorders') && !S.race) { h += `<span class="eyebrow">Grand orders</span><p class="hint small">Five goods, lots of each, big rewards. They get bigger as your storage does. Up to ${C.grand.perDay} new ones a day.</p>`;
       h += S.adv.map(o => `<div class="order grand"><div class="otop"><span class="eyebrow">Grand order</span><b>${esc(o.name)}</b></div>${needRow(o.need)}
         <div class="oreward">+${o.gold.toLocaleString()}g · +${o.score.toLocaleString()} score</div><div class="obtns">${btn({ a: 'deliver', i, p: o.id }, 'Deliver', { cls: 'pri' })}<button class="btn ghost sm" data-pass="${o.id}">Pass</button></div></div>`).join('');
-      if (S.adv.length < C.grand.slots) h += `<p class="hint">Next Grand order in ${fmtWait(Math.max(0, S.advAt - Date.now()))}.</p>`; }
+      if (S.adv.length < C.grand.slots) h += `<p class="hint">${grandCapped() ? `All ${C.grand.perDay} of today’s Grand orders have been posted. The next one comes in ${fmtWait(grandWait())}.` : `Next Grand order in ${fmtWait(grandWait())}.`}</p>`; }
     return h;
   }
   function gatherPanel(i, T) {
@@ -2976,7 +2981,7 @@
     const how = (id, name, keys, body) => add('h:' + id, 'how', name, null, keys, () => body);
     how('quality', 'Quality', 'basic good excellent water fertilizer tier price', QUALITY_HELP);
     how('orders', 'Orders and the Order Board', 'deliver request gold board contract', `<p>The Order Board posts requests for goods you’ve already made: deliver them for gold and score. The board holds ${C.orderSlots} requests and gains one for every ${C.orderSlotEvery} Discoveries you unlock (up to ${C.orderSlotMax}). A new one arrives ${C.orderRefill} seconds after you fill or pass one. Contracts (the card top left) are one-off goals that pay gold and Discovery. Decor is never requested.</p>`);
-    how('grand', 'Grand orders', 'big orders five goods advanced', `<p>With the Grand Orders discovery, the Board also posts ${C.grand.slots} Grand orders: five different goods, many of each, for big gold and score. They scale with your storage. After you fill or pass one, the next arrives ${Math.round(C.grand.refill / 60)} minutes later, by the real clock, even while you’re away.</p>`);
+    how('grand', 'Grand orders', 'big orders five goods advanced', `<p>With the Grand Orders discovery, the Board also posts ${C.grand.slots} Grand orders: five different goods, many of each, for big gold and score. They scale with your storage. After you fill or pass one, the next arrives ${Math.round(C.grand.refill / 60)} minutes later, by the real clock, even while you’re away. No more than ${C.grand.perDay} new Grand orders come up in a day (the count restarts at midnight UTC, 5 PM Pacific), whether you fill them or pass them.</p>`);
     how('discovery', 'Discovery', 'tokens points unlock tree', `<p>Discovery is what you spend to unlock things in the tree. You earn it from first-time accomplishments, deeper production chains, quality, contracts, mastery tiers and the Valley Monument, never from repeating cheap work. Score is separate: everything you do earns score.</p>`);
     how('mastery', 'Mastery', 'tier bronze silver gold legend mythic perk', `<p>Every crop and animal good you produce counts toward its mastery (Menu → Mastery). Tiers: ${MAS.tiers.map(T => T.name).join(', ')}. Each tier makes that good sell for more, and higher tiers make it faster or give extra yield. Legend and Mythic pay gold instead of Discovery. Mastery is off during races and weekly challenges.</p>`);
     how('seasons', 'Seasons and weather', 'spring summer autumn winter rain frost snow heat', `<p>A season lasts ${SR.len} days and a year ${YEAR}. Crops and goods in season grow faster and sell for more; rain waters crops, heat dries soil, frost slows tender crops and snow days only let hardy crops be planted. Cold Frames protect your plots. See the Season button in the top bar.</p>`);
@@ -3349,7 +3354,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261026-022422';
+  const BUILD = '20261026-163942';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
