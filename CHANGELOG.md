@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.78 — 2026-10-25
+- Medals record the weekly theme. Migration `medal_theme`: `medals.theme` (backfilled: week 2962 quarry, 2963 pantry), RPC `medal_theme(p_player, p_week, p_theme)` (sets it once, only on that player's own medal, id must match `^[a-z_]{2,20}$`), `my_medals` returns `theme`. Client: `medalTheme(m)` uses the recorded id, else the schedule's theme for that week; `fetchMedals` records the theme on any medal that has none. Shown (name + the rule blurb) in the Medals list, the medal panel, Place-medal buttons and the win screen. Test: t_medals.py.
+
 ## v0.77 — 2026-10-25
 - Medals were only fetched once per page load (first sync), so a medal awarded while the game was open (weeks close lazily on the first `my_medals` / `weekly_board` call after Monday 00:00 UTC) stayed invisible until a reload. Now `pullMarket` refetches when the server week changes, and opening the Medals drawer refetches if the list is over a minute old (`NET.medalAt`). Test: t_medals.py.
 

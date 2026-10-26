@@ -550,9 +550,12 @@
   applyCounts();
   NET.medals = lsGet('harvestworks.medals', []);
   const medalKey = m => `${m.week}-${m.place}`;
+  // The weekly theme (special condition) a medal was won under: the one recorded with the medal, else the schedule's theme for that week.
+  const medalTheme = m => (m.theme && D.weeklyThemes.find(t => t.id === m.theme)) || weekTheme(m.week);
   const medalImg = place => ART.get('medal:' + place).toDataURL();
   async function fetchMedals(quiet) {
     try { const list = await rpc('my_medals', { p_player: PLAYER }); if (!Array.isArray(list)) return; NET.medalAt = Date.now();
+      list.forEach(m => { if (!m.theme) { m.theme = weekTheme(m.week).id; rpc('medal_theme', { p_player: PLAYER, p_week: m.week, p_theme: m.theme }).catch(() => { }); } }); // record the week's theme with any medal that has none yet
       NET.medals = list; lsSet('harvestworks.medals', list); const seen = lsGet('harvestworks.medalseen', []);
       const fresh = list.filter(m => !seen.includes(medalKey(m)));
       if (quiet) lsSet('harvestworks.medalseen', list.map(medalKey)); else if (fresh.length) UI.medalPend = fresh;
@@ -2466,7 +2469,7 @@
     return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i) + salvageSection(i);
   }
   function medalPanel(i) { const m = T_(i).b.m;
-    return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(weekTheme(m.week).name)}) with <b>${m.score.toLocaleString()}</b> points.</p></div>
+    return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(medalTheme(m).name)}) with <b>${m.score.toLocaleString()}</b> points.</p><p class="hint small mtheme"><b>${esc(medalTheme(m).name)}:</b> ${esc(medalTheme(m).blurb)}</p></div>
       <button class="btn ghost" data-medal-away="${i}">Put it away</button><p class="hint small">It goes back to your trophy case (Menu → Medals). Place it again any time, on any farm.</p>`; }
   /* ---------- Valley Monument panels (Depot, the monument's tiles, the Homestead drawer) ---------- */
   function monHelpHTML(m) { const k = monKind(m), cap = m ? m.cap : 800, km = m ? m.keep_min : 150;
@@ -2572,7 +2575,7 @@
     if (UI.moving != null && T_(UI.moving).b && T_(UI.moving).b.type === 'house') return head('Move the house', 'Choose where its top corner goes.') + houseMoveHere(i, UI.moving);
     if (UI.moving != null && T_(UI.moving).b) { const b = T_(UI.moving).b, nm = D.buildings[b.type].name;
       h += btn({ a: 'move', i, p: UI.moving, nm }, `Move the ${esc(nm)} here`, { cls: 'pri', sub: costTxt(moveCost(b.type)) }) + `<button class="btn ghost" data-move-cancel>Cancel moving</button>`; }
-    if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)}</small></button>`; });
+    if (!S.race) NET.medals.filter(m => medalAt(m) === undefined).forEach(m => { h += `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : 'ghost'}" data-medal-put="${medalKey(m)}" data-i="${i}">Place medal here<small>${MEDAL[m.place][0]} · ${weekLabel(m.week)} · ${esc(medalTheme(m).name)}</small></button>`; });
     if (!S.race) earnedModels().filter(p => modelAt(p.id) === undefined).forEach(p => { h += `<button class="btn ${UI.placeMon === p.id ? 'pri' : 'ghost'}" data-mon-put="${p.id}" data-i="${i}">Place the ${esc(monShort(p.name))} model here<small>Free · it shows the monument’s current stage</small></button>`; });
     h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal || UI.placeMon ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
     if (unlocked('homemaking') && houseIdx() < 0 && !S.race) h += btn({ a: 'housebuild', i }, `Build your ${HZ().levels[0].name} here`, { sub: `${costTxt(HZ().build)} · one per farm, for showing off decor` });
@@ -2785,7 +2788,7 @@
       h = `<div class="phead"><div><h2>Medals</h2><p class="sub">The top three in each week’s Weekly Challenge win a medal. Put yours on show on any of your farms.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       if (!NET.medals.length) h += `<p class="hint">No medals yet. Finish in the top three of a Weekly Challenge to win one.</p><div class="menu"><button class="btn pri" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button></div>`;
       else h += `<div class="medals">${NET.medals.map(m => { const at = S.race ? undefined : medalAt(m);
-        return `<div class="medalrow"><img src="${medalImg(m.place)}" alt=""><div class="grow1"><b>${MEDAL[m.place][0]} · ${MEDAL[m.place][1]}</b><small>${weekLabel(m.week)} · ${m.score.toLocaleString()} points</small></div>
+        return `<div class="medalrow"><img src="${medalImg(m.place)}" alt=""><div class="grow1"><b>${MEDAL[m.place][0]} · ${MEDAL[m.place][1]}</b><small>${weekLabel(m.week)} · ${esc(medalTheme(m).name)} · ${m.score.toLocaleString()} points</small><small class="mtheme">${esc(medalTheme(m).blurb)}</small></div>
           ${S.race ? '' : at !== undefined ? `<button class="btn ghost sm" data-medal-show="${at}">On show ✓</button>` : `<button class="btn ${UI.placeMedal === medalKey(m) ? 'pri' : ''} sm" data-medal-place="${medalKey(m)}">Place on this farm</button>`}</div>`; }).join('')}</div>
         <p class="hint small">${S.race ? 'Medals can’t be placed during a race or challenge run.' : 'Placing a medal is free. Select it on the farm to put it away again.'}</p>`;
     } else if (UI.drawer === 'hands') {
@@ -3497,7 +3500,7 @@
         <div class="tmenu">${S.green ? '<button class="btn pri big" data-t="monshow">See it on the Valley Green</button>' : ''}<button class="btn big" data-t="continue">Continue</button></div></div>`; }
     else if (t === 'medal') { const m = UI.medalShow;
       h = `<div class="tcard medalcard"><span class="twel">Weekly Challenge · ${weekLabel(m.week)}</span><img class="medalhero" src="${medalImg(m.place)}" alt="">
-        <h2>You won a ${MEDAL[m.place][0].toLowerCase()} medal!</h2><p class="sub">${MEDAL[m.place][1]}, with ${m.score.toLocaleString()} points in ${esc(weekTheme(m.week).name)}.</p>
+        <h2>You won a ${MEDAL[m.place][0].toLowerCase()} medal!</h2><p class="sub">${MEDAL[m.place][1]}, with ${m.score.toLocaleString()} points in ${esc(medalTheme(m).name)}.</p>
         <div class="tmenu">${UI.hadSave && !S.race ? `<button class="btn pri big" data-t="medalplace">Put it on show on this farm</button>` : ''}<button class="btn big" data-t="continue">Keep it in my trophy case<small>Menu → Medals, any time</small></button></div></div>`; }
     else if (t === 'slots') {
       const fm = UI.slotMode;

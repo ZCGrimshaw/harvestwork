@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.78', at: '2026-10-25 19:50', notes: ['Weekly challenge medals now record the week’s theme: Menu → Medals shows the theme (like Pantry Week) and its special rule under each medal, and so do the medal’s own panel and the win screen.'] },
   { v: '0.77', at: '2026-10-25 19:30', notes: ['Weekly challenge medals now show up without restarting the game: opening Menu → Medals checks for new ones, and a game left open over the end of the week picks up the medals just awarded. Before, they only appeared after reloading.'] },
   { v: '0.76', at: '2026-10-25 13:20', notes: ['On phones, the little Goal / Contract button (when you minimize the goal card) now sits under your gold counter instead of in the top bar.', 'New setting: Settings → Top of the screen → “Show players online and unique visitors” brings the two counters back beside the Menu button on phones (they’re always shown on computers, and are also in the Info panel).'] },
   { v: '0.75', at: '2026-10-25 12:50', notes: ['Tap a fully grown crop and your farmer goes straight to harvest it. No need to open the plot’s menu and press Harvest first (if your storage is full you’ll be told instead).'] },
