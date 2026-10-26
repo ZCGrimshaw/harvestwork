@@ -912,11 +912,16 @@
   function finishWeekly() { const R = S.race; if (!R.done) { R.done = true; R.final = Math.floor(S.score); save(); SND.play('contract');
       if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: R.final }).catch(() => {}); }
     openTitle('weeklyend'); rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; noteWeekly(b, true); if (UI.title === 'weeklyend') renderTitle(); }).catch(() => {}); }
+  function weekWarn(text) { SND.play('warn'); let el = $('#wkwarn'); if (!el) { el = document.createElement('div'); el.id = 'wkwarn'; el.setAttribute('role', 'alert'); document.body.appendChild(el); }
+    el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(UI.wwT); UI.wwT = setTimeout(() => el.classList.remove('show'), 2000); }
   function tickWeekly(dt) { const R = S.race;
     if (UI.title === 'weeklygo') { const left = R.start - Date.now(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
       if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> ${runMins(R.week)} minutes. ${esc(weekTheme(R.week).blurb)}`, 'goal'); } return; }
     if (R.done || Date.now() < R.start) return;
     if (Date.now() >= R.end) { finishWeekly(); return; }
+    { const left = R.end - Date.now(); if (UI.wwFor !== R.end) { UI.wwFor = R.end; UI.ww = {}; }
+      if (left <= 30000) { if (!UI.ww[30]) { UI.ww[30] = UI.ww[60] = 1; weekWarn('30 seconds left!'); } }
+      else if (left <= 60000 && !UI.ww[60]) { UI.ww[60] = 1; weekWarn('1 minute left!'); } }
     UI.rtick = (UI.rtick || 0) - dt;
     if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score) }).catch(() => {}); }
   }

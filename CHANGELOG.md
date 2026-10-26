@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.83 — 2026-10-26
+- Weekly challenge: `weekWarn()` shows a centered `#wkwarn` banner for 2 s at 1:00 and at 0:30 left (once each per run, keyed on `R.end` in `UI.ww`; resuming under 30 s skips the 1:00 one). Called from `tickWeekly`.
+- Server (migrations `generated_default_names`, `leaderboard_default_names`, `leaderboard_hidden_names`): `hw_default_name(uuid)` makes a stable name (60 first names + 1–50 from the player uuid hash). `hw_display_name` uses it when there is no picked name or the name is "Farmer"; `get_leaderboard` uses it for "Farmer" names and for hidden players (a name clash still shows "A farmer").
+
 ## v0.82 — 2026-10-26
 - Grand orders: at most `C.grand.perDay` (4) new ones appear per UTC day (`S.advDay = { d, n }`, counted when one is posted, so passing doesn't help; missing = 0). The hour wait after filling or passing is unchanged; once the cap is hit the next one waits for the next UTC day (`grandWait()`), and the Order Board / toasts show that wait. Orders already on the board are kept. Test: t_grandcap.py.
 

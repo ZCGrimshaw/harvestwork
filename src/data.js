@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.83', at: '2026-10-26 10:30', notes: ['Weekly challenge: a warning flashes in the middle of the screen for 2 seconds when 1 minute is left, and again at 30 seconds, so the end never sneaks up on you. Also, farmers who haven’t picked a name now show up on the leaderboards with a made-up name like claire3 instead of “Farmer”, and players who hide their name get one too instead of “A farmer”.'] },
   { v: '0.82', at: '2026-10-26 10:00', notes: ['Grand orders now come up at most 4 times a day, so the Order Board is easier to keep up with. It counts new orders, so passing one doesn’t bring the next sooner, and the board tells you when the next one comes. The daily count restarts at midnight UTC (5 PM Pacific). Orders already on your board stay.'] },
   { v: '0.81', at: '2026-10-25 21:50', notes: ['Fixed the Open Market list squashing when you pressed a ×1 or ×5 button: Cancel is now a small red × the same size as the button it replaces, so the item names stay readable.'] },
   { v: '0.80', at: '2026-10-25 21:30', notes: ['Daily Puzzle: a wrong guess now costs 2% of the gold you have. Read the clue (or buy a hint) before you hand something in. Three or more wrong guesses still lower the day’s bonus too.'] },

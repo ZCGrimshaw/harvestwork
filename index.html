@@ -227,6 +227,9 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .toast.disc { border-left-color: var(--plum); }
 .toast.goal { border-left-color: var(--leaf); }
 .toast.warn { border-left-color: var(--berry); }
+#wkwarn { position: fixed; top: 28%; left: 50%; transform: translate(-50%, -50%) scale(.9); z-index: 60; padding: 14px 28px; background: rgba(36,22,13,.94); border: 3px solid var(--berry); border-radius: var(--r); font-size: 26px; font-weight: 700; text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,.4); pointer-events: none; opacity: 0; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); }
+#wkwarn.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+@media (max-width: 760px) { #wkwarn { font-size: 20px; padding: 10px 18px; } }
 .toast .where { display: block; color: var(--sun); margin-top: 3px; }
 .toast.out { opacity: 0; transform: translateY(-6px); transition: .4s; }
 @keyframes tin { from { opacity: 0; transform: translateY(-8px); } }
@@ -836,9 +839,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261026-163942"></script>
-<script src="art.js?v=20261026-163942"></script>
-<script src="sound.js?v=20261026-163942"></script>
-<script src="game.js?v=20261026-163942"></script>
+<script src="data.js?v=20261026-171251"></script>
+<script src="art.js?v=20261026-171251"></script>
+<script src="sound.js?v=20261026-171251"></script>
+<script src="game.js?v=20261026-171251"></script>
 
 </body></html>
