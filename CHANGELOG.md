@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.81 — 2026-10-25
+- `btn()`: a Cancel button replacing a compact (`sm`) button (market ×1 / ×5, price buttons) now carries `sm` and shows only the red ×, instead of the full-width Cancel card that squeezed the row's text into a narrow column. Full-size buttons are unchanged. Test: t_cancel.py (extended).
+
 ## v0.80 — 2026-10-25
 - Daily Puzzle: each wrong guess takes `DQ.reward.wrongGold` (2%) of the gold held at that moment (`dqWrongCost()`: rounded, at least 1g while you have any, never more than you hold). The puzzle record keeps the total as `P.lost` (missing on older puzzles = 0), shown on the Solved line. Existing rules unchanged (3+ wrong lower the bonus; hints cost as before). Test: t_dqwrong.py.
 

@@ -2174,7 +2174,7 @@
     const data = Object.entries(t).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
     const b = `<button class="btn ${opts.cls || ''}" data-task ${data} ${e ? 'disabled' : ''}>${label}${e ? `<small>${esc(e)}</small>` : opts.sub ? `<small>${opts.sub}</small>` : ''}</button>`;
     const same = x => x && x.a === t.a && String(x.i) === String(t.i) && String(x.p) === String(t.p) && String(x.n) === String(t.n), q = same(S.cur) ? S.cur : S.queue.find(same);
-    return q ? `<button class="btn cancelbtn" data-cancel="${q.id}" aria-label="Cancel: ${esc(label.replace(/<[^>]*>/g, ''))}"><span class="cx">×</span><span>Cancel<small>${q === S.cur ? (q.ph === 'work' ? 'Working on it' : 'Farmer is on the way') : 'Waiting in the queue'}</small></span></button>` : b;
+    return q ? `<button class="btn cancelbtn ${/(^| )sm( |$)/.test(opts.cls || '') ? 'sm' : ''}" data-cancel="${q.id}" aria-label="Cancel: ${esc(label.replace(/<[^>]*>/g, ''))}" title="Cancel"><span class="cx">×</span><span class="ctx">Cancel<small>${q === S.cur ? (q.ph === 'work' ? 'Working on it' : 'Farmer is on the way') : 'Waiting in the queue'}</small></span></button>` : b;
   }
   const pbar = (key, cls = '') => `<div class="pb ${cls}"><i data-prog="${key}"></i></div>`;
 
@@ -3349,7 +3349,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261026-022010';
+  const BUILD = '20261026-022422';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
