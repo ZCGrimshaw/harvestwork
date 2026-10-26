@@ -327,8 +327,11 @@
   function dqHint() { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at], lv = P.hints[P.at]; if (lv >= 2) return;
     const c = dqHintCost(st, lv); if (S.gold < c) { toast(`A hint costs <b>${c.toLocaleString()}g</b>.`, 'warn'); return; }
     S.gold -= c; P.hints[P.at] = lv + 1; save(); dirty(); }
+  // a wrong answer costs a share of the gold you hold right now (at least 1g while you have any)
+  const dqWrongCost = () => S.gold >= 1 ? Math.min(Math.floor(S.gold), Math.max(1, Math.round(S.gold * DQ.reward.wrongGold))) : 0;
   function dqGive(id) { const P = dqToday(); if (!P || P.done) return; const st = P.steps[P.at];
-    if (id !== st.id) { P.wrong++; UI.dqPick = false; save(); SND.play('warn'); toast(`<b>${esc(D.items[id].name)}</b> isn’t it. Nothing was taken. Read the clue again${P.hints[P.at] < 2 ? ' or buy a hint' : ''}.`, 'warn'); dirty(); return; }
+    if (id !== st.id) { P.wrong++; const loss = dqWrongCost(); S.gold -= loss; P.lost = (P.lost || 0) + loss; UI.dqPick = false; save(); SND.play('warn');
+      toast(`<b>${esc(D.items[id].name)}</b> isn’t it. ${loss ? `That guess cost <b>${loss.toLocaleString()}g</b> (${Math.round(DQ.reward.wrongGold * 100)}% of your gold). ` : ''}Read the clue again${P.hints[P.at] < 2 ? ' or buy a hint' : ''}.`, 'warn'); dirty(); return; }
     if (count(id, st.minQ) < st.q) { toast(`Right answer, but you need ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} ${esc(D.items[id].name)} and have ${count(id, st.minQ)}.`, 'warn'); return; }
     const nx = P.steps[P.at + 1], keep = !!nx && Object.values(D.recipes).some(r => r.out[nx.id] && r.in[id]); // the next answer is made from this good: you keep it
     if (!keep) take(id, st.q, st.minQ, 'low'); const g = dqStepGold(st); S.gold += g; P.gold += g; P.at++; UI.dqPick = false; SND.play('goal');
@@ -350,7 +353,7 @@
     h += `<div class="dqbtns"><button class="btn pri" data-dq-pick>${UI.dqPick ? 'Close' : 'Hand in an answer'}<small>Reward ${dqStepGold(st)}g</small></button>${lv < 2 ? `<button class="btn" data-dq-hint ${S.gold < dqHintCost(st, lv) ? 'disabled' : ''}>${lv ? 'Name the answer' : 'Get a hint'}<small>${dqHintCost(st, lv).toLocaleString()}g</small></button>` : ''}</div>`;
     if (UI.dqPick) { const ids = Object.keys(S.inv).filter(id => dqAns(id) && count(id, st.minQ) >= st.q).sort((a, b) => D.items[a].name.localeCompare(D.items[b].name));
       h += `<div class="dqpick">${ids.length ? ids.map(id => `<button class="chipf" data-dq-give="${id}">${ico(id)}${esc(D.items[id].name)} <small>${count(id, st.minQ)}</small></button>`).join('') : `<p class="hint small">You don’t have ${st.q}${st.minQ ? ` ${QN[st.minQ]}+` : ''} of any good yet. Work out the answer, make it, then come back.</p>`}</div>
-        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. Handing in takes the goods, unless the next step is made from them; then they stay in storage. A wrong guess takes nothing, but three or more lower today’s bonus.</p>`; }
+        <p class="hint small">Only goods you have at least ${st.q} of${st.minQ ? ` (${QN[st.minQ]} or better)` : ''} are shown. Handing in takes the goods, unless the next step is made from them; then they stay in storage. A wrong guess costs ${Math.round(DQ.reward.wrongGold * 100)}% of your gold, and three or more also lower today’s bonus.</p>`; }
     return h + (wrap ? '</li>' : '</div>'); }
   function dqDrawer() {
     let h = `<div class="phead"><div><h2>Daily Puzzle</h2><p class="sub">A new riddle chain every day at 00:00 UTC. Solve a clue by handing in the goods it points to; each answer reveals the next clue.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -366,8 +369,8 @@
       else h += `<li class="dqstep later"><p class="dqclue muted">Solve the clue above to reveal this one.</p></li>`;
     });
     h += '</ol>';
-    if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
-    h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for a gold bonus of ${Math.round(DQ.reward.doneBonus * 100)}% of what the steps paid (less after naming an answer or three wrong guesses), plus ${Math.round(DQ.reward.streakBonus * 100)}% more every ${DQ.reward.streakEvery} days in a row.</p>`;
+    if (P.done) h += `<div class="dqdone"><b>Solved!</b> You earned ${P.gold}g today${P.wrong ? ` (${P.wrong} wrong guess${P.wrong === 1 ? '' : 'es'}${P.lost ? `, ${P.lost.toLocaleString()}g lost` : ''})` : ''}. A new puzzle arrives in ${dqLeft()}.</div>`;
+    h += `<p class="hint small">Every clue points to exactly one good your farm can make today. Clues often lead from your last answer: what it goes into, what it comes from, or what else the same station makes. Finish for a gold bonus of ${Math.round(DQ.reward.doneBonus * 100)}% of what the steps paid (less after naming an answer or three wrong guesses; every wrong guess also costs ${Math.round(DQ.reward.wrongGold * 100)}% of your gold), plus ${Math.round(DQ.reward.streakBonus * 100)}% more every ${DQ.reward.streakEvery} days in a row.</p>`;
     return h; }
   // main-screen button label and dropdown (Activity / Updates / Puzzle row)
   function dqBarBtn() { if (!S || S.race || S.goal < D.goals.length) return ''; const P = dqToday(); if (!P) return '';
@@ -3346,7 +3349,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261026-021316';
+  const BUILD = '20261026-022010';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

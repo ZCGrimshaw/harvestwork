@@ -231,7 +231,7 @@ window.HW_DATA = {
       coop: 'fed to your hens', dairy: 'fed to your cows', pasture: 'fed to your sheep', shed: 'left in the dark to sprout', workbench: 'built into something' },
     steps: { small: 4, big: 5, bigAt: 22 }, // farms that can make 22+ goods get five steps
     reward: { stepGold: 1.5, doneBonus: 0.5, doneCut: 0.15, streakEvery: 7, streakBonus: 1, // no Discovery tokens: finishing pays a gold bonus of doneBonus × what the steps paid (less 15% per name-hint or 3+ wrong guesses, at least 20%); every 7th day in a row adds streakBonus × the steps' pay
-      hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
+      hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25, wrongGold: 0.02 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
   },
 
   monuments: {
@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.80', at: '2026-10-25 21:30', notes: ['Daily Puzzle: a wrong guess now costs 2% of the gold you have. Read the clue (or buy a hint) before you hand something in. Three or more wrong guesses still lower the day’s bonus too.'] },
   { v: '0.79', at: '2026-10-25 21:00', notes: ['Every house now has a Trophy Case, separate from the decor spots, for your Weekly Challenge medals, Valley Monument models and fish trophies. Select your house → Trophy case to put them in or take them out. It starts with 3 spots and grows with the house (5, 8, then 12). Medals and models can still stand on the grass too, but each one can only be in one place on a farm. Fish trophies now go in the case instead of the decor spots (ones already on display stay where they are).'] },
   { v: '0.78', at: '2026-10-25 19:50', notes: ['Weekly challenge medals now record the week’s theme: Menu → Medals shows the theme (like Pantry Week) and its special rule under each medal, and so do the medal’s own panel and the win screen.'] },
   { v: '0.77', at: '2026-10-25 19:30', notes: ['Weekly challenge medals now show up without restarting the game: opening Menu → Medals checks for new ones, and a game left open over the end of the week picks up the medals just awarded. Before, they only appeared after reloading.'] },

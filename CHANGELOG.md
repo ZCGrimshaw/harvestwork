@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.80 — 2026-10-25
+- Daily Puzzle: each wrong guess takes `DQ.reward.wrongGold` (2%) of the gold held at that moment (`dqWrongCost()`: rounded, at least 1g while you have any, never more than you hold). The puzzle record keeps the total as `P.lost` (missing on older puzzles = 0), shown on the Solved line. Existing rules unchanged (3+ wrong lower the bonus; hints cost as before). Test: t_dqwrong.py.
+
 ## v0.79 — 2026-10-25
 - Trophy case. Every house has one, separate from the decor spots: `b.tc` on the house tile (`{ t: 'medal'|'model'|'item', k, q? }`; medals/models are references by key/id, items are taken out of storage with their quality), capacity from `D.house.levels[].trophy` (3 / 5 / 8 / 12). Missing `tc` reads as empty, so old saves need no migration. Items flagged `trophy: true` (fish_trophy) are offered only in the case; ones already in `b.d` stay. A medal or model is in the case or on grass, not both (`caseHas`, checked in the place lists and handlers; Menu → Medals and the monument panel show "In the trophy case"). Housing moves/growth keep `tc` because they keep the same house object. Test: t_case.py.
 
