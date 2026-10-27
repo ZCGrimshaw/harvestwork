@@ -238,6 +238,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 /* drawer */
 #drawer { position: absolute; inset: 0; z-index: 30; background: rgba(15,10,6,.55); display: grid; place-items: center; padding: 70px 16px 16px; }
 .dbox { width: min(720px, 100%); max-height: 100%; overflow-y: auto; padding: 16px 18px 20px; background: var(--wood); border: 2px solid var(--wood-lo); box-shadow: inset 0 0 0 2px var(--wood-hi), 0 6px 0 rgba(0,0,0,.4); border-radius: var(--r); }
+.dbox > .phead:first-child { position: sticky; top: -16px; z-index: 5; margin: -16px -18px 10px; padding: 16px 18px 10px; background: var(--wood); box-shadow: 0 2px 0 var(--wood-lo); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 14px; }
 .card { padding: 12px; background: rgba(0,0,0,.2); border-radius: var(--r); border: 1px solid transparent; display: flex; flex-direction: column; }
 .card p { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
@@ -447,6 +448,7 @@ button, .chipf, input, select { touch-action: manipulation; }
   /* full-screen drawers */
   #drawer { padding: calc(8px + env(safe-area-inset-top, 0px)) 0 0; place-items: stretch; grid-template-columns: minmax(0, 1fr); }
   .dbox { box-sizing: border-box; width: 100%; min-width: 0; overflow-x: hidden; border-radius: 14px 14px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .dbox > .phead:first-child { top: -14px; margin: -14px -14px 8px; padding: 14px 14px 8px; }
   .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -14px; padding-right: 14px; }
   .chips::-webkit-scrollbar { display: none; }
   .chipf { flex: none; padding: 7px 12px; font-size: 13px; }
@@ -812,6 +814,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
       <span class="pills"><span id="visitors" class="online visitors" hidden></span><span id="online" class="online" hidden></span></span>
       <button class="ibtn fbbtn" data-drawer="feedback" aria-label="Send feedback" title="Send feedback: ideas, bugs, suggestions"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M2 3h12v8H7l-3 3v-3H2z" fill="currentColor"/><rect x="5" y="6" width="2" height="2" fill="#24160d"/><rect x="9" y="6" width="2" height="2" fill="#24160d"/></svg></button>
       <button class="ibtn inv" data-drawer="inv">Storage</button>
+      <button class="ibtn gearbtn" data-drawer="settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M6.7 1h2.6l.4 1.9 1.2.5 1.6-1.1 1.8 1.8-1.1 1.6.5 1.2 1.9.4v2.6l-1.9.4-.5 1.2 1.1 1.6-1.8 1.8-1.6-1.1-1.2.5-.4 1.9H6.7l-.4-1.9-1.2-.5-1.6 1.1-1.8-1.8 1.1-1.6-.5-1.2L.4 9.3V6.7l1.9-.4.5-1.2-1.1-1.6 1.8-1.8 1.6 1.1 1.2-.5zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg></button>
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
   </div>
@@ -840,8 +843,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261027-033123"></script>
-<script src="art.js?v=20261027-033123"></script>
-<script src="sound.js?v=20261027-033123"></script>
-<script src="game.js?v=20261027-033123"></script>
+<script src="data.js?v=20261027-033635"></script>
+<script src="art.js?v=20261027-033635"></script>
+<script src="sound.js?v=20261027-033635"></script>
+<script src="game.js?v=20261027-033635"></script>
 </body></html>

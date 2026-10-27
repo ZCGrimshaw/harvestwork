@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.87 — 2026-10-26
+- Top bar: gear button (`.gearbtn`, `data-drawer="settings"`) between Storage and Menu (also on phones, where Storage is hidden). `.dbox > .phead:first-child` is now `position: sticky` (negative margin/padding trick so it sits flush at the top of the scrolling box) so the × stays visible in every drawer. Test: t_sticky.py (checks every drawer at desktop and phone size).
+
 ## v0.86.1 — 2026-10-26 · backend (hidden from the in-game updates log)
 - Favicon fix: `build.sh` now puts the leading `<title>`/`<link>` lines of `src/index.html` inside `<head>` (they used to land in `<body>` after an empty head, so Chrome ignored the icons).
 
