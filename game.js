@@ -605,7 +605,11 @@
     return { total, cum, pts, stage: m.finished_at ? ph.length : stage, phase, done: pts - cum[phase], need: ph[phase] ? +ph[phase].need : 1, finished: !!m.finished_at || pts >= total }; }
   const monStageOf = id => { const m = MONK(); if (m && m.id === id) return monTotals(m).stage; const x = m && (m.mine_all || []).find(p => p.id === id); return x ? monTotals(x).stage : (lsGet('harvestworks.monstage', {})[id] || 0); };
   const monLeftToday = m => Math.max(0, (m.cap || 0) - (m.today || 0));
-  const utcReset = () => { const n = new Date(Date.now() - (NET.monSkew || 0)), r = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1); return r - n.getTime(); };
+  // The monument's day (allowance, Builder's day) turns over at 2 AM Pacific, not midnight UTC; the server decides, this is the countdown.
+  const utcReset = () => { const n = new Date(Date.now() - (NET.monSkew || 0)); let ms = 0;
+    try { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(n).map(x => [x.type, +x.value]));
+      ms = ((p.hour * 60 + p.minute) * 60 + p.second) * 1000; } catch (e) { return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) + 9 * 36e5 - n.getTime(); }
+    const r = (2 * 36e5 - ms + 864e5) % 864e5; return r || 864e5; };
   const fmtLeftShort = ms => { const h = Math.floor(ms / 3600000), m = Math.max(1, Math.round((ms % 3600000) / 60000)); return h >= 24 ? `${Math.round(h / 24)} days` : h ? `${h}h ${m}m` : `${m} min`; };
   async function fetchMon() { if (!S || !online()) return; NET.monAt = Date.now();
     try { const r = await rpc('mon_state', { p_player: PLAYER }); if (r) setMon(r); } catch (e) { } }
@@ -676,7 +680,7 @@
     UI.monBusy = id; UI.monBusyAt = Date.now(); dirty(); const ph = monTotals(m).phase;
     try { const r = await rpc('mon_give', { p_player: PLAYER, p_name: NET.myName || S.name, p_project: m.id, p_item: id, p_qty: n });
       if (!r || r.error) { const e = r && r.error;
-        if (!auto) toast(e === 'cap' ? `<b>That’s your share for today.</b> You’ve given ${(r.today || 0).toLocaleString()} of ${(r.cap || 0).toLocaleString()} points. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}).`
+        if (!auto) toast(e === 'cap' ? `<b>That’s your share for today.</b> You’ve given ${(r.today || 0).toLocaleString()} of ${(r.cap || 0).toLocaleString()} points. Your allowance resets at 2 AM Pacific (in ${fmtLeftShort(utcReset())}).`
           : e === 'not_needed' ? 'The monument has moved on to its next phase, which needs different goods. Here’s the new list.'
           : e === 'finished' ? `${esc(m.name)} is finished! Nothing more is needed.` : 'The monument couldn’t take that just now. Nothing was taken from storage.', e === 'cap' ? 'info' : 'warn');
         if (e === 'cap' && S.monAuto && Object.keys(S.monAuto).length) { setMon(Object.assign({}, m, { today: r.today || m.cap, cap: r.cap || m.cap })); monAutoCapStop(); }
@@ -694,10 +698,10 @@
     UI.monBusy = null; dirty(); }
   /* Auto-give: goods you've ticked go to the monument by themselves, a little at a time (one gift every 20 seconds at
      most), whenever the current phase takes them and today's allowance has room. Per farm, saved with it. */
-  // The day's allowance is used up: switch every Auto off and tell the player (they turn them back on after 00:00 UTC)
+  // The day's allowance is used up: switch every Auto off and tell the player (they turn them back on after 2 AM Pacific)
   function monAutoCapStop(m) { if (!S || !S.monAuto || !Object.keys(S.monAuto).length || monLeftToday(m || MONK() || {}) > 0) return false;
     const n = Object.keys(S.monAuto).length; S.monAuto = {}; save(); dirty();
-    toast(`<b>Daily limit reached.</b> You’ve given your full ${((m || MONK()).cap || 0).toLocaleString()} points to the monument today, so Auto-give has been switched off${n > 1 ? ' for all goods' : ''}. Your allowance resets at 00:00 UTC (in ${fmtLeftShort(utcReset())}); turn Auto back on then.`, 'warn'); return true; }
+    toast(`<b>Daily limit reached.</b> You’ve given your full ${((m || MONK()).cap || 0).toLocaleString()} points to the monument today, so Auto-give has been switched off${n > 1 ? ' for all goods' : ''}. Your allowance resets at 2 AM Pacific (in ${fmtLeftShort(utcReset())}); turn Auto back on then.`, 'warn'); return true; }
   const monAutoOn = id => !!(S.monAuto && S.monAuto[id]);
   function autoMonGive() { if (!S || S.race || !online() || !S.monAuto || !Object.keys(S.monAuto).length) return;
     if (UI.monBusy && Date.now() - (UI.monBusyAt || 0) > 30000) UI.monBusy = null; // a gift that never answered must not block the rest
@@ -2515,7 +2519,7 @@
       <p><b>Built together.</b> Every online farm in the valley builds the same monument. There’s no race and no ranking; the contributor roll is just a thank-you.</p>
       <p><b>Four stages.</b> It rises at 25%, 50%, 75% and 100%. Each stage is a phase that asks for different goods${m && m.phases ? ` (${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))})` : ''}, so every kind of farm gets its turn. Only the current phase’s goods are taken.</p>
       <p><b>Points.</b> Every good counts for a set number of points; finer goods count for more. Quality doesn’t change the points, so your lowest-quality goods go first.</p>
-      <p><b>Daily allowance.</b> You can give up to ${cap.toLocaleString()} points a day (it resets at 00:00 UTC), so no single farm can finish it alone and everyone gets a share of the work. Goods can’t be split, so if you have less than one item’s worth left, you can still give one last item and go a little over.</p>
+      <p><b>Daily allowance.</b> You can give up to ${cap.toLocaleString()} points a day (it resets at 2 AM Pacific), so no single farm can finish it alone and everyone gets a share of the work. Goods can’t be split, so if you have less than one item’s worth left, you can still give one last item and go a little over.</p>
       <p><b>Rewards.</b> Giving earns no gold. Give ${km.toLocaleString()} points in total to earn a small model of ${esc(k.name)} for your farm (it shows the monument’s current stage). You also get +1 Discovery for your first gift in each phase, and +2 when it’s finished.</p>
       <p><b>Target date.</b> Each monument has one. If the valley hasn’t finished by then, building simply carries on until it’s done.</p>
       <p><b>Where.</b> At the Monument Depot on your Valley Green, or from the Homestead (Valley Monument). Goods come out of your storage, and buying goods at the market to give is fine.</p></div>`; }
@@ -2544,13 +2548,13 @@
       h += `<span class="eyebrow">Phase ${t.phase + 1} of ${n}: ${esc(ph.name)}</span>${ph.blurb ? `<p class="hint small">${esc(ph.blurb)}</p>` : ''}
         <div class="pb"><i style="width:${Math.min(100, t.done / t.need * 100)}%"></i></div><small>${Math.max(0, t.done).toLocaleString()} of ${t.need.toLocaleString()} points for this phase. When it fills, the monument reaches ${esc(K.stages[t.phase + 1])}.</small>`;
       const rank = (m.top || []).findIndex(x => x.me);
-      h += `<div class="monyou"><b>Your part:</b> ${(m.mine || 0).toLocaleString()} points given${rank >= 0 ? ` (#${rank + 1} on the roll)` : ''}. Today: ${(m.today || 0).toLocaleString()} of ${m.cap.toLocaleString()} points${left ? `, so you can give <b>${left.toLocaleString()}</b> more` : ', all used'}. Resets at 00:00 UTC, in ${fmtLeftShort(utcReset())}.</div>`;
+      h += `<div class="monyou"><b>Your part:</b> ${(m.mine || 0).toLocaleString()} points given${rank >= 0 ? ` (#${rank + 1} on the roll)` : ''}. Today: ${(m.today || 0).toLocaleString()} of ${m.cap.toLocaleString()} points${left ? `, so you can give <b>${left.toLocaleString()}</b> more` : ', all used'}. Resets at 2 AM Pacific, in ${fmtLeftShort(utcReset())}.</div>`;
       const items = Object.entries(ph.items || {}).filter(([id]) => D.items[id]).sort((a, b) => a[1] - b[1] || D.items[a[0]].name.localeCompare(D.items[b[0]].name));
       h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
         const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} left today, but your last gift can go a little over` : '';
         return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}<button class="autog ${monAutoOn(id) ? 'on' : ''}" data-mon-auto="${id}" aria-pressed="${monAutoOn(id)}" title="Give ${esc(D.items[id].name)} automatically">${monAutoOn(id) ? 'Auto ✓' : 'Auto'}</button></div>`; }).join('')}</div>
         <p class="hint small"><b>Auto</b> gives that good by itself whenever you have some, a batch every 20 seconds or so, until today’s allowance is used. It gives every one you have, so leave it off for goods you need for building. It works while the game is open, and switches itself off (with a heads-up) when today’s allowance is used up.</p>
-        <div class="monyou bday">${builderDay() ? '<b>Builder’s day:</b> because you’ve given today, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down. It lasts until 00:00 UTC.' : '<b>Builder’s day:</b> give anything today and, until 00:00 UTC, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down.'}</div>
+        <div class="monyou bday">${builderDay() ? '<b>Builder’s day:</b> because you’ve given today, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down. It lasts until 2 AM Pacific.' : '<b>Builder’s day:</b> give anything today and, until 2 AM Pacific, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down.'}</div>
         <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance (the last item may go a little over), or what’s left of this phase.</p>`;
     } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stays on your Valley Green for good, and the next monument will appear here when it starts.</p>`;
     h += modelLine(m);
@@ -3377,7 +3381,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261027-034102';
+  const BUILD = '20261027-164525';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

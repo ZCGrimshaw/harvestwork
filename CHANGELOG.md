@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.89 — 2026-10-27
+- Monument day now turns over at 02:00 America/Los_Angeles (DST-aware) instead of 00:00 UTC. Server: `hw_mon_day()` = (now in LA − 2 h)::date, used by `mon_give` and `mon_state` (migration `monument_day_resets_2am_pacific`); one-off data move: today's `mon_gifts` rows last updated before 09:00 UTC were folded into 2026-10-26. Client: `utcReset()` counts down to 2 AM Pacific; allowance/Builder's day texts updated. The Daily Puzzle and Grand orders still use the UTC day.
+
 ## v0.88 — 2026-10-26
 - `#panel > .phead` is sticky like the drawers' (v0.87): the title and × stay put while the panel scrolls. Phone: the Show more pill gets a solid background and the header sticks just below it. Test: t_panelsticky.py.
 
