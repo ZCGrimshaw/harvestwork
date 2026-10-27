@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.86.1 — 2026-10-26 · backend (hidden from the in-game updates log)
+- Favicon fix: `build.sh` now puts the leading `<title>`/`<link>` lines of `src/index.html` inside `<head>` (they used to land in `<body>` after an empty head, so Chrome ignored the icons).
+
 ## v0.86 — 2026-10-26
 - Tutorial resume: new-farm choice already offered "Start with a quick tutorial" / "Start without". Now `S.tutOff` remembers the step when it was skipped (or 0 when declined); Menu → Game shows "Turn the tutorial back on" (`resumeTut()`), which restarts at that step (skipping the camera steps if the farm plot is already tilled). Finishing sets `S.tutDone`; the button reads "Replay the tutorial" again. Test: t_tutresume.py.
 
