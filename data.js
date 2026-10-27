@@ -970,6 +970,7 @@ window.HW_DATA = {
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.88', at: '2026-10-26 21:20', notes: ['The side panel (Open Market, stations, plots and the rest) now keeps its title and × close button pinned at the top while the list under it scrolls. On phones the title sits just under the “More” bar.'] },
   { v: '0.87', at: '2026-10-26 20:50', notes: ['New gear button between Storage and Menu opens Settings in one tap. Also, every menu and panel that scrolls now keeps its title bar and × close button pinned at the top, so you never have to scroll back up to close it.'] },
   { v: '0.86.1', backend: true, at: '2026-10-26 20:45', notes: ['The tab icon (favicon) now sits in the page head so Chrome shows it.'] },
   { v: '0.86', at: '2026-10-26 13:00', notes: ['The tutorial can now be turned back on any time. If you skipped it or started without it, open Menu → Game and press “Turn the tutorial back on”: it carries on from the first step you haven’t done yet instead of starting over.'] },

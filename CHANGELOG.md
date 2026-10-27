@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.88 — 2026-10-26
+- `#panel > .phead` is sticky like the drawers' (v0.87): the title and × stay put while the panel scrolls. Phone: the Show more pill gets a solid background and the header sticks just below it. Test: t_panelsticky.py.
+
 ## v0.87 — 2026-10-26
 - Top bar: gear button (`.gearbtn`, `data-drawer="settings"`) between Storage and Menu (also on phones, where Storage is hidden). `.dbox > .phead:first-child` is now `position: sticky` (negative margin/padding trick so it sits flush at the top of the scrolling box) so the × stays visible in every drawer. Test: t_sticky.py (checks every drawer at desktop and phone size).
 

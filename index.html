@@ -121,6 +121,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 
 /* context panel */
 #panel { position: absolute; right: 10px; top: 66px; max-height: calc(100% - 140px); width: 350px; overflow-y: auto; padding: 14px 16px 16px; overscroll-behavior: contain; }
+#panel > .phead { position: sticky; top: -14px; z-index: 5; margin: -14px -16px 8px; padding: 14px 16px 8px; background: var(--wood); box-shadow: 0 2px 0 var(--wood-lo); }
 .phead { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .phead .sub { margin-top: 4px; font-size: 13px; }
 .close { cursor: pointer; flex: none; width: 30px; height: 30px; background: var(--wood-lo); border: 0; border-radius: var(--r); font-size: 20px; line-height: 1; color: var(--paper-dim); }
@@ -433,6 +434,11 @@ button, .chipf, input, select { touch-action: manipulation; }
   #panel:not(.full) .phead .sub, #panel:not(.full) p.hint:not(.err), #panel:not(.full) p.tip, #panel:not(.full) .more { display: none; }
   #panel .pmore { display: block; position: sticky; top: 0; width: fit-content; min-width: 120px; margin: 0 auto 2px; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: transparent; color: var(--paper-dim); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; z-index: 2; }
   #panel:not(:has(.phead .sub, p.hint:not(.err), p.tip, .more)) .pmore { display: none; }
+  #panel .pmore { background: var(--wood); z-index: 6; width: 100%; border-radius: 0; margin: 0 0 0; }
+  #panel:has(.pmore) > .phead { margin-top: 0; }
+  #panel > .phead { top: -18px; margin: -2px -16px 6px; padding: 6px 16px 8px; }
+  #panel:has(.pmore) > .phead { top: 40px; }
+  #panel:not(:has(.phead .sub, p.hint:not(.err), p.tip, .more)) > .phead { top: -18px; }
   #panel:has(.phead .sub, p.hint:not(.err), p.tip, .more)::before { display: none; } #panel:has(.phead .sub, p.hint:not(.err), p.tip, .more) { padding-top: 4px; }
   #panel::before { content: ""; position: absolute; top: 7px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: var(--wood-hi); }
   #panel h2 { font-size: 19px; }
@@ -843,8 +849,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261027-033635"></script>
-<script src="art.js?v=20261027-033635"></script>
-<script src="sound.js?v=20261027-033635"></script>
-<script src="game.js?v=20261027-033635"></script>
+<script src="data.js?v=20261027-034102"></script>
+<script src="art.js?v=20261027-034102"></script>
+<script src="sound.js?v=20261027-034102"></script>
+<script src="game.js?v=20261027-034102"></script>
 </body></html>
