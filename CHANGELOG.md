@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.93.1 — 2026-10-28 · backend (hidden from the in-game updates log)
+- Score checks (Supabase migration `score_sanity_checks`): `weekly_score` rejects a score above 0.0167·t² + 3·t + 100 for a run t seconds old (best real runs are ~1,900 at 10 min; the curve allows ~7,900). `submit_score` clamps growth to ~1,000 points per second and one game day per 100 s since that farm's last submission (real late game is ~120 points/s; a day lasts 240 s), keeps the 50,000-per-day ceiling, allows at most 8 farms per player and 3,000 days on a new farm row. Races and Dark Moon unchanged.
+- `build.sh` writes `itch/harvest-valley-itch-v<version>.zip` (git-ignored); see `ITCH.md`. Tested in a cross-origin sandboxed iframe like itch's.
+
 ## v0.93 — 2026-10-28
 - Auto repeat drawer restyled as a `.handcard` like the farmhand list (status line, master switch, `Stations N` list with ❚❚/▶ (`data-rpause`) and × (`data-rdel`), Remove all).
 - Open Market search: `#msearch` above the list on Buy / Sell / Stations, filters by item name (kits also by building name) via `mHit`; the list (`#mlist`, built by `marketBody(i)`) is updated in place so typing keeps focus, and `setHTML` now also leaves focused `type=search` fields alone. Tests: t_msearch.py, t_repeat.py.

@@ -10,6 +10,7 @@
 
 ## Releasing
 1. Edit files in `src/`, then run `./build.sh` (stamps a build id into `game.js`, `version.json` and the script addresses in `index.html`).
+   `./build.sh` also writes `itch/harvest-valley-itch-v<version>.zip` for itch.io (see `ITCH.md`).
 2. Commit and push to `main`; GitHub Pages serves the repo root. Open games see the "new version" banner within ~2 minutes.
 
 ## Project facts (for a fresh conversation)

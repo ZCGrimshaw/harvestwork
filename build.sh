@@ -14,3 +14,8 @@ sed "s/__BUILD__/$ID/" src/game.js > game.js
 printf '{"build":"%s"}\n' "$ID" > version.json
 touch .nojekyll
 echo "Built $ID"
+# itch.io package: everything the page needs, with index.html at the top of the zip. Version comes from the newest update entry.
+VER=$(grep -o "v: '[0-9][0-9.]*'" src/data.js | head -1 | sed "s/v: '//; s/'//")
+mkdir -p itch && rm -f itch/harvest-valley-itch-v*.zip
+zip -q -X "itch/harvest-valley-itch-v$VER.zip" index.html game.js data.js art.js sound.js version.json title-art.webp support-qr.png
+echo "Packaged itch/harvest-valley-itch-v$VER.zip"

@@ -975,6 +975,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.93.1', backend: true, at: '2026-10-28 11:30', notes: ['Server score checks and an itch.io package.'] },
   { v: '0.93', at: '2026-10-28 11:30', notes: ['The Auto repeat list now looks and works like the farmhand’s jobs list: one card with a Running switch, each station on its own row with pause/resume and × buttons, and Remove all. The Open Market also has a search box on the Buy, Sell and Stations tabs, so you can find an item by typing part of its name.'] },
   { v: '0.92', at: '2026-10-28 10:20', notes: ['In the Auto repeat list, each station now has a × to take it off Repeat, and “Remove all” (tap twice) clears the list, like the farmhand’s jobs list.'] },
   { v: '0.91.2', backend: true, at: '2026-10-28 10:20', notes: ['Show your support now uses the PayPal QR code and link instead of Ko-fi.'] },
