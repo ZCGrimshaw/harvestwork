@@ -795,12 +795,15 @@ window.HW_ART = (function () {
       '#dccb9c': '#eef2f4', '#e8daae': '#ffffff', '#cdb985': '#dfe6ea', '#c4ae7c': '#c8d2d8' }),
     plant: SCENES.winter.plant
   };
+  // Untilled farm plots keep a patch of dark frozen earth in winter and on snow days, so the player can still tell which tiles can be tilled
+  SCENES.winter.raw = { '#a87444': '#8c7358', '#946238': '#6e5642', '#bb8652': '#b4a287', '#7cc04b': '#9cae8c' };
+  SCENES.snow.raw = { '#a87444': '#85705f', '#946238': '#64524a', '#bb8652': '#c4ccd2', '#7cc04b': '#d4dde2' };
   const hexOf = (d, i) => '#' + [d[i], d[i + 1], d[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
   function seasonize(src, k) {
     const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
     const g = c.getContext('2d'); g.drawImage(src, 0, 0);
     const img = g.getImageData(0, 0, c.width, c.height), d = img.data, w = c.width, h = c.height, S = SCENES[scene];
-    const map = S ? (GROUND.has(k) ? S.ground : PLANT.has(k) ? S.plant : null) : null;
+    const map = S ? (k === 'farm_raw' && S.raw ? S.raw : GROUND.has(k) ? S.ground : PLANT.has(k) ? S.plant : null) : null;
     const set = (i, col) => { d[i] = parseInt(col.slice(1, 3), 16); d[i + 1] = parseInt(col.slice(3, 5), 16); d[i + 2] = parseInt(col.slice(5, 7), 16); };
     if (map) for (let i = 0; i < d.length; i += 4) { if (d[i + 3] !== 255) continue; const to = map[hexOf(d, i)]; if (to) set(i, to); }
     if (scene === 'spring' && k === 'tree') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, hx = hexOf(d, i), n = (x * 7 + y * 13) % 9;

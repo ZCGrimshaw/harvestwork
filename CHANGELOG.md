@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.90 — 2026-10-27
+- art.js: `SCENES.winter.raw` / `SCENES.snow.raw` recolour only the `farm_raw` tile (dark frozen earth, frost flecks) instead of the all-white ground map, so untilled plots read as tillable in winter and on snow days.
+- `REP_OPTS` (station Repeat count) = Forever, 1, 5, 10, 25, 100, 250, 500, 1000; `repOpts(b)` keeps an older saved count selectable. Test: t_snowplot.py.
+
 ## v0.89 — 2026-10-27
 - Monument day now turns over at 02:00 America/Los_Angeles (DST-aware) instead of 00:00 UTC. Server: `hw_mon_day()` = (now in LA − 2 h)::date, used by `mon_give` and `mon_state` (migration `monument_day_resets_2am_pacific`); one-off data move: today's `mon_gifts` rows last updated before 09:00 UTC were folded into 2026-10-26. Client: `utcReset()` counts down to 2 AM Pacific; allowance/Builder's day texts updated. The Daily Puzzle and Grand orders still use the UTC day.
 
