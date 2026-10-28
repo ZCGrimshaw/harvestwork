@@ -14,6 +14,10 @@ Same Supabase project, so market prices, leaderboard, weekly challenge, monument
 ## Suggested page text
 **Harvest Valley** is a cozy isometric farming game that grows into a factory: till, plant and harvest, cook, build stations, hire a farmhand, and play with the whole valley (shared market, leaderboards, a weekly challenge and a monument everyone builds together). Free, no sign-up.
 
+**Already play Harvest Valley on the web?** You can bring your player and farm with you. On the version you already play, open Menu → Save and backup:
+- **Name and medals:** press "Make my player key" and copy the key. On this version, open the same place and use the player key there.
+- **Your farm:** press "Back up my farm" and copy the code, then on this version choose "Restore from a backup code". Or use "Download save file" there and "Load a save file" here.
+
 Tags: farming, cozy, idle, management, automation, pixel-art, singleplayer, multiplayer-lite, casual, browser
 
 ## Before each upload
