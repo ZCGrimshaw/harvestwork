@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.93 — 2026-10-28
+- Auto repeat drawer restyled as a `.handcard` like the farmhand list (status line, master switch, `Stations N` list with ❚❚/▶ (`data-rpause`) and × (`data-rdel`), Remove all).
+- Open Market search: `#msearch` above the list on Buy / Sell / Stations, filters by item name (kits also by building name) via `mHit`; the list (`#mlist`, built by `marketBody(i)`) is updated in place so typing keeps focus, and `setHTML` now also leaves focused `type=search` fields alone. Tests: t_msearch.py, t_repeat.py.
+
 ## v0.92 — 2026-10-28
 - Auto repeat drawer: `data-rdel` (× per row) turns Repeat off for that station (clears `rep`, `repN`, `repDone`, `rpause`); `data-rclear` is a two-tap Remove all (`UI.repClear`, 3 s arm). Test: t_repeat.py (extended).
 

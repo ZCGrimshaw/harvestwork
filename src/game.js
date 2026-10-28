@@ -2175,7 +2175,7 @@
   const qtag = q => q ? `<span class="q q${q}">${QN[q]}</span>` : '';
   function setHTML(sel, html) {
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
-    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'search' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
     // keep the reader's place: replacing the markup would otherwise snap a scrolled menu back to the top whenever a number changes
     const key = sel === '#drawer' ? 'd:' + UI.drawer : sel === '#panel' ? 'p:' + UI.sel : '', scr = [el, ...(key ? el.querySelectorAll('.dbox') : [])].map(e => e.scrollTop);
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
@@ -2421,26 +2421,35 @@
     if (S.race && S.race.deal) { const dl = S.race.deal; h += `<div class="demand">${ico(dl.kit)}<span><b>Race-day bargain:</b> ${esc(D.buildings[D.items[dl.kit].building].name)} kit for just <b>${dl.price}g</b> (normally ${D.items[dl.kit].buy}g). Stations tab.</span></div>`; }
     if (d) h += `<div class="demand">${ico(d.item)}<span>Today: <b>${esc(D.items[d.item].name)}</b> sells for <b>+${d.pct}%</b></span></div>`;
     h += `<div class="tabs">${['buy', 'sell', 'stations'].map(t => `<button class="tab ${UI.mtab === t ? 'on' : ''}" data-mtab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+    h += `<div class="msearch"><input type="search" id="msearch" data-i="${i}" placeholder="Search ${UI.mtab === 'sell' ? 'your goods' : UI.mtab === 'stations' ? 'stations' : 'items'}…" value="${esc(UI.msearch || '')}" autocomplete="off" aria-label="Search the market"></div><div id="mlist">${marketBody(i)}</div>`;
+    return h;
+  }
+  const mQ = () => (UI.msearch || '').trim().toLowerCase();
+  // the market search matches an item's name (a station kit also matches its building's name)
+  const mHit = id => { const q = mQ(); if (!q) return true; const it = D.items[id], nm = (it.name + ' ' + (it.building && D.buildings[it.building] ? D.buildings[it.building].name : '')).toLowerCase(); return q.split(/\s+/).every(w => nm.includes(w)); };
+  function marketBody(i) {
+    let h = '';
     if (UI.mtab === 'buy') {
       const free = room();
       if (free <= 0) h += `<div class="fullbar"><b>Storage is full (${used()}/${cap()}).</b> Anything you buy needs room. Sell something, or expand storage at the Homestead or with a Storage Barn.</div>`;
       else if (free <= 5) h += `<div class="fullbar soft">Storage is nearly full: room for <b>${free}</b> more item${free === 1 ? '' : 's'}.</div>`;
-      const list = Object.keys(D.items).filter(canBuyItem);
+      const list = Object.keys(D.items).filter(canBuyItem).filter(mHit);
+      if (!list.length && mQ()) h += `<p class="nomatch">Nothing to buy matches “${esc(UI.msearch.trim())}”.</p>`;
       h += chips('buy', groupCounts(list));
       h += grouped(list, 'buy', id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)}${seasonTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
       h += `<p class="hint">Any good you've made at least once is sold here too, at about ${RESALE}× its normal value, always Normal quality. Every purchase nudges the price up for everyone; every sale nudges it down.</p>`;
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
     } else if (UI.mtab === 'sell') {
-      const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0);
+      const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0).filter(mHit);
       if (ids.length) h += chips('sell', groupCounts(ids));
       const sellRow = id => [0, 1, 2].filter(q => S.inv[id][q] > 0).map(q => { const n = S.inv[id][q], key = `${id}:${q}`, pr = sellPrice(id, q), v = Math.max(1, Math.min(n, UI.sq[key] || 1));
         return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each ${moveTag(id)}${seasonTag(id)} · have ${n}</small></div>
           <div class="sellctl">${btn({ a: 'sell', i, p: id, q, n: 1 }, 'Sell 1', { cls: 'sm' })}${n > 1 ? btn({ a: 'sell', i, p: id, q, n }, `All · ${pr * n}g`, { cls: 'sm' }) : ''}
           <span class="qtybox"><input type="number" class="qty" id="sq-${id}-${q}" data-sq="${key}" data-max="${n}" data-price="${pr}" min="1" max="${n}" step="1" value="${v}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to sell"><button class="btn sm pri" data-sellqty="${key}" data-i="${i}">Sell · <span data-sqtotal="${key}">${pr * v}</span>g</button></span></div></div>`; }).join('');
-      h += ids.length ? grouped(ids, 'sell', sellRow) : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
+      h += ids.length ? grouped(ids, 'sell', sellRow) : mQ() ? `<p class="nomatch">Nothing in storage matches “${esc(UI.msearch.trim())}”.</p>` : `<p class="hint">Nothing to sell yet. Harvest or make something first.</p>`;
     } else {
-      const list = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires); });
+      const list = Object.keys(D.items).filter(id => { const it = D.items[id]; return it.cat === 'kit' && it.buy && unlocked(it.requires); }).filter(mHit);
       h += `<p class="hint">You can build <b>one of each station per area</b> you own (two Storage Barns per area). You have ${areas()} area${areas() === 1 ? '' : 's'}${unlocked('surveying') ? '; survey new land for more' : ''}. Place a kit on empty grass you own.</p>`;
       // stations you've already built your allowance of go in their own list, so the main one only shows what you can buy
       const atCap = id => { const bt = D.items[id].building; return builtCount(bt) + count(id) >= capFor(bt); };
@@ -2453,7 +2462,7 @@
       if (view === 'full') h += `<p class="hint">You’ve built as many of these as your ${areas()} area${areas() === 1 ? '' : 's'} allow${areas() === 1 ? 's' : ''}. Each new area you survey lets you build one more of each (two more Storage Barns).</p>` + grouped(full, null, fullRow);
       else if (open.length) h += grouped(open, null, kitRow);
       else if (list.length) h += `<p class="hint">You’ve built everything you can for now. See <b>At your limit</b>, and survey new land to build more.</p>`;
-      if (!list.length) h += `<p class="hint">No station kits yet. Unlock Sawmill (after Woodcutting) in Discovery.</p>`;
+      if (!list.length) h += mQ() ? `<p class="nomatch">No station kit matches “${esc(UI.msearch.trim())}”.</p>` : `<p class="hint">No station kits yet. Unlock Sawmill (after Woodcutting) in Discovery.</p>`;
     }
     return h;
   }
@@ -2867,15 +2876,20 @@
         h += `</div>`; });
       if (hands.length) h += `<p class="hint small">${unlocked('crew') ? 'Seasoned farmhand: 8 jobs, full speed.' : 'Unlock Seasoned Farmhand in Discovery for 8 jobs and full walking speed.'} Only one farmhand for now.</p>`;
     } else if (UI.drawer === 'repeats') {
-      const reps = repStations(), ron = S.repOn !== false;
-      h = `<div class="phead"><div><h2>Auto repeat</h2><p class="sub">Stations on Repeat reload their recipe whenever a slot is free and the ingredients are in storage. Pause one to keep its ingredients.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        <div class="handctl"><button class="toggle ${ron ? 'on' : ''}" data-rall aria-pressed="${ron}"><i></i>${ron ? 'Auto repeat on' : 'Auto repeat off (every station paused)'}</button></div>`;
+      const reps = repStations(), ron = S.repOn !== false, running = reps.filter(r => !r.b.rpause).length;
+      h = `<div class="phead"><div><h2>Auto repeat</h2><p class="sub">Stations on Repeat reload their recipe whenever a slot is free and the ingredients are in storage. Pause one to keep its ingredients.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       if (!unlocked('repeat')) h += `<p class="hint">Unlock <b>Repeat Recipes</b> in Discovery first.</p>`;
-      else if (!reps.length) h += `<p class="hint">No stations are on Repeat yet. Select a station, pick a recipe and turn Repeat on.</p>`;
-      else h += `<ol class="routine jobs">${reps.map(({ b, i }) => { const R = D.recipes[b.rep], nm = R.label || D.items[Object.keys(R.out)[0]].name, on = !b.rpause;
-        return `<li><button class="linkish" data-goto="${i}" title="Show on the map">${esc(D.buildings[b.type].name)}: ${esc(nm)}${b.repN ? ` (${b.repDone || 0}/${b.repN})` : ''}</button>
-          <span class="jobbtns"><button class="toggle ${on && ron ? 'on' : ''}" data-rpause="${i}" aria-pressed="${on}"><i></i>${on ? 'On' : 'Paused'}</button><button class="x" data-rdel="${i}" aria-label="Remove from auto repeat" title="Turn Repeat off for this station">×</button></span></li>`; }).join('')}</ol>
-        <button class="btn ${UI.repClear ? 'danger' : 'ghost'} sm" data-rclear>${UI.repClear ? 'Tap again to remove all ' + reps.length : 'Remove all'}</button>`;
+      else {
+        h += `<div class="handcard"><div class="handhead"><b>Auto repeat</b><span class="muted">${!ron ? 'Paused' : reps.length ? running + ' of ' + reps.length + ' running' : 'No stations yet'}</span></div>
+          <div class="handctl"><button class="toggle ${ron ? 'on' : ''}" data-rall aria-pressed="${ron}"><i></i>${ron ? 'Running' : 'Paused'}</button></div>
+          <p class="hint small">${ron ? 'On: every station below that isn’t paused keeps reloading its recipe.' : 'Off: every station is paused. Nothing reloads and your ingredients stay in storage.'}</p>
+          <span class="eyebrow">Stations ${reps.length}</span>`;
+        h += reps.length ? `<ol class="routine jobs">${reps.map(({ b, i }, k) => { const R = D.recipes[b.rep], nm = R.label || D.items[Object.keys(R.out)[0]].name, on = !b.rpause;
+            return `<li class="${on && ron ? 'now' : ''}"><button class="linkish" data-goto="${i}" title="Show on the map">${esc(D.buildings[b.type].name)}: ${esc(nm)}${b.repN ? ` (${b.repDone || 0}/${b.repN})` : ''}${on ? '' : ' · paused'}</button>
+              <span class="jobbtns"><button class="x mv" data-rpause="${i}" aria-pressed="${!on}" aria-label="${on ? 'Pause this station' : 'Resume this station'}" title="${on ? 'Pause' : 'Resume'}">${on ? '❚❚' : '▶'}</button><button class="x" data-rdel="${i}" aria-label="Remove from auto repeat" title="Turn Repeat off for this station">×</button></span></li>`; }).join('')}</ol>`
+          : `<p class="hint">No stations are on Repeat yet. Select a station, open a recipe and turn Repeat on.</p>`;
+        if (reps.length) h += `<button class="btn ${UI.repClear ? 'danger' : 'ghost'} sm" data-rclear>${UI.repClear ? 'Tap again to remove all ' + reps.length : 'Remove all'}</button>`;
+        h += `</div>`; }
     } else if (UI.drawer === 'lb') {
       const L = UI.lb || {}, tab = UI.lbTab || 'top', fmt = n => Number(n).toLocaleString();
       h = `<div class="phead"><div><h2>Leaderboard</h2><p class="sub">Every farm in the valley. <b>Top score</b> is total score; <b>Best pace</b> is score per day played, for farms at least ${LB_MIN_DAYS} days old.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -3331,6 +3345,7 @@
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
+    if (e.target.id === 'msearch') { UI.msearch = e.target.value; const l = $('#mlist'); if (l) { l.innerHTML = marketBody(+e.target.dataset.i); if (isTouch()) l.innerHTML = l.innerHTML.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap'); UI.html['#panel'] = null; } return; }
     if (e.target.id === 'manq') { UI.manQ = e.target.value; UI.manOpen = null; const r = $('#manres'); if (r) r.innerHTML = manualList(); return; }
     if (e.target.id === 'fbmsg') { fbState().msg = e.target.value; const c = $('#fbcount'); if (c) c.textContent = e.target.value.length; return; }
     if (e.target.id === 'fbname') { fbState().name = e.target.value; return; }
