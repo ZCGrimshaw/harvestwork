@@ -3046,11 +3046,11 @@
   const thanksHTML = () => `<h2>Wall of Thanks</h2>
     <p class="sub">Grateful for support. Thank you to everyone who helps keep Harvest Valley growing.</p>
     <ul class="thanks">${(D.supporters || []).map(p => `<li><span class="tbadge">${BADGE_SVG[p.badge] || BADGE_SVG.star}</span><span class="tname">${esc(p.name)}</span></li>`).join('')}</ul>`;
-  // Show your support: a big QR code to scan with a phone, and a link that opens Ko-fi.
+  // Show your support: a big QR code to scan with a phone, and a link that opens PayPal.
   const supportHTML = () => `<h2>Show your support</h2>
     <p class="sub">Harvest Valley is free to play and made by one person. If you’re enjoying your farm, a show of support helps keep new updates coming. $1 is plenty; anything is appreciated.</p>
-    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="QR code for the Harvest Valley Ko-fi page"><span>Scan with your phone’s camera</span></div>
-    <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open Ko-fi ↗</a>`;
+    <div class="bigqr"><img class="qr big" src="${D.support.qr}" alt="QR code for the Harvest Valley PayPal page"><span>Scan with your phone’s camera</span></div>
+    <a class="btn pri big paylink" href="${esc(D.support.url)}" target="_blank" rel="noopener">Open PayPal ↗</a>`;
   // Backend entries stay in the CHANGELOG only; players see the rest.
   const PUB = D.updates.filter(u => !u.backend);
   const latest = () => PUB[0];

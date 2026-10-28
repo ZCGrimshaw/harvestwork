@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.91.2 — 2026-10-28 · backend (hidden from the in-game updates log)
+- Show your support: new PayPal QR code (`src/support-qr.png`) and PayPal link replace Ko-fi; button now reads Open PayPal.
+
 ## v0.91.1 — 2026-10-28 · backend (hidden from the in-game updates log)
 - Wall of Thanks: Joel is now Joel K.
 
