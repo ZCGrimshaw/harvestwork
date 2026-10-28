@@ -2874,7 +2874,8 @@
       else if (!reps.length) h += `<p class="hint">No stations are on Repeat yet. Select a station, pick a recipe and turn Repeat on.</p>`;
       else h += `<ol class="routine jobs">${reps.map(({ b, i }) => { const R = D.recipes[b.rep], nm = R.label || D.items[Object.keys(R.out)[0]].name, on = !b.rpause;
         return `<li><button class="linkish" data-goto="${i}" title="Show on the map">${esc(D.buildings[b.type].name)}: ${esc(nm)}${b.repN ? ` (${b.repDone || 0}/${b.repN})` : ''}</button>
-          <span class="jobbtns"><button class="toggle ${on && ron ? 'on' : ''}" data-rpause="${i}" aria-pressed="${on}"><i></i>${on ? 'On' : 'Paused'}</button></span></li>`; }).join('')}</ol>`;
+          <span class="jobbtns"><button class="toggle ${on && ron ? 'on' : ''}" data-rpause="${i}" aria-pressed="${on}"><i></i>${on ? 'On' : 'Paused'}</button><button class="x" data-rdel="${i}" aria-label="Remove from auto repeat" title="Turn Repeat off for this station">×</button></span></li>`; }).join('')}</ol>
+        <button class="btn ${UI.repClear ? 'danger' : 'ghost'} sm" data-rclear>${UI.repClear ? 'Tap again to remove all ' + reps.length : 'Remove all'}</button>`;
     } else if (UI.drawer === 'lb') {
       const L = UI.lb || {}, tab = UI.lbTab || 'top', fmt = n => Number(n).toLocaleString();
       h = `<div class="phead"><div><h2>Leaderboard</h2><p class="sub">Every farm in the valley. <b>Top score</b> is total score; <b>Best pace</b> is score per day played, for farms at least ${LB_MIN_DAYS} days old.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
@@ -3187,6 +3188,10 @@
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhFert' in ds) { if (S.helper) { S.helper.fert = !S.helper.fert; save(); } }
     else if ('fhSeeds' in ds) { if (S.helper) { S.helper.seeds = !S.helper.seeds; save(); } }
+    else if ('rdel' in ds) { const b = S.tiles[+ds.rdel].b; if (b) { b.rep = null; b.repN = null; b.repDone = 0; b.rpause = false; save(); } }
+    else if ('rclear' in ds) {
+      if (!UI.repClear) { UI.repClear = true; clearTimeout(UI.repClearT); UI.repClearT = setTimeout(() => { UI.repClear = false; dirty(); }, 3000); }
+      else { UI.repClear = false; clearTimeout(UI.repClearT); repStations().forEach(({ b }) => { b.rep = null; b.repN = null; b.repDone = 0; b.rpause = false; }); toast('Repeat is off at every station. Turn it back on from a station’s recipe list.', 'info'); save(); } }
     else if ('rall' in ds) { S.repOn = S.repOn === false; save(); }
     else if ('rpause' in ds) { const b = S.tiles[+ds.rpause].b; if (b) { b.rpause = !b.rpause; save(); } }
     else if ('fhToggle' in ds) { S.helper.on = !S.helper.on; if (!S.helper.on) { S.helper.cur = null; } }

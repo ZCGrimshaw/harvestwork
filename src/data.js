@@ -975,6 +975,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.92', at: '2026-10-28 10:20', notes: ['In the Auto repeat list, each station now has a × to take it off Repeat, and “Remove all” (tap twice) clears the list, like the farmhand’s jobs list.'] },
   { v: '0.91.2', backend: true, at: '2026-10-28 10:20', notes: ['Show your support now uses the PayPal QR code and link instead of Ko-fi.'] },
   { v: '0.91.1', backend: true, at: '2026-10-28 10:05', notes: ['Wall of Thanks: Joel is now listed as Joel K.'] },
   { v: '0.91', at: '2026-10-28 10:15', notes: ['New Wall of Thanks in the Menu (under Show your support) says thank you to the people who have supported Harvest Valley.'] },

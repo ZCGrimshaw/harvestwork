@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.92 — 2026-10-28
+- Auto repeat drawer: `data-rdel` (× per row) turns Repeat off for that station (clears `rep`, `repN`, `repDone`, `rpause`); `data-rclear` is a two-tap Remove all (`UI.repClear`, 3 s arm). Test: t_repeat.py (extended).
+
 ## v0.91.2 — 2026-10-28 · backend (hidden from the in-game updates log)
 - Show your support: new PayPal QR code (`src/support-qr.png`) and PayPal link replace Ko-fi; button now reads Open PayPal.
 
