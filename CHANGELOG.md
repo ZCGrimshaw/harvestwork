@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.93.3 — 2026-10-28 · backend (hidden from the in-game updates log)
+- Automatic error reports: `frameFail` (and uncaught `window` errors) call `reportError`, which sends the error text, a short trimmed stack and the usual `fbCtx` (version, build, day, mode, device) through `send_feedback` as a `bug` note starting `[auto]`, so the existing `feedback-mail` email covers it. At most 3 distinct errors per session; each is sent once per browser (`harvestworks.errsent`). No farm data is sent. Test: t_errreport.py.
+
 ## v0.93.2 — 2026-10-28
 - Freeze fix. A queued job on a tile whose resource was gone (Plant sapling on a forest tile since reshaped, so `T.r` was null) threw inside `update`, which killed the `requestAnimationFrame` loop: nothing responded, not even Menu. Found from a player's console (`checkTask` → `Object.check`, reading `st` of null).
 - `checkTask` now catches errors and drops the job; saves repair gathering tiles with no `r`; `frame` is wrapped (`frameBody` + `frameFail`) so one bad frame can't stop the loop, with `update` guarded separately so rendering and the Menu keep working. Test: t_crash.py.

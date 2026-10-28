@@ -1000,6 +1000,17 @@
       if (r && r.ok) { F.done = 'sent'; F.msg = ''; pingFeedbackMail(); } else F.err = (r && r.error) || 'Couldn’t send that. Try again in a moment.'; }
     catch (e) { const q = lsGet(FBQ, []); q.push(note); lsSet(FBQ, q.slice(-10)); F.done = 'queued'; F.msg = ''; }
     F.busy = false; dirty(); }
+  /* Automatic error reports: when the game catches an error it sends the error text, version and the same small context as a note (kind 'bug', starting
+     "[auto]"), once per distinct error per browser, so the developer hears about it without anyone opening the console. No farm data is included. */
+  async function reportError(e) { try {
+    const msg = String((e && e.message) || e || 'error').slice(0, 200), stack = String((e && e.stack) || '').split('\n').slice(1, 4).map(x => x.trim().replace(/^at /, '').replace(/https?:\/\/[^ )]*\//, '').replace(/file:\/\/[^ )]*\//, '')).join(' | ').slice(0, 500);
+    const key = (msg + stack.slice(0, 80)).slice(0, 120), seen = lsGet('harvestworks.errsent', []);
+    UI.errSeen = UI.errSeen || {}; if (UI.errSeen[key] || Object.keys(UI.errSeen).length >= 3 || seen.includes(key)) return; UI.errSeen[key] = 1;
+    lsSet('harvestworks.errsent', seen.concat(key).slice(-20));
+    const note = { p_player: PLAYER, p_kind: 'bug', p_msg: ('[auto] ' + msg + ' @ ' + stack).slice(0, 1000), p_name: (NET.myName || '').slice(0, 30) || null, p_ctx: fbCtx() };
+    try { const r = await rpc('send_feedback', note); if (r && r.ok) pingFeedbackMail(); } catch (x) { const q = lsGet(FBQ, []); q.push(note); lsSet(FBQ, q.slice(-10)); }
+  } catch (x) { } }
+  addEventListener('error', ev => { try { if (ev && ev.error) reportError(ev.error); } catch (x) { } });
   async function flushFeedback() { const q = lsGet(FBQ, []); if (!q.length) return; const left = []; let sent = 0;
     for (const n of q) { try { const r = await rpc('send_feedback', n); if (r && r.ok) sent++; } catch (e) { left.push(n); } }
     lsSet(FBQ, left); if (sent) { pingFeedbackMail(); toast(`<b>Feedback sent.</b> Thanks for your ${sent === 1 ? 'note' : sent + ' notes'}!`, 'info'); } }
@@ -3397,7 +3408,7 @@
   }
   /* One bad frame must never freeze the game: report it, drop whatever job was running, and keep the menu alive so the farm can be backed up. */
   function frameFail(e) {
-    try { console.error(e); UI.errN = (UI.errN || 0) + 1; if (S) { S.cur = null; if (S.av) S.av.path = []; if (S.helper) { S.helper.cur = null; S.helper.path = []; } }
+    try { console.error(e); reportError(e); UI.errN = (UI.errN || 0) + 1; if (S) { S.cur = null; if (S.av) S.av.path = []; if (S.helper) { S.helper.cur = null; S.helper.path = []; } }
       if (UI.errN <= 3 || UI.errN % 600 === 0) toast('<b>Something went wrong, but your farm is safe.</b> Open the Menu to back it up. If it keeps happening, please send feedback.', 'warn');
       if (UI.errN === 1) { try { save(); } catch (x) { } } } catch (x) { }
   }
@@ -3421,7 +3432,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261028-214425';
+  const BUILD = '20261028-215746';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
