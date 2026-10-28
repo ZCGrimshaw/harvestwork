@@ -968,8 +968,14 @@ window.HW_DATA = {
 
 /* In-game "What's new" log. Newest first. `at` is the release time (Pacific). */
 window.HW_DATA.support = { url: 'https://ko-fi.com/zerocrunchgames', qr: 'support-qr.png' };
+// Wall of Thanks (Menu → Wall of Thanks). Add a supporter by appending { name, badge } here; badge is 'star' or 'coin'. Listed left to right, top row first.
+window.HW_DATA.supporters = [
+  { name: 'Joel', badge: 'star' },
+  { name: 'Calvin M', badge: 'coin' },
+];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.91', at: '2026-10-28 10:15', notes: ['New Wall of Thanks in the Menu (under Show your support) says thank you to the people who have supported Harvest Valley.'] },
   { v: '0.90', at: '2026-10-27 18:40', notes: ['In winter and on snow days, farm plots you can still till now show as dark frozen earth with a little frost on top, so they stand out from the plain snow tiles. Repeat counts on stations are now Forever, 1, 5, 10, 25, 100, 250, 500 or 1000 times (a count you’d already set stays as it was).'] },
   { v: '0.89', at: '2026-10-27 10:10', notes: ['The Valley Monument’s daily allowance now resets at 2 AM Pacific instead of 5 PM, so you can give again first thing in the morning. Builder’s day follows the same clock, and the countdown on the monument shows the time left. Gifts you made yesterday evening count toward yesterday, so your allowance is fresh again now.'] },
   { v: '0.88', at: '2026-10-26 21:20', notes: ['The side panel (Open Market, stations, plots and the rest) now keeps its title and × close button pinned at the top while the list under it scrolls. On phones the title sits just under the “More” bar.'] },

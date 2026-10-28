@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.91 — 2026-10-28
+- Wall of Thanks: new Menu → Game button (under Show your support) opens a drawer listing supporters with a gold badge each. Names live in `HW_DATA.supporters` in `src/data.js` (`{ name, badge: 'star'|'coin' }`); first two are Joel (star) and Calvin M (coin). Shown in the in-game updates log.
+
 ## v0.90 — 2026-10-27
 - art.js: `SCENES.winter.raw` / `SCENES.snow.raw` recolour only the `farm_raw` tile (dark frozen earth, frost flecks) instead of the all-white ground map, so untilled plots read as tillable in winter and on snow days.
 - `REP_OPTS` (station Repeat count) = Forever, 1, 5, 10, 25, 100, 250, 500, 1000; `repOpts(b)` keeps an older saved count selectable. Test: t_snowplot.py.
