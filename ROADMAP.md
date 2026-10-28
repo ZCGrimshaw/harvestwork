@@ -100,6 +100,22 @@ Not built yet; picked up when we choose to.
   game runs every 6 minutes: Grand orders refill every 15 min (`C.grand.refill` 900 s, 2 slots, never expire), regular requests every
   15 s, a game day is 4 min. Ask Joel which screen shows 6 minutes. If it is the Grand orders, options: slower refill (30-60 min),
   smaller size (`C.grand.fill` 0.22 down to about 0.10-0.12), or one slot. Smaller size first.
+- **Two-finger drag glitches near big buildings (pinned 2026-10-28, not looked into yet):** on a touch screen, pressing and dragging with two fingers
+  makes the Farmer's Manor (the biggest house size) and the Pyramid monument "do weird things". Two fingers turn and tilt the view (pointer code near
+  `pinch`, game.js), so the likely suspect is how these large multi-tile sprites are drawn or sorted while the view yaws or tilts. Needs a repro first:
+  which device, and what "weird" looks like (jumping, flickering, drawn behind other things, disappearing).
+- **More cold storage (pinned 2026-10-28, from Joel: "Give more cold-storage (allow mega-upgrade or something). Everything is cold-storage and the
+  mega-orders have us saving everything."):** The Cold Cellar holds every cooked, baked, preserved and brewed good plus eggs and milk (`storeKinds.coldcellar`),
+  which in the late game is nearly everything a player makes. One cellar per area, 200 + 120 per expansion, 4 expansions = 680 maximum each
+  (`hold` in `data.js`). Grand ("mega") orders ask for 5 goods with quantities that scale with storage (`C.grand.fill`), so players hoard goods for them, and
+  the cellars fill first and spill into main storage. Options: (1) extra "mega" expansion levels after the 4th (a bigger step, costs rising as today);
+  (2) raise `max` from 4 to 8; (3) a second cellar per area; (4) split the Cold Cellar so goods and drinks have their own store. Do not make storage endless
+  without a cost: it should stay a choice. Tune with the Grand orders pin above, since the two feed each other.
+- **See what is in each store (pinned 2026-10-28, from Joel: "Allow us to see what's in our cold-storage (and silos and material-yards, etc)."):** Today the
+  Storage drawer is one mixed list of everything owned, and its subtitle only gives totals per store ("food and drink 600 of 680 in their own store"). A
+  Silo, Cold Cellar or Material Yard panel shows a single count too. Joel wants to see which goods are in each store. Idea: in the Storage drawer, a
+  "Where" switch (All / Main / Silo / Cold Cellar / Material Yard) or grouped sections; and a list of contents in each store building's own panel. The
+  data is already there (`storeKind(id)` says which store a good belongs to; `holdUsed()` totals each).
 - **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:
   (1) Task durations: user's idea was +5% short, +7% medium, +10% long tasks, farmhand matched. Concern: that's small and
   mastery/speed upgrades cancel it; 10/15/25% would be felt; a flat % is simpler; one tier function (short <15 s, medium 15-40,
