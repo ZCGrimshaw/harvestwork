@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.93.2 — 2026-10-28
+- Freeze fix. A queued job on a tile whose resource was gone (Plant sapling on a forest tile since reshaped, so `T.r` was null) threw inside `update`, which killed the `requestAnimationFrame` loop: nothing responded, not even Menu. Found from a player's console (`checkTask` → `Object.check`, reading `st` of null).
+- `checkTask` now catches errors and drops the job; saves repair gathering tiles with no `r`; `frame` is wrapped (`frameBody` + `frameFail`) so one bad frame can't stop the loop, with `update` guarded separately so rendering and the Menu keep working. Test: t_crash.py.
+
 ## v0.93.1 — 2026-10-28 · backend (hidden from the in-game updates log)
 - Score checks (Supabase migration `score_sanity_checks`): `weekly_score` rejects a score above 0.0167·t² + 3·t + 100 for a run t seconds old (best real runs are ~1,900 at 10 min; the curve allows ~7,900). `submit_score` clamps growth to ~1,000 points per second and one game day per 100 s since that farm's last submission (real late game is ~120 points/s; a day lasts 240 s), keeps the 50,000-per-day ceiling, allows at most 8 farms per player and 3,000 days on a new farm row. Races and Dark Moon unchanged.
 - `build.sh` writes `itch/harvest-valley-itch-v<version>.zip` (git-ignored); see `ITCH.md`. Tested in a cross-origin sandboxed iframe like itch's.

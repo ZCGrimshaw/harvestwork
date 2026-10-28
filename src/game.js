@@ -125,6 +125,7 @@
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null; fixMsOrder();
+    S.tiles.forEach(T => { if (!T.r && D.gather[T.t]) T.r = initRes(T.t); });   // a gathering tile must always carry its resource
     S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
   }
   const idx = (x, y) => y * S.w + x, tx = i => i % S.w, ty = i => (i / S.w) | 0;
@@ -1513,7 +1514,7 @@
         toast('<b>Your farmhand is here.</b> Select a plot, station, tree, pond or boulder field and choose “Add to farmhand”.', 'goal'); } }
   };
   const ONCE = ['housebuild', 'housegrow', 'housemove', 'fertilize', 'reshape', 'clearplot', 'till', 'plant', 'water', 'harvest', 'chop', 'replant', 'collect', 'build', 'place', 'expand', 'upgrade', 'homeup', 'deliver', 'toolup', 'hire'];
-  function checkTask(t) { return TASKS[t.a].check(t); }
+  function checkTask(t) { try { return TASKS[t.a].check(t); } catch (e) { return 'That spot has changed, so the job was dropped'; } } // e.g. a queued job on a tile that has since been reshaped
   function queueTask(t) {
     t.a = t.a; const busy = S.queue.length + (S.cur ? 1 : 0);
     const same = x => x && x.a === t.a && x.i === t.i && x.p === t.p;
@@ -3391,20 +3392,29 @@
     if (c.left <= 0) { UI.catchup = null; const m = Math.round(c.total / 60), dg = S.gold - c.gold;
       toast(`<b>Welcome back.</b> Your farm kept working for ${m >= 1 ? m + ' min' : Math.round(c.total) + 's'} while you were away${dg ? ` (${dg > 0 ? '+' : '−'}${Math.abs(dg)}g)` : ''}.`, 'goal'); save(); } }
   function frame(now) {
+    try { frameBody(now); } catch (e) { frameFail(e); }
+    requestAnimationFrame(frame);
+  }
+  /* One bad frame must never freeze the game: report it, drop whatever job was running, and keep the menu alive so the farm can be backed up. */
+  function frameFail(e) {
+    try { console.error(e); UI.errN = (UI.errN || 0) + 1; if (S) { S.cur = null; if (S.av) S.av.path = []; if (S.helper) { S.helper.cur = null; S.helper.path = []; } }
+      if (UI.errN <= 3 || UI.errN % 600 === 0) toast('<b>Something went wrong, but your farm is safe.</b> Open the Menu to back it up. If it keeps happening, please send feedback.', 'warn');
+      if (UI.errN === 1) { try { save(); } catch (x) { } } } catch (x) { }
+  }
+  function frameBody(now) {
     const dt = Math.min(.25, (now - last) / 1000); last = now;
     tickCatchUp(); SND.setHour(hour()); checkIdle(now); checkFull(); tickRace(dt);
     { const sc = (noSeasons() ? 'spring' : season().id) + '|' + wxNow() + '|' + raining(); if (sc !== UI.sndScene || (SND.ready && !UI.sndReady)) { UI.sndScene = sc; UI.sndReady = SND.ready; SND.setScene(...sc.split('|').map((v, k) => k === 2 ? v === 'true' : v)); } }
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
     else if (UI.monWelcome && !UI.title && !UI.catchup && !S.race) { UI.monWelcome = false; openTitle('monwelcome'); }
     else if (UI.monPend && !UI.title && !UI.catchup && !S.race) showMonStage();
-    if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) update(dt); tickYaw(dt); tickTicker(dt); tutTick();
+    if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) { try { update(dt); } catch (e) { frameFail(e); } } tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     if (UI.cart && (UI.cart.t += dt) > 2.4) UI.cart = null;
     draw(); placePanel();
     uiT -= dt; if (UI.dirty || uiT <= 0) { renderUI(); UI.dirty = false; uiT = .5; }
     document.querySelectorAll('[data-prog]').forEach(el => { el.style.width = (Math.min(1, progress(el.dataset.prog)) * 100).toFixed(1) + '%'; });
-    requestAnimationFrame(frame);
   }
 
   /* ================= update notice =================
