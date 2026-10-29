@@ -111,7 +111,7 @@ Not built yet; picked up when we choose to.
   the cellars fill first and spill into main storage. Options: (1) extra "mega" expansion levels after the 4th (a bigger step, costs rising as today);
   (2) raise `max` from 4 to 8; (3) a second cellar per area; (4) split the Cold Cellar so goods and drinks have their own store. Do not make storage endless
   without a cost: it should stay a choice. Tune with the Grand orders pin above, since the two feed each other.
-- **See what is in each store (pinned 2026-10-28, from Joel: "Allow us to see what's in our cold-storage (and silos and material-yards, etc)."):** Today the
+- **See what is in each store (pinned 2026-10-28, DONE in v0.94, from Joel: "Allow us to see what's in our cold-storage (and silos and material-yards, etc)."):** Today the
   Storage drawer is one mixed list of everything owned, and its subtitle only gives totals per store ("food and drink 600 of 680 in their own store"). A
   Silo, Cold Cellar or Material Yard panel shows a single count too. Joel wants to see which goods are in each store. Idea: in the Storage drawer, a
   "Where" switch (All / Main / Silo / Cold Cellar / Material Yard) or grouped sections; and a list of contents in each store building's own panel. The

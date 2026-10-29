@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.94 — 2026-10-29
+- See what is in each store (Joel's request). Storage drawer: a "Where" chip row (All / one per built store / Main storage; `UI.cat.invwhere`, via `storeKind` and `holdCaps`) filters the list, with the right empty-state text. Silo, Cold Cellar and Material Yard panels list their goods (`storelist`, grouped by `storeKind(id) === hold.cls`, biggest stack first). Goods that overflow into main storage still show under their store. Test: t_storewhere.py.
+
 ## v0.93.3 — 2026-10-28 · backend (hidden from the in-game updates log)
 - Automatic error reports: `frameFail` (and uncaught `window` errors) call `reportError`, which sends the error text, a short trimmed stack and the usual `fbCtx` (version, build, day, mode, device) through `send_feedback` as a `bug` note starting `[auto]`, so the existing `feedback-mail` email covers it. At most 3 distinct errors per session; each is sent once per browser (`harvestworks.errsent`). No farm data is sent. Test: t_errreport.py.
 
