@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.99.3 — 2026-10-29
+- Storage counter (top bar) and the Homestead's "Open inventory" button carry `data-where="main"`; the `ds.drawer` handler sets `UI.cat.invwhere` to it when any store exists, so the inventory opens on Main storage (the goods behind the used/cap number). From Joel: "what's not in extra storage".
+
 ## v0.99.2 — 2026-10-29
 - Chairs turn four ways. `pieces.chair.turn` is now `4`; `f` is 0–3 (old 0/1 values are the first two facings, so saves load unchanged). `rmTurn` cycles `(f+1)%4` for four-way pieces, two-way for shelves and the case; `roomFix` clamps `f`. `isoBox` takes a rotation (bit 1 mirrors v, bit 0 swaps axes), so the chair backrest lands on any of the four sides. Placing from the hand keeps the facing. Test: t_chair.py.
 

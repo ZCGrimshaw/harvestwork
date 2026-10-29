@@ -2232,7 +2232,7 @@
       ${S.loan ? `<button class="stat loan" data-repay title="Loan from the valley bank. Paid back automatically at ${LOAN.auto}g, or tap to repay now"><span class="lbl">Loan</span><b>${S.loan.owed}g</b></button>` : ''}
       <div class="stat score" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
-      <button class="stat store" data-drawer="inv" title="Storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
+      <button class="stat store" data-drawer="inv" data-where="main" title="Storage: tap to see what is in main storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
         : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}${['clear', 'mist', 'fog'].includes(wxNow()) ? ' calm' : ''}">${wxName(wxNow())}</span></button>`}
       ${S.goalMin ? goalBtn() : ''}
@@ -2426,7 +2426,7 @@
     const ex = extraCap(), nb = S.tiles.filter(t => t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage).length;
     h += `<p class="hint">Homestead ${homeCap(S.home)}${ex ? ` + ${nb} storage building${nb === 1 ? '' : 's'} ${ex}` : ''}. Expand the Homestead below, or build Storage Barns from the Open Market for more room.</p>`;
     h += btn({ a: 'homeup', i }, `Expand Homestead storage: ${homeCap(S.home)} → ${homeCap(S.home + 1)}`, { sub: costTxt(homeCost(S.home)) });
-    h += `<button class="btn ghost" data-drawer="inv">Open inventory</button>`;
+    h += `<button class="btn ghost" data-drawer="inv" data-where="main">Open inventory<small>Starts on what’s filling main storage; use Where to see the other stores</small></button>`;
     h += `<span class="eyebrow">Your farmer</span><label class="field">Name <input id="pname" maxlength="14" value="${esc(S.name)}"></label>
       <div class="swatches"><span>Shirt</span>${ART.SHIRTS.map((c, k) => `<button class="sw ${S.shirt === k ? 'on' : ''}" style="background:${c}" data-shirt="${k}" aria-label="Shirt colour ${k + 1}"></button>`).join('')}</div>
       <div class="swatches"><span>Hat</span>${ART.HATS.map((c, k) => `<button class="sw ${S.hat === k ? 'on' : ''}" style="background:${c}" data-hat="${k}" aria-label="Hat colour ${k + 1}"></button>`).join('')}</div>`;
@@ -3431,6 +3431,7 @@
     else if ('tutSkip' in ds) { endTut(true); }
     else if (ds.vinfo) { UI.drawer = null; UI.logOpen = ds.vinfo; } // from the phone Info panel: close it and open that list
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false;
+      if (ds.where && UI.drawer === 'inv') UI.cat.invwhere = Object.keys(holdCaps()).length ? ds.where : 'all';   // the Storage counter opens on what is filling main storage
       if (ds.drawer === 'medals' && UI.drawer === 'medals' && NET.ok && !S.race && Date.now() - (NET.medalAt || 0) > 60000) fetchMedals(); } // opening Medals checks for new ones
     else if (ds.tree) UI.drawer = 'tree';
     else if (ds.log) { const was = UI.logOpen; UI.logOpen = was === ds.log ? null : ds.log;
@@ -3685,7 +3686,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-172118';
+  const BUILD = '20261029-172501';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
