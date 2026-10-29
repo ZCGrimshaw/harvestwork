@@ -545,9 +545,9 @@ window.HW_DATA = {
     barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, perArea: 2, place: { plank: 4 }, desc: 'Adds 40 storage. Two per area you own.' },
     warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. One per area you own.' },
     // special stores: hold one kind of goods apart from main storage (hold.cls, see storeKinds); expandable up to hold.max times; expansions past hold.mega add double (mega expansions)
-    silo:       { name: 'Silo', kind: 'storage', hold: { cls: 'silo', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 8, stone: 6 }, desc: 'Holds your crops apart from main storage. One per area you own.' },
-    coldcellar: { name: 'Cold Cellar', kind: 'storage', hold: { cls: 'coldcellar', base: 200, step: 120, max: 8, mega: 4 }, place: { brick: 12, stone: 8 }, desc: 'Keeps eggs, milk and everything cooked, baked, preserved or brewed apart from main storage. One per area you own.' },
-    yard:       { name: 'Material Yard', kind: 'storage', hold: { cls: 'yard', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 10, fence_kit: 2 }, desc: 'Stacks logs, stone, ore, clay, wool and building parts apart from main storage. One per area you own.' },
+    silo:       { name: 'Silo', kind: 'storage', hold: { cls: 'silo', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 8, stone: 6 }, desc: 'Holds your crops, flour and malt apart from main storage. One per area you own.' },
+    coldcellar: { name: 'Cold Cellar', kind: 'storage', hold: { cls: 'coldcellar', base: 200, step: 120, max: 8, mega: 4 }, place: { brick: 12, stone: 8 }, desc: 'Keeps eggs, milk and all your food and drink (cooked, baked, preserved or brewed) apart from main storage. One per area you own.' },
+    yard:       { name: 'Material Yard', kind: 'storage', hold: { cls: 'yard', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 10, fence_kit: 2 }, desc: 'Stacks logs, stone, ore, clay, wool, building parts and finished crafts (cloth, pots, baskets, tools, glass, gems) apart from main storage. One per area you own.' },
     smelter:   { name: 'Smelter', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' },
     dyevat:    { name: 'Dye Vat', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
     potter:    { name: 'Potter’s Wheel', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
@@ -597,9 +597,9 @@ window.HW_DATA = {
      (level l → l+1: gold × goldMult^l, bricks and crates rising each time). Goods fill their store first; any more go
      to main storage. */
   storeKinds: {
-    silo: { name: 'crops', crops: true },
+    silo: { name: 'crops', crops: true, ids: ['flour', 'malt'] },   // milled and malted grain keep with the grain
     coldcellar: { name: 'food and drink', cats: ['good'], ids: ['egg', 'milk'] },
-    yard: { name: 'materials', cats: ['gathered', 'component'], ids: ['wool'] }
+    yard: { name: 'materials', cats: ['gathered', 'component'], ids: ['wool', 'dyed_cloth', 'clay_pot', 'basket', 'iron_tools', 'glass_jar', 'stained_glass', 'gem_ring', 'gem_necklace', 'blanket'] }   // finished crafts are not food, so they stack in the yard
   },
   storeUp: { gold: 500, goldMult: 1.7, brick: 8, brickStep: 6, crate: 2, crateStep: 2 },
   homeGrowth: { cap: 60, granary: 100, gold: 700, goldMult: 1.35, brick: 16, brickStep: 6, crate: 4, crateStep: 2 },
@@ -975,6 +975,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.97', at: '2026-10-29 10:30', notes: ['Some goods were kept in the wrong store. Flour and malt now go in the Silo with the grain, and finished crafts that are not food (Dyed Cloth, Clay Pots, Baskets, Iron Tools, Glass Jars, Stained Glass, Gem Rings and Necklaces, Blankets) now go in the Material Yard. The Cold Cellar keeps eggs, milk and all your food and drink. Goods you already own move to the right store by themselves, so your Cold Cellar has more room.'] },
   { v: '0.96', at: '2026-10-29 10:00', notes: ['When you stop turning the map, it now glides to the nearest straight view, so big buildings like your house and the monuments line up with the grid again (they are flat pictures drawn for the four straight views, so they looked off at in-between angles). Settings has a new Graphics section: a switch for this (Snap rotation to straight views, on by default) with the building names, player counters and market ticker switches moved in beside it.'] },
   { v: '0.95', at: '2026-10-29 09:30', notes: ['Silos, Cold Cellars and Material Yards can now be expanded eight times instead of four. The new last four are mega expansions that add twice as much space each (a fully expanded Cold Cellar now holds 1,640, up from 680; Silos and Material Yards hold 2,050, up from 850). They cost more each time, so they are a late-game goal.'] },
   { v: '0.94', at: '2026-10-29 09:00', notes: ['You can now see what is inside your Silos, Cold Cellars and Material Yards. Select one of these buildings to see the goods it holds, and in Storage a new “Where” row lets you view everything, one store at a time, or just what is in main storage.'] },

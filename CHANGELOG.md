@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.97 — 2026-10-29
+- Store contents fixed (Joel: Stained Glass and flour were in the Cold Cellar). `storeKinds.coldcellar` takes the whole `good` category, which includes non-food crafts. `storeKinds.silo.ids` now has flour and malt; `storeKinds.yard.ids` gains dyed_cloth, clay_pot, basket, iron_tools, glass_jar, stained_glass, gem_ring, gem_necklace, blanket. Named ids are matched only through their own store's `ids` (`storeKind`), so no save change: the store is worked out from the item each time. Test: t_kinds.py.
+
 ## v0.96 — 2026-10-29
 - Rotation settle (reported on a trackpad: two-finger drag spun the house and monuments off the grid). The house and monuments are single flat sprites for the four quarter-turn views (`hView`, `mon:` art), so at in-between yaw they don't match the grid. `tickYaw` now glides to the nearest quarter turn 450 ms after the player stops turning (`UI.rotAt`, set in `setView` when yaw changes; skipped while a pointer or the stick is held), controlled by `S.snapRot` (default on, saved per farm).
 - Settings: new Graphics section holding Snap rotation, Show building names (`data-labelsset`, mirrors the eye button and X), the players-online counters and the market ticker toggle (moved from "Top of the screen" and Notifications). Test: t_snap.py.
