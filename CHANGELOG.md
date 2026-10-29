@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.99.4 — 2026-10-29
+- Station recipe rows warn when Repeat can't run: global `S.repOn === false` (button `data-rall`) or `b.rpause` (button `data-rpause`). From Joel: Repeat set to a count seemed to do nothing. Verified the count itself: Repeat N counts loaded batches, fills free slots at once, and stops after N (test t_rep10.py).
+
 ## v0.99.3 — 2026-10-29
 - Storage counter (top bar) and the Homestead's "Open inventory" button carry `data-where="main"`; the `ds.drawer` handler sets `UI.cat.invwhere` to it when any store exists, so the inventory opens on Main storage (the goods behind the used/cap number). From Joel: "what's not in extra storage".
 
