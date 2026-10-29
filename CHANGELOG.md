@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.99 — 2026-10-29
+- Weekly leader track. During a weekly run `tickWeekly` fetches `weekly_board` every 30 s (`UI.wkLead`, reset for each run). `weekLead()` picks #1, or #2 when you're #1. `renderWeekBar` draws a leader row (sky blue) above your row on one shared scale, plus a note (points to go, ahead, or no scores yet). The old bar filled with elapsed time; time left is now in the header only. Phone meter: a second `vcol.lead` column; the tap toast includes the leader. No server change (final scores only, so this compares against the leader's best, not their pace). Test: t_wklead.py.
+
 ## v0.98 — 2026-10-29
 - House interior ("Go inside"). Full-screen `#room` overlay with a crisp native canvas (`#roomcv`, drawn by `ART.drawRoom`, geometry shared through `ART.roomGeom(n)`): an n×n floor of 32×16 diamonds and two back walls of n 16-px spots. The map isn't drawn while it's open.
 - Data: `D.house.room` (`levels` Snug 4×4 free, then Comfy 5×5 3,000g … Palatial 9×9 120,000g with late materials; `pieces` placement kinds floor / small (floor or on a table) / rug (2×2 under furniture) / wall; free `window`; `walls` and `floors` styles).

@@ -929,6 +929,8 @@
     { const left = R.end - Date.now(); if (UI.wwFor !== R.end) { UI.wwFor = R.end; UI.ww = {}; }
       if (left <= 30000) { if (!UI.ww[30]) { UI.ww[30] = UI.ww[60] = 1; weekWarn('30 seconds left!'); } }
       else if (left <= 60000 && !UI.ww[60]) { UI.ww[60] = 1; weekWarn('1 minute left!'); } }
+    if (UI.wlFor !== R.end) { UI.wlFor = R.end; UI.wkLead = undefined; UI.wlt = 0; }   // a new run: fetch the board straight away
+    UI.wlt = (UI.wlt || 0) - dt; if (UI.wlt <= 0) { UI.wlt = 30; rpc('weekly_board', { p_player: PLAYER }).then(b => { if (b && Array.isArray(b.top)) { UI.wkLead = b; dirty(); } }).catch(() => {}); }
     UI.rtick = (UI.rtick || 0) - dt;
     if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score) }).catch(() => {}); }
   }
@@ -936,13 +938,24 @@
      filling upward, with the time above and your score below. Tap it for the full standings. */
   function vMeter(o) { const el = $('#racebar'); el.classList.toggle('vm', !!o); document.body.classList.toggle('has-vm', !!o);
     if (!o) { document.body.style.removeProperty('--vmw'); return false; }
-    setHTML('#racebar', `<div class="vmt">${o.time}</div><div class="vmc" role="img" aria-label="${esc(o.label)}">${o.cols.map(c => `<span class="vcol ${c.me ? 'me' : ''} ${c.done ? 'done' : ''}"><i style="height:${c.pct}%"></i></span>`).join('')}</div><div class="vms">${o.score.toLocaleString()}</div>`);
+    setHTML('#racebar', `<div class="vmt">${o.time}</div><div class="vmc" role="img" aria-label="${esc(o.label)}">${o.cols.map(c => `<span class="vcol ${c.me ? 'me' : ''} ${c.done ? 'done' : ''} ${c.lead ? 'lead' : ''}"><i style="height:${c.pct}%"></i></span>`).join('')}</div><div class="vms">${o.score.toLocaleString()}</div>`);
     el.title = o.label; document.body.style.setProperty('--vmw', Math.ceil(el.offsetWidth + 8) + 'px'); return true; }
   function weekFacts() { const R = S.race, th = weekTheme(R.week), left = R.done ? 0 : Math.min(runMs(R.week), R.end - Date.now()); return { R, th, left, pct: (100 - left / runMs(R.week) * 100).toFixed(1), score: Math.floor(S.score) }; }
-  function renderWeekBar() { const { R, th, left, pct, score } = weekFacts();
-    if (vMeter(isPhone() ? { time: fmtTime(left), cols: [{ pct, me: true }], score, label: `${th.name}: ${fmtTime(left)} left, score ${score.toLocaleString()}` } : null)) return;
-    setHTML('#racebar', `<div class="rhead"><b>${esc(th.name)}</b><span>${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left</span></div>
-      <div class="rrow me"><span class="rname">Score</span><span class="rtrack"><i style="width:${pct}%"></i></span><span class="rsc">${score.toLocaleString()}</span></div>`); }
+  /* The leader track: this week's best score is the line to beat. It comes from the weekly board (refreshed every 30 s during a run).
+     If you're #1 already, the bar shows the next best as the score to stay ahead of. Bars share one scale, so a full bar is the higher score. */
+  function weekLead() { const B = UI.wkLead; if (!B || !Array.isArray(B.top) || !B.top.length) return null;
+    const t0 = B.top[0], me = t0.me, x = me ? B.top[1] : t0; return x ? { name: x.name, score: x.score | 0, rank: me ? 2 : 1, meTop: me, best: t0.score | 0 } : (me ? { meTop: true, score: 0, best: t0.score | 0 } : null); }
+  function renderWeekBar() { const { R, th, left, pct, score } = weekFacts(), L = weekLead(), top = Math.max(1, score, L ? L.score : 0);
+    const lp = L && L.score ? (L.score / top * 100).toFixed(1) : null, mp = L && L.score ? (score / top * 100).toFixed(1) : pct, ahead = L && L.score && score > L.score;
+    const leadTxt = L && L.score ? `${L.rank === 1 ? '#1' : '#2'} ${L.name} ${L.score.toLocaleString()}` : '';
+    if (vMeter(isPhone() ? { time: fmtTime(left), cols: (lp ? [{ pct: lp, lead: true }] : []).concat([{ pct: mp, me: true }]), score,
+      label: `${th.name}: ${fmtTime(left)} left, score ${score.toLocaleString()}${leadTxt ? `. ${ahead ? 'Ahead of' : 'To beat'}: ${leadTxt}` : ''}` } : null)) return;
+    const lead = lp ? `<div class="rrow lead"><span class="rname" title="${esc(L.name)}">${L.rank === 1 ? '#1' : '#2'} ${esc(L.name)}</span><span class="rtrack"><i style="width:${lp}%"></i></span><span class="rsc">${L.score.toLocaleString()}</span></div>` : '';
+    const note = !lp ? (L && L.meTop ? `<p class="rnote">You’re #1 this week with ${L.best.toLocaleString()}. Nobody else has a score yet.</p>` : UI.wkLead === undefined ? '' : `<p class="rnote">No scores this week yet: set the first one.</p>`)
+      : L.meTop ? `<p class="rnote">You’re #1 this week with ${L.best.toLocaleString()}. ${ahead ? 'This run is ahead of #2 too.' : `This run: ${(L.score - score + 1).toLocaleString()} more to pass #2.`}</p>`
+      : `<p class="rnote">${ahead ? '<b>You’re ahead of #1!</b>' : `${(L.score - score + 1).toLocaleString()} more to take #1`}${R.ranked ? '' : ' (practice runs don’t count)'}${ahead ? '' : '.'}</p>`;
+    setHTML('#racebar', `<div class="rhead"><b>${esc(th.name)}</b><span>${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left</span></div>${lead}
+      <div class="rrow me"><span class="rname">You</span><span class="rtrack"><i style="width:${mp}%"></i></span><span class="rsc">${score.toLocaleString()}</span></div>${note}`); }
   // every frame during a race: countdown, score reports, everyone's progress, finishing
   function tickRace(dt) { const R = S.race; if (!R) return; if (R.weekly) return tickWeekly(dt);
     if (UI.title === 'racego') { const left = R.start - raceNow(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
@@ -968,7 +981,7 @@
     setHTML('#racebar', `<div class="rhead"><b>Race ${esc(R.code)}</b><span>to ${t.toLocaleString()} · ${R.done ? 'finished in ' + fmtTime(R.time) : fmtTime(raceNow() - R.start)}</span></div>${rows}`); }
   // tap the phone meter for the full picture
   $('#racebar').addEventListener('click', () => { if (!S.race || !$('#racebar').classList.contains('vm')) return;
-    if (S.race.weekly) { const { R, th, left, score } = weekFacts(); toast(`<b>${esc(th.name)}</b> · ${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left · score ${score.toLocaleString()}`, 'info'); return; }
+    if (S.race.weekly) { const { R, th, left, score } = weekFacts(), L = weekLead(); toast(`<b>${esc(th.name)}</b> · ${R.ranked ? 'Ranked run' : 'Practice'} · ${fmtTime(left)} left · score ${score.toLocaleString()}${L && L.score ? ` · ${L.rank === 1 ? '#1' : '#2'} ${esc(L.name)} ${L.score.toLocaleString()}` : ''}`, 'info'); return; }
     const { R, t, ps } = raceFacts(); toast(`<b>Race ${esc(R.code)}</b> to ${t.toLocaleString()}: ${ps.slice().sort((a, b) => b.sc - a.sc).map(p => `${esc(p.me ? 'You' : p.name)} ${p.done ? '✓ ' + fmtTime(p.ms) : p.sc.toLocaleString()}`).join(' · ')}`, 'info'); });
   async function openBoard() { UI.drawer = 'lb'; UI.lb = { loading: true }; dirty();
     if (!NET.ok) { await pullMarket(); }
@@ -3608,7 +3621,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-165206';
+  const BUILD = '20261029-165812';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
