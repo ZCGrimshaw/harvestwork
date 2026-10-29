@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.99.2 — 2026-10-29
+- Chairs turn four ways. `pieces.chair.turn` is now `4`; `f` is 0–3 (old 0/1 values are the first two facings, so saves load unchanged). `rmTurn` cycles `(f+1)%4` for four-way pieces, two-way for shelves and the case; `roomFix` clamps `f`. `isoBox` takes a rotation (bit 1 mirrors v, bit 0 swaps axes), so the chair backrest lands on any of the four sides. Placing from the hand keeps the facing. Test: t_chair.py.
+
 ## v0.99.1 — 2026-10-29
 - Trophy Case as a room fixture. `D.house.room.fixtures` (was `window`) now holds `window` (free, unlimited) and `trophy_case` (unique, given once). `caseAward` (about every 3 s from `renderUI`) puts it in the waiting list as soon as `caseEarned` (anything in `b.tc`, any medal, any earned monument model, or a trophy item in storage), with a one-time toast. `roomFix` keeps one of each unique fixture. Fixtures have no "To storage". Iso art: a glass cabinet with gold and silver glints, one per item in the case (up to 12).
 - Opened view (`UI.rm.view = 'case'`, from the selected case's "Open the case", or the house panel's "Open the trophy case"): HTML cabinet with three shelves (`caseRows(caseSlots(b))`), spots as buttons. Place from `caseOffers()`, move (onto a filled spot swaps), take out (items back to storage, needs room). Contents stay in `b.tc`; entries gain `s` (shelf spot), set by `caseFix` from `migrate` and every render, so older saves and entries added by older copies get a free spot. Esc steps back. The house panel's old put/take list is replaced by a summary and the button. Test: t_case.py (desktop and phone).

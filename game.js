@@ -2640,7 +2640,7 @@
     if (!Array.isArray(R.w)) R.w = []; if (!Array.isArray(R.p)) R.p = [];
     if (Array.isArray(b.d) && b.d.some(Boolean)) { b.d.forEach(x => { if (Array.isArray(x) && typeof x[0] === 'string') R.w.push([x[0], Math.min(2, Math.max(0, x[1] | 0))]); }); b.d = []; }
     const keep = []; R.p.forEach(p => { if (!p || typeof p !== 'object' || typeof p.k !== 'string') return;
-      if (pieceDef(p.k) && roomFits(R, p, keep)) keep.push(p); else if (p.k !== 'window') R.w.push([p.k, Math.min(2, Math.max(0, p.q | 0))]); });
+      if (pieceDef(p.k) && roomFits(R, p, keep)) { const d = pieceDef(p.k); if (p.f != null) p.f = d.turn === 4 ? (p.f | 0) % 4 : d.turn ? (p.f | 0) & 1 : 0; keep.push(p); } else if (p.k !== 'window') R.w.push([p.k, Math.min(2, Math.max(0, p.q | 0))]); });
     R.p = keep; R.w = R.w.filter(x => Array.isArray(x) && typeof x[0] === 'string');
     Object.keys(RZ().fixtures).filter(k => RZ().fixtures[k].unique).forEach(k => { let seen = R.p.filter(p => p.k === k).length;   // one of each, ever
       if (seen > 1) { let n = 0; R.p = R.p.filter(p => p.k !== k || n++ === 0); seen = 1; } R.w = R.w.filter(x => x[0] !== k || !seen++); });
@@ -2682,7 +2682,7 @@
       a[q]--; placed = Object.assign(cand, { q }); R.p.push(placed); }
     else if (h.src === 'window') { placed = Object.assign(cand, { q: 0 }); R.p.push(placed); }
     else return false;
-    if (cand.at === 'f' && h.f) placed.f = 1;
+    if (cand.at === 'f' && h.f) placed.f = h.f | 0;
     UI.rm.hand = null; UI.rm.sel = R.p.indexOf(placed); UI.rm.msg = ''; save(); SND.play('contract'); dirty(); return true; }
   // what is drawn where on screen, front first, for tapping
   function roomPick(px, py) { const R = roomOf(), G = ART.roomGeom(roomLvOf(R).n), H = { chair: 25, table: 16, bookshelf: 33, trophy_case: 38, lamp: 11, vase: 17, jewel_box: 8 };
@@ -2825,7 +2825,7 @@
     else if ('rmCancel' in ds) { rm.hand = null; rm.msg = ''; }
     else if ('rmDesel' in ds) { rm.sel = null; rm.msg = ''; }
     else if ('rmMove' in ds && sel) rm.hand = { src: 'move', i: rm.sel, k: sel.k, q: sel.q | 0, f: sel.f };
-    else if ('rmTurn' in ds && sel) { sel.f = sel.f ? 0 : 1; save(); }
+    else if ('rmTurn' in ds && sel) { const d = pieceDef(sel.k); sel.f = d.turn === 4 ? ((sel.f | 0) + 1) % 4 : sel.f ? 0 : 1; save(); }   // chairs turn four ways, shelves and cases two
     else if ('rmAway' in ds && sel) { R.p.splice(rm.sel, 1); if (sel.k !== 'window') R.w.push([sel.k, sel.q | 0]); rm.sel = null; rm.msg = sel.k === 'window' ? '' : `${pieceName(sel.k)} is waiting to be placed again.`; save(); }
     else if (ds.rmTostore) { const [k, q] = ds.rmTostore.split(':'), j = R.w.findIndex(x => x[0] === k && (x[1] | 0) === (+q | 0)); if (j < 0) return true;
       if (!D.items[k]) { rm.msg = 'This game version doesn’t know that piece, so it stays in the house.'; }
@@ -3685,7 +3685,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-171308';
+  const BUILD = '20261029-172118';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

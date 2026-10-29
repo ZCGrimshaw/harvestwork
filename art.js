@@ -839,8 +839,9 @@ window.HW_ART = (function () {
         if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) xs.push(a[0] + (yc - a[1]) * (b[0] - a[0]) / (b[1] - a[1])); }
       xs.sort((p, q) => p - q); for (let k = 0; k + 1 < xs.length; k += 2) { const xa = Math.round(xs[k]), xb = Math.round(xs[k + 1]); if (xb > xa) r(col, xa, y, xb - xa, 1); } } }
   // a box standing on a floor cell: u, v in cell units from the cell centre (−.5….5; negative = toward the back walls), z in pixels up
-  function isoBox(r, cx, cy, sw, u0, u1, v0, v1, z0, z1, col) {
-    if (sw) [u0, u1, v0, v1] = [v0, v1, u0, u1];
+  // rot: 0 as drawn, 1 turned a quarter (u and v swapped), 2 a half (v mirrored), 3 three quarters
+  function isoBox(r, cx, cy, rot, u0, u1, v0, v1, z0, z1, col) {
+    rot = rot | 0; if (rot & 2) [v0, v1] = [-v1, -v0]; if (rot & 1) [u0, u1, v0, v1] = [v0, v1, u0, u1];
     const P = (u, v, z) => [cx + (u - v) * 16, cy + (u + v) * 8 - z];
     poly(r, shade(col, .78), [P(u0, v1, z0), P(u1, v1, z0), P(u1, v1, z1), P(u0, v1, z1)]);   // front-left face
     poly(r, shade(col, .62), [P(u1, v0, z0), P(u1, v1, z0), P(u1, v1, z1), P(u1, v0, z1)]);   // front-right face
@@ -916,7 +917,7 @@ window.HW_ART = (function () {
     // furniture, back to front
     const glows = [];
     (R.floorPieces || []).slice().sort((p, q) => (p.x + p.y) - (q.x + q.y) || (p.z || 0) - (q.z || 0)).forEach(p => {
-      const [cx, cy] = G.cell(p.x, p.y), sw = !!p.f, a = p.a, b = p.b, z = p.z || 0, B = (u0, u1, v0, v1, z0, z1, col) => isoBox(r, cx, cy, sw, u0, u1, v0, v1, z + z0, z + z1, col);
+      const [cx, cy] = G.cell(p.x, p.y), sw = p.f | 0, a = p.a, b = p.b, z = p.z || 0, B = (u0, u1, v0, v1, z0, z1, col) => isoBox(r, cx, cy, sw, u0, u1, v0, v1, z + z0, z + z1, col);
       if (p.ring) { for (let yy = 0; yy < 16; yy++) { const hw = hwAt(yy); r(p.ring, cx - hw, cy - 8 + yy, 1, 1); r(p.ring, cx + hw - 1, cy - 8 + yy, 1, 1); } }
       if (!z) poly(r, 'rgba(0,0,0,.18)', [[cx - 12, cy], [cx, cy - 6], [cx + 12, cy], [cx, cy + 6]]);
       if (p.k === 'chair') { [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]].forEach(([u, v]) => B(u - .04, u + .04, v - .04, v + .04, 0, 9, b));

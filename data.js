@@ -584,7 +584,7 @@ window.HW_DATA = {
         { name: 'Palatial', n: 9, cost: { gold: 120000, brick: 100, roof_tile: 50, glass: 40, gear: 30, copper_ingot: 10 } }
       ],
       // where each decor item goes: 'floor' (one cell), 'small' (floor or on a table), 'rug' (2×2, flat, furniture stands on it), 'wall'
-      pieces: { chair: { at: 'floor', turn: true }, table: { at: 'floor', top: true }, bookshelf: { at: 'floor', turn: true }, rug: { at: 'rug' },
+      pieces: { chair: { at: 'floor', turn: 4 }, table: { at: 'floor', top: true }, bookshelf: { at: 'floor', turn: true }, rug: { at: 'rug' },
         vase: { at: 'small' }, lamp: { at: 'small' }, jewel_box: { at: 'small' }, painting: { at: 'wall' }, curtains: { at: 'wall' } },
       // pieces that aren't items: a window is free and unlimited (decoration only; it shows the season, weather and time of day outside);
       // the trophy case is given once you have a medal, a monument model or a trophy, and opens to shelves for them
@@ -1010,6 +1010,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.99.2', at: '2026-10-29 14:10', notes: ['Chairs can now turn all four ways, so they can sit properly around a table. Tap a placed chair, then Turn (or press R) to go round: each press turns it a quarter.'] },
   { v: '0.99.1', at: '2026-10-29 13:30', notes: ['A Trophy Case for your room! As soon as you have a Weekly Challenge medal, a Valley Monument model or a fish trophy, a Trophy Case is waiting inside your house. Place it like any furniture, then tap it and press Open the case: pick a medal, model or trophy and tap the spot on a shelf where you want it. Tap a piece on a shelf to move it (onto another piece to swap them) or take it out. Anything already in your trophy case is still there. A bigger house outside still gives more spots: Cottage 3, House 5, Farmhouse 8, Manor 12.'] },
   { v: '0.99', at: '2026-10-29 12:30', notes: ['Weekly challenge: a new leader track shows this week’s #1 score above yours while you play, so you can see how close you are. Your bar fills toward it, and the line under it says how many points you still need (or that you’re ahead). If you’re already #1, it shows #2 as the score to stay ahead of. The time left is in the header. On phones the side meter has a blue column for the leader; tap it for the numbers.'] },
   { v: '0.98', at: '2026-10-29 12:00', notes: ['Go inside your house! Select your house → Go inside to decorate a room of your own. Pick a piece, then tap a lit spot to place it: chairs, tables, bookshelves and rugs on the floor (furniture can stand on rugs), vases, lamps and jewel boxes on the floor or on a table, and paintings and curtains on the walls. Windows are free to add and show the real season, weather and time of day outside. Tap a placed piece to move it, turn it or put it away. Change the walls and floor under Walls & floor. Every house starts with a 4×4 room; Bigger room grows it inside, up to 9×9, without changing the house outside (the big sizes are a late-game goal). Decor you already had on display is waiting inside for you to place; Place them for me does it in one tap. The game pauses while you are inside (Settings → Pausing to change that).'] },
