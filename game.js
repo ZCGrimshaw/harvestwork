@@ -125,7 +125,7 @@
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null; fixMsOrder();
-    { const o = houseIdx(); if (o >= 0) roomFix(S.tiles[o].b); }   // the room inside the house (and decor from the old display spots)
+    { const o = houseIdx(); if (o >= 0) { roomFix(S.tiles[o].b); caseFix(S.tiles[o].b); } }   // the room inside the house (and decor from the old display spots)
     S.tiles.forEach(T => { if (!T.r && D.gather[T.t]) T.r = initRes(T.t); });   // a gathering tile must always carry its resource
     S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
   }
@@ -2630,8 +2630,9 @@
      and sends any piece that no longer fits back to it, so nothing is ever lost or doubled. */
   const RZ = () => HZ().room;
   const roomLvOf = R => RZ().levels[Math.min(Math.max(0, R.lv | 0), RZ().levels.length - 1)];
-  const pieceDef = k => k === 'window' ? RZ().window : RZ().pieces[k] || (D.items[k] && D.items[k].cat === 'decor' && !D.items[k].trophy ? { at: 'floor' } : null);
-  const pieceName = k => k === 'window' ? RZ().window.name : D.items[k] ? D.items[k].name : k;
+  const isFixture = k => !!RZ().fixtures[k];
+  const pieceDef = k => RZ().fixtures[k] || RZ().pieces[k] || (D.items[k] && D.items[k].cat === 'decor' && !D.items[k].trophy ? { at: 'floor' } : null);
+  const pieceName = k => isFixture(k) ? RZ().fixtures[k].name : D.items[k] ? D.items[k].name : k;
   function roomFix(b) {
     if (!b) return null; const R = b.room && typeof b.room === 'object' && !Array.isArray(b.room) ? b.room : (b.room = {});
     R.v = 1; R.lv = Math.min(Math.max(0, R.lv | 0), RZ().levels.length - 1);
@@ -2641,6 +2642,8 @@
     const keep = []; R.p.forEach(p => { if (!p || typeof p !== 'object' || typeof p.k !== 'string') return;
       if (pieceDef(p.k) && roomFits(R, p, keep)) keep.push(p); else if (p.k !== 'window') R.w.push([p.k, Math.min(2, Math.max(0, p.q | 0))]); });
     R.p = keep; R.w = R.w.filter(x => Array.isArray(x) && typeof x[0] === 'string');
+    Object.keys(RZ().fixtures).filter(k => RZ().fixtures[k].unique).forEach(k => { let seen = R.p.filter(p => p.k === k).length;   // one of each, ever
+      if (seen > 1) { let n = 0; R.p = R.p.filter(p => p.k !== k || n++ === 0); seen = 1; } R.w = R.w.filter(x => x[0] !== k || !seen++); });
     return R; }
   const roomOf = () => { const o = houseIdx(); return o < 0 ? null : (T_(o).b.room && T_(o).b.room.v ? T_(o).b.room : roomFix(T_(o).b)); };
   // can piece p go where it says, among the placed pieces in list (ignoring skip)?
@@ -2682,7 +2685,7 @@
     if (cand.at === 'f' && h.f) placed.f = 1;
     UI.rm.hand = null; UI.rm.sel = R.p.indexOf(placed); UI.rm.msg = ''; save(); SND.play('contract'); dirty(); return true; }
   // what is drawn where on screen, front first, for tapping
-  function roomPick(px, py) { const R = roomOf(), G = ART.roomGeom(roomLvOf(R).n), H = { chair: 25, table: 16, bookshelf: 33, lamp: 11, vase: 17, jewel_box: 8 };
+  function roomPick(px, py) { const R = roomOf(), G = ART.roomGeom(roomLvOf(R).n), H = { chair: 25, table: 16, bookshelf: 33, trophy_case: 38, lamp: 11, vase: 17, jewel_box: 8 };
     const fl = R.p.map((p, i) => ({ p, i })).filter(e => e.p.at === 'f' && pieceDef(e.p.k).at !== 'rug').sort((a, b) => (b.p.x + b.p.y) - (a.p.x + a.p.y) || roomZ(R, b.p) - roomZ(R, a.p));
     for (const e of fl) { const [cx, cy] = G.cell(e.p.x, e.p.y), z = roomZ(R, e.p), h = (H[e.p.k] || 12) + z; if (px >= cx - 13 && px <= cx + 13 && py <= cy + 7 && py >= cy - 6 - h) return e.i; }
     const w = G.wallAt(px, py); if (w) { const i = R.p.findIndex(p => p.at === w[0] && p.x === w[1]); if (i >= 0) return i; }
@@ -2718,7 +2721,7 @@
     const M = { n, wall: W, floor: F, sky: roomSky(), night: hour() >= 20.5 || hour() < 6.5, wallPieces: [], rugs: [], floorPieces: [], hiCells: [], hiWalls: [] };
     R.p.forEach(p => { const [a, b] = colr(p.k), d = pieceDef(p.k), ring = p === sel ? SUN : null;
       if (p.at !== 'f') M.wallPieces.push({ k: p.k, at: p.at, x: p.x, a, b, ring }); else if (d.at === 'rug') M.rugs.push({ x: p.x, y: p.y, a, b, ring });
-      else M.floorPieces.push({ k: p.k, x: p.x, y: p.y, f: p.f, a, b, z: roomZ(R, p), ring }); });
+      else M.floorPieces.push({ k: p.k, x: p.x, y: p.y, f: p.f, a, b, z: roomZ(R, p), ring, n: p.k === 'trophy_case' ? (T_(houseIdx()).b.tc || []).length : 0 }); });
     if (h) { const skip = h.src === 'move' ? R.p[h.i] : null; roomSpots(R, h.k, skip).forEach(p => { if (p.at === 'f') { M.hiCells.push([p.x, p.y, SUN]); if (pieceDef(h.k).at === 'rug') { M.hiCells.push([p.x + 1, p.y, SUN], [p.x, p.y + 1, SUN], [p.x + 1, p.y + 1, SUN]); } } else M.hiWalls.push([p.at, p.x, SUN]); }); }
     ART.drawRoom(cv2.getContext('2d'), M); }
   function renderRoom() { if (!UI.room || !UI.rm) return; const R = roomOf(); if (!R) { closeRoom(); return; }
@@ -2727,16 +2730,18 @@
     setHTML('#rsub', `${esc(L.name)} room · ${L.n}×${L.n} floor · ${R.p.length} piece${R.p.length === 1 ? '' : 's'} placed${R.w.length ? ` · ${R.w.length} waiting` : ''}${S.housePause !== false && !S.race ? ' · <b>Game paused</b>' : ''}`);
     let t = `<div class="tabs" role="tablist">${[['place', 'Decorate'], ['style', 'Walls & floor'], ['grow', 'Bigger room']].map(([k, nm]) => `<button class="tab ${rm.tab === k ? 'on' : ''}" data-rm-tab="${k}" role="tab" aria-selected="${rm.tab === k}">${nm}</button>`).join('')}</div>`;
     if (rm.msg) t += `<p class="rmsg">${rm.msg}</p>`;
-    const sel = rm.sel != null ? R.p[rm.sel] : null, it = k => k === 'window' ? '<span class="rwin" aria-hidden="true"></span>' : ico(k);
+    const sel = rm.sel != null ? R.p[rm.sel] : null, it = k => k === 'window' ? '<span class="rwin" aria-hidden="true"></span>' : k === 'trophy_case' ? '<span class="rcasei" aria-hidden="true"></span>' : ico(k);
+    if (rm.view === 'case') { setHTML('#rcasev', caseViewHTML(b)); setHTML('#rtray', caseTrayHTML(b)); $('#rcasev').hidden = false; $('#roomcv').hidden = true; return; }
+    $('#rcasev').hidden = true; $('#roomcv').hidden = false;
     if (rm.tab === 'place') {
       if (rm.hand) t += `<div class="rcard"><div class="row">${it(rm.hand.k)}<div class="grow1"><b>${rm.hand.src === 'move' ? 'Moving' : 'Placing'}: ${esc(pieceName(rm.hand.k))}</b><small>${pieceDef(rm.hand.k).at === 'wall' ? 'Tap a lit spot on a wall.' : pieceDef(rm.hand.k).at === 'small' ? 'Tap a lit square, on the floor or on a table.' : pieceDef(rm.hand.k).at === 'rug' ? 'Tap a lit square: the rug covers 2×2 and furniture can stand on it.' : 'Tap a lit square on the floor.'}</small></div><button class="btn sm ghost" data-rm-cancel>Cancel</button></div></div>`;
       else if (sel) { const d = pieceDef(sel.k); t += `<div class="rcard"><div class="row">${it(sel.k)}<div class="grow1"><b>${esc(pieceName(sel.k))}</b>${sel.q ? ' ' + qtag(sel.q) : ''}<small>${sel.at === 'f' ? 'On the floor' : `On the ${sel.at === 'l' ? 'left' : 'right'} wall`}</small></div></div>
-        <div class="rbtns"><button class="btn sm" data-rm-move>Move</button>${d.turn ? '<button class="btn sm" data-rm-turn>Turn</button>' : ''}<button class="btn sm ghost" data-rm-away>${sel.k === 'window' ? 'Remove' : 'Put away'}</button><button class="btn sm ghost" data-rm-desel>Done</button></div></div>`; }
+        <div class="rbtns">${sel.k === 'trophy_case' ? '<button class="btn sm pri" data-rm-case>Open the case</button>' : ''}<button class="btn sm" data-rm-move>Move</button>${d.turn ? '<button class="btn sm" data-rm-turn>Turn</button>' : ''}<button class="btn sm ghost" data-rm-away>${sel.k === 'window' ? 'Remove' : 'Put away'}</button><button class="btn sm ghost" data-rm-desel>Done</button></div></div>`; }
       else t += `<p class="hint small">Pick a piece below, then tap a lit spot in the room. Tap a placed piece to move, turn or put it away.</p>`;
       const wait = {}; R.w.forEach(([k, q]) => { const key = k + ':' + (q | 0); wait[key] = (wait[key] || 0) + 1; });
       const wk = Object.keys(wait);
       if (wk.length) { t += `<span class="eyebrow">Waiting to place</span><div class="rlist">` + wk.map(key => { const [k, q] = key.split(':'), ok = !!pieceDef(k);
-          return `<div class="rpiece">${it(k)}<span><b>${esc(pieceName(k))}</b>${+q ? ' ' + qtag(+q) : ''}${wait[key] > 1 ? ` <small>×${wait[key]}</small>` : ''}</span>${ok ? `<button class="btn sm" data-rm-take="wait:${k}:${q}">Place</button>` : ''}<button class="linkish small" data-rm-tostore="${k}:${q}">To storage</button></div>`; }).join('') + `</div>`;
+          return `<div class="rpiece">${it(k)}<span><b>${esc(pieceName(k))}</b>${+q ? ' ' + qtag(+q) : ''}${wait[key] > 1 ? ` <small>×${wait[key]}</small>` : ''}</span>${ok ? `<button class="btn sm" data-rm-take="wait:${k}:${q}">Place</button>` : ''}${isFixture(k) ? '' : `<button class="linkish small" data-rm-tostore="${k}:${q}">To storage</button>`}</div>`; }).join('') + `</div>`;
         t += `<button class="btn sm ghost" data-rm-auto>Place them for me</button>`; }
       const own = roomDecorOwned();
       t += `<span class="eyebrow">Decor in storage</span>` + (own.length ? `<div class="rlist">` + own.map(k => `<div class="rpiece">${it(k)}<span><b>${esc(D.items[k].name)}</b> <small>×${count(k)}</small></span><button class="btn sm" data-rm-take="inv:${k}">Place</button></div>`).join('') + `</div>` : `<p class="hint small">No decor in storage. ${esc(decoWhere())}</p>`);
@@ -2753,6 +2758,61 @@
       const later = RZ().levels.slice((R.lv | 0) + 2); if (later.length) t += `<p class="hint small">After that: ${later.map(x => `${esc(x.name)} ${x.n}×${x.n} (${x.cost.gold.toLocaleString()}g)`).join(' · ')}.</p>`;
     }
     setHTML('#rtray', t); }
+  /* ---------- the trophy case: a room fixture that opens to three shelves ----------
+     Its contents stay in b.tc (as before); each entry now also has s, its spot on the shelves (0 … caseSlots − 1, filled shelf
+     by shelf). caseFix gives a spot to any entry without a good one (from before this, or put in by an older copy of the game).
+     The case itself is given (once, into the waiting list) as soon as you have a medal, a monument model or a trophy. */
+  function caseFix(b) { const tc = caseOf(b), cap = caseSlots(b), used = new Set();
+    tc.forEach(e => { if (Number.isInteger(e.s) && e.s >= 0 && e.s < cap && !used.has(e.s)) used.add(e.s); else delete e.s; });
+    tc.forEach(e => { if (e.s == null) { let s = 0; while (used.has(s)) s++; if (s < cap) { e.s = s; used.add(s); } } }); return tc; }
+  const caseRows = cap => { const base = Math.floor(cap / 3), ex = cap % 3, rows = []; let s = 0; for (let r = 0; r < 3; r++) { const n = base + (r < ex ? 1 : 0); rows.push(Array.from({ length: n }, () => s++)); } return rows; };
+  const caseEarned = b => caseOf(b).length > 0 || NET.medals.length > 0 || earnedModels().length > 0 || Object.keys(S.inv).some(id => D.items[id] && D.items[id].trophy && count(id) > 0);
+  function caseAward() { const o = houseIdx(); if (o < 0 || S.race) return; const b = T_(o).b, R = roomOf(); if (!R) return;
+    if (R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case') || !caseEarned(b)) return;
+    R.w.push(['trophy_case', 0]); save(); dirty();
+    toast('<b>You’ve earned a Trophy Case!</b> It’s waiting inside your house: select your house → Go inside to place it, then tap it to arrange your medals, models and trophies on its shelves.', 'goal'); }
+  function caseSpot(s) { const o = houseIdx(), rm = UI.rm; if (o < 0 || !rm) return; const b = T_(o).b, tc = caseFix(b), h = rm.chand, j = tc.findIndex(e => e.s === s);
+    if (h && h.src === 'offer') { if (j >= 0) { roomMsg('That spot is taken. Pick an empty one, or move what’s there.'); return; }
+      const { t, k } = h; if (tc.some(e => e.t === t && e.k === k && t !== 'item')) { rm.chand = null; return; }
+      if (t === 'medal') { const m = NET.medals.find(x => medalKey(x) === k); if (!m || medalAt(m) !== undefined) { rm.chand = null; return; } tc.push({ t, k, s }); }
+      else if (t === 'model') { const p = earnedModels().find(x => x.id === k); if (!p || modelAt(p.id) !== undefined) { rm.chand = null; return; } tc.push({ t, k, s }); }
+      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !D.items[k].trophy || !a || count(k) < 1) { rm.chand = null; return; } const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q, s }); }
+      else return;
+      rm.chand = null; rm.csel = tc.length - 1; rm.msg = ''; SND.play('contract'); save(); dirty(); return; }
+    if (h && h.src === 'move') { const e = tc[h.i]; if (!e) { rm.chand = null; return; } if (j >= 0 && j !== h.i) tc[j].s = e.s; e.s = s;
+      rm.chand = null; rm.csel = tc.indexOf(e); rm.msg = ''; SND.play('contract'); save(); dirty(); return; }
+    rm.csel = j >= 0 ? (rm.csel === j ? null : j) : null; rm.msg = j >= 0 ? '' : 'Pick a medal, model or trophy from the list, then tap a spot.'; dirty(); }
+  function caseButton(ds) { const o = houseIdx(), rm = UI.rm; if (o < 0 || !rm) return false; const b = T_(o).b, tc = caseFix(b), sel = rm.csel != null ? tc[rm.csel] : null;
+    if ('rmCase' in ds) { rm.view = 'case'; rm.chand = null; rm.csel = null; rm.hand = null; rm.msg = ''; }
+    else if ('rmBack' in ds) { rm.view = null; rm.chand = null; rm.csel = null; rm.msg = ''; }
+    else if (ds.caseSpot != null) { caseSpot(+ds.caseSpot); return true; }
+    else if (ds.csTake) { const [t, ...r] = ds.csTake.split(':'); rm.chand = { src: 'offer', t, k: r.join(':') }; rm.csel = null; rm.msg = tc.filter(e => e.s != null).length >= caseSlots(b) ? 'The shelves are full. Take something out first, or grow the house for more spots.' : ''; if (rm.msg) rm.chand = null; }
+    else if ('csMove' in ds && sel) rm.chand = { src: 'move', i: rm.csel };
+    else if ('csOut' in ds && sel) { if (sel.t === 'item') { if (room() < 1) { rm.msg = esc(FULL); dirty(); return true; } addItem(sel.k, 1, sel.q || 0, true); }
+      tc.splice(rm.csel, 1); rm.csel = null; rm.msg = sel.t === 'item' ? 'Back in storage.' : sel.t === 'medal' ? 'Back with your medals (Menu → Medals).' : 'Back with your monument models.'; save(); }
+    else if (ds.csPick != null) { rm.csel = +ds.csPick; rm.chand = { src: 'move', i: +ds.csPick }; rm.msg = ''; }
+    else if ('csCancel' in ds) { rm.chand = null; rm.msg = ''; }
+    else if ('csDesel' in ds) { rm.csel = null; rm.msg = ''; }
+    else return false;
+    dirty(); return true; }
+  function caseViewHTML(b) { const tc = caseFix(b), rm = UI.rm, cap = caseSlots(b), h = rm.chand;
+    const spot = s => { const j = tc.findIndex(e => e.s === s), e = j >= 0 ? tc[j] : null, c = e ? caseEntry(e) : null, lit = h && (h.src === 'move' ? j !== h.i : !e);
+      return `<button class="tspot ${e ? 'full' : ''} ${rm.csel === j && e ? 'sel' : ''} ${lit ? 'lit' : ''}" data-case-spot="${s}" aria-label="${e ? esc(c.name) : 'Empty spot'}" title="${e ? esc(c.name) : 'Empty spot'}">${e ? c.img : ''}</button>`; };
+    return `<div class="tcab"><div class="tcrest"></div>${caseRows(cap).map(row => `<div class="tshelf">${row.map(spot).join('')}</div>`).join('')}<div class="tcbase"></div></div>`; }
+  function caseTrayHTML(b) { const tc = caseFix(b), rm = UI.rm, cap = caseSlots(b), on = tc.filter(e => e.s != null).length, sel = rm.csel != null ? tc[rm.csel] : null, h = rm.chand;
+    let t = `<div class="rbtns" style="margin-top:0"><button class="btn sm ghost" data-rm-back>← Back to the room</button></div><span class="eyebrow">Trophy Case · ${on} of ${cap} spots</span>`;
+    if (rm.msg) t += `<p class="rmsg">${rm.msg}</p>`;
+    if (h) { const c = h.src === 'move' ? caseEntry(tc[h.i]) : caseEntry({ t: h.t, k: h.k });
+      t += `<div class="rcard"><div class="row">${c.img}<div class="grow1"><b>${h.src === 'move' ? 'Moving' : 'Placing'}: ${esc(c.name)}</b><small>Tap a lit spot on a shelf${h.src === 'move' ? '. Tap a filled one to swap them' : ''}.</small></div><button class="btn sm ghost" data-cs-cancel>Cancel</button></div></div>`; }
+    else if (sel) { const c = caseEntry(sel); t += `<div class="rcard"><div class="row">${c.img}<div class="grow1"><b>${esc(c.name)}</b><small>${c.sub || ''}</small></div></div><div class="rbtns"><button class="btn sm" data-cs-move>Move</button><button class="btn sm ghost" data-cs-out>Take out</button><button class="btn sm ghost" data-cs-desel>Done</button></div></div>`; }
+    else t += `<p class="hint small">Pick something below, then tap a spot on a shelf. Tap a piece on a shelf to move it or take it out.</p>`;
+    const offers = caseOffers();
+    t += `<span class="eyebrow">Ready for the case</span>` + (offers.length ? `<div class="rlist">` + offers.map(x => `<div class="rpiece">${x.img}<span><b>${esc(x.name)}</b> <small>${esc(x.sub || '')}</small></span><button class="btn sm" data-cs-take="${x.t}:${esc(x.k)}">Put on a shelf</button></div>`).join('') + `</div>`
+      : `<p class="hint small">Nothing new to show. Weekly Challenge medals, Valley Monument models and fish trophies can go in the case. A medal or model you’ve placed on your farm has to be put away first.</p>`);
+    const off = tc.map((e, j) => ({ e, j })).filter(x => x.e.s == null);
+    if (off.length) t += `<span class="eyebrow">No room on the shelves</span><div class="rlist">` + off.map(({ e, j }) => { const c = caseEntry(e); return `<div class="rpiece">${c.img}<span><b>${esc(c.name)}</b></span><button class="btn sm ghost" data-cs-pick="${j}">Choose</button></div>`; }).join('') + `</div>`;
+    t += `<p class="hint small">A bigger house outside (House Additions) has more spots: Cottage 3, House 5, Farmhouse 8, Manor 12.</p>`;
+    return t; }
   // room events: the tray's buttons, taps in the room, and keys while inside
   function roomButton(ds) { const R = roomOf(), rm = UI.rm; if (!R || !rm) return false;
     const sel = rm.sel != null ? R.p[rm.sel] : null;
@@ -2778,11 +2838,12 @@
     else if ('roomClose' in ds) closeRoom();
     else return false;
     dirty(); return true; }
-  $('#room').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (roomButton(el.dataset)) e.stopPropagation(); });
+  $('#room').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (caseButton(el.dataset) || roomButton(el.dataset)) e.stopPropagation(); });
   $('#roomcv').addEventListener('click', e => { if (!UI.room) return; const c = e.currentTarget, rc = c.getBoundingClientRect();
     roomTap((e.clientX - rc.left) * c.width / rc.width, (e.clientY - rc.top) * c.height / rc.height); });
-  document.addEventListener('click', e => { const el = e.target.closest('[data-room-open]'); if (el) { openRoom(); e.stopPropagation(); } }, true);
+  document.addEventListener('click', e => { const el = e.target.closest('[data-room-open], [data-room-case]'); if (!el) return; openRoom(); if (UI.rm && 'roomCase' in el.dataset) UI.rm.view = 'case'; e.stopPropagation(); }, true);
   function roomKey(e) { const k = e.key, rm = UI.rm; if (!rm) return;
+    if (rm.view === 'case') { if (k === 'Escape') { if (rm.chand) rm.chand = null; else if (rm.csel != null) rm.csel = null; else rm.view = null; rm.msg = ''; dirty(); e.preventDefault(); } return; }
     if (k === 'Escape') { if (rm.hand) rm.hand = null; else if (rm.sel != null) rm.sel = null; else closeRoom(); dirty(); e.preventDefault(); }
     else if ((k === 'r' || k === 'R') && rm.sel != null) roomButton({ rmTurn: '' });
     else if ((k === 'Delete' || k === 'Backspace') && rm.sel != null) { roomButton({ rmAway: '' }); e.preventDefault(); }
@@ -2811,7 +2872,9 @@
     const own = roomDecorOwned().length;
     if (own || R.w.length) h += `<p class="hint small">${R.w.length ? `${R.w.length} piece${R.w.length === 1 ? ' is' : 's are'} waiting inside for you to place.` : ''}${own ? ` You have decor in storage ready to place.` : ''}</p>`;
     else h += `<p class="hint small">${esc(decoWhere())}</p>`;
-    h += trophyCaseHTML(o, b);
+    { const tc = caseFix(b), has = R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case');
+      h += `<span class="eyebrow">Trophy case · ${tc.filter(e => e.s != null).length} of ${caseSlots(b)} spots</span>` + (has ? `<p class="hint small">${R.p.some(p => p.k === 'trophy_case') ? 'It stands in your room.' : 'It’s waiting inside to be placed.'} Medals, monument models and fish trophies go on its shelves.</p><button class="btn" data-room-case>Open the trophy case</button>`
+        : `<p class="hint small">You’ll get a Trophy Case for your room as soon as you have a Weekly Challenge medal, a Valley Monument model or a fish trophy.</p>`); }
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
     h += `<p class="hint small">Pieces in your room leave storage, so they don’t take up space. Put one away to keep it in the house, then send it back to storage from the waiting list.</p>`;
     if (UI.moving === o) return head(`Moving the ${L.name}`, 'Choose where its top corner goes.') + houseMoveHere(i, o);
@@ -3336,6 +3399,7 @@
     { const b = $('#zoom [data-mon-show]'); if (b) b.hidden = !S.green || !!S.race; }
     renderLogs(); renderTicker();
     renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom();
+    if (!S.race && ((UI.caseChk = (UI.caseChk || 0) + 1) % 6 === 0)) caseAward();   // about every 3 s
   }
   function progress(key) {
     const [k, a, b] = key.split(':');
@@ -3621,7 +3685,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-165812';
+  const BUILD = '20261029-171308';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3986,7 +4050,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

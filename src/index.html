@@ -844,6 +844,23 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   #room .rtray { width: auto; max-height: 48%; border-left: 0; border-top: 2px solid var(--wood-hi); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   #room .rhead h2 { font-size: 17px; }
 }
+
+/* the trophy case, opened */
+#rcasev { width: min(560px, 100%); }
+.tcab { position: relative; padding: 14px 14px 10px; background: #6e4628; border: 4px solid #4e301a; border-radius: 6px 6px 2px 2px; box-shadow: inset 0 0 0 3px #8a5a2e, 0 6px 0 #2e1c10; }
+.tcrest { height: 10px; margin: -6px 30% 10px; background: #c99a1e; border-radius: 6px 6px 0 0; box-shadow: inset 0 -2px 0 #8a6a14; }
+.tshelf { display: flex; justify-content: center; gap: 10px; min-height: 92px; padding: 10px 8px 0; margin-bottom: 12px; background: linear-gradient(180deg, #2a1a10, #3d2617); border-bottom: 8px solid #a8784a; box-shadow: inset 0 0 0 2px rgba(191,227,246,.18); position: relative; }
+.tshelf::after { content: ''; position: absolute; inset: 0 0 -8px; background: linear-gradient(115deg, rgba(255,255,255,.09) 0 18%, transparent 18% 100%); pointer-events: none; }
+.tspot { width: 76px; height: 82px; padding: 4px; display: grid; place-items: center; background: rgba(0,0,0,.18); border: 2px dashed rgba(246,231,193,.18); border-radius: 4px; cursor: pointer; }
+.tspot.full { border-style: solid; border-color: transparent; background: transparent; }
+.tspot .cimg, .tspot .ico { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; }
+.tspot.lit { border: 2px solid var(--sun); background: rgba(245,197,66,.14); }
+.tspot.sel { border: 2px solid var(--sun); background: rgba(245,197,66,.22); }
+.tcbase { height: 14px; margin: 0 -14px -10px; background: #4e301a; }
+#room .rpiece .cimg { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+#room .rcard .cimg { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.rcasei { display: inline-block; flex: none; width: 22px; height: 30px; box-sizing: border-box; background: linear-gradient(#bfe3f6 0 30%, #c99a1e 30% 36%, #bfe3f6 36% 64%, #c99a1e 64% 70%, #bfe3f6 70%); border: 3px solid #6e4628; border-top-width: 4px; }
+@media (max-width: 700px) { .tspot { width: 58px; height: 64px; } .tspot .cimg, .tspot .ico { width: 48px; height: 48px; } .tshelf { min-height: 72px; gap: 6px; } }
 </style>
 
 <div id="app">
@@ -884,7 +901,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="title" hidden></div>
   <div id="room" hidden role="dialog" aria-label="Inside your house">
     <div class="rhead"><div><h2 id="rtitle">Inside your house</h2><p class="sub" id="rsub"></p></div><button class="close" data-room-close aria-label="Leave the house">×</button></div>
-    <div class="rbody"><div class="rstage"><canvas id="roomcv" aria-label="Your room. Pick a piece, then tap a lit spot to place it."></canvas></div><div class="rtray" id="rtray"></div></div>
+    <div class="rbody"><div class="rstage"><div id="rcasev" hidden></div><canvas id="roomcv" aria-label="Your room. Pick a piece, then tap a lit spot to place it."></canvas></div><div class="rtray" id="rtray"></div></div>
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
