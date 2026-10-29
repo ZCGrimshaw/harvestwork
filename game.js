@@ -1740,7 +1740,7 @@
   // turn and/or tilt the world while keeping whatever is at screen centre in place
   function setView(a, t) {
     const [wx, wy] = unview(...fromIso(cam.u, cam.v));
-    const T = Math.PI * 2; UI.yaw = ((a % T) + T) % T; S.yaw = UI.yaw;
+    const T = Math.PI * 2, y0 = UI.yaw; UI.yaw = ((a % T) + T) % T; S.yaw = UI.yaw; if (Math.abs(UI.yaw - y0) > 1e-6) UI.rotAt = performance.now();
     UI.tilt = Math.max(TILT_MIN, Math.min(TILT_MAX, t)); S.tilt = UI.tilt;
     const [vx, vy] = view(wx, wy); cam.u = isoU(vx, vy); cam.v = isoV(vx, vy); clampCam();
   }
@@ -1780,6 +1780,10 @@
   function tickYaw(dt) {
     tickCam(dt);
     tickStick(dt);
+    /* Settle: big buildings (the house, monuments) are flat pictures drawn for the four straight views, so they only line up with the grid there.
+       A moment after the player stops turning, glide to the nearest straight view (Settings → Graphics → Snap rotation to straight views). */
+    if (S.snapRot !== false && UI.yawTo == null && !UI.stick && !ptrs.size && UI.rotAt && performance.now() - UI.rotAt > 450) {
+      const q = Math.PI / 2, near = Math.round(UI.yaw / q) * q; if (Math.abs(near - UI.yaw) > .01) UI.yawTo = near; UI.rotAt = 0; }
     if (UI.yawTo == null) return; const d = UI.yawTo - UI.yaw, T = Math.PI * 2;
     const diff = ((d % T) + T + Math.PI) % T - Math.PI;
     if (Math.abs(diff) < .002) { setYaw(UI.yawTo); UI.yawTo = null; return; }
@@ -1854,7 +1858,7 @@
     else return; clampCam();
   });
 
-  function toggleLabels() { UI.labels = !UI.labels; const b = $('[data-labels]'); if (b) { b.classList.toggle('on', UI.labels); b.setAttribute('aria-pressed', UI.labels); } }
+  function toggleLabels() { UI.labels = !UI.labels; const b = $('[data-labels]'); if (b) { b.classList.toggle('on', UI.labels); b.setAttribute('aria-pressed', UI.labels); } dirty(); }
   function primaryAction(i) {
     const T = T_(i), b = T.b;
     if (!T.o) return null;
@@ -2934,9 +2938,14 @@
         <span class="optlabel">Pause when I haven’t done anything for</span>
         <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
         <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
-        <span class="eyebrow">Top of the screen</span><div class="opts">
+        <span class="eyebrow">Graphics</span><div class="opts">
+        <button class="toggle ${S.snapRot !== false ? 'on' : ''}" data-snaprot aria-pressed="${S.snapRot !== false}"><i></i>Snap rotation to straight views</button>
+        <p class="hint small">${S.snapRot !== false ? 'When you stop turning the map, it glides to the nearest straight view, so big buildings like your house and the monuments line up with the grid.' : 'The map stays wherever you leave it. Big buildings like your house and the monuments only line up with the grid in the four straight views.'}</p>
+        <button class="toggle ${UI.labels ? 'on' : ''}" data-labelsset aria-pressed="${!!UI.labels}"><i></i>Show building names ${isTouch() ? '' : '<span class="muted">(X)</span>'}</button>
         <button class="toggle ${countsOn() ? 'on' : ''}" data-counts aria-pressed="${countsOn()}"><i></i>Show players online and unique visitors</button>
-        <p class="hint small">The two counters by the Menu button. Always shown on computers; off by default on phones to save room. They’re also in the Info panel. Remembered on this device.</p></div>
+        <p class="hint small">The two counters by the Menu button. Always shown on computers; off by default on phones to save room. They’re also in the Info panel. Remembered on this device.</p>
+        ${online() ? `<button class="toggle ${S.tick && S.tick.open ? 'on' : ''}" data-tick-toggle aria-pressed="${!!(S.tick && S.tick.open)}"><i></i>Show the valley market ticker at the top</button>
+        <p class="hint small">The scrolling list of recent trades. Hiding it gives the map more room, especially on a phone.</p>` : ''}</div>
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone takes #1 from me in the weekly challenge</button>
         <p class="hint small">You get one notice when you lose first place. If you win #1 back and lose it again, you get one more.</p></div>
@@ -2946,8 +2955,6 @@
         <span class="eyebrow">Notifications</span><div class="opts">
         <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
         <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
-        ${online() ? `<button class="toggle ${S.tick && S.tick.open ? 'on' : ''}" data-tick-toggle aria-pressed="${!!(S.tick && S.tick.open)}"><i></i>Show the valley market ticker at the top</button>
-        <p class="hint small">The scrolling list of recent trades. Hiding it gives the map more room, especially on a phone.</p>` : ''}
         ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
         <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : S.name && S.name !== 'Farmer' ? 'your farmer’s name' : 'a temporary made-up name (pick your own under Your player name)'} and your score.` : 'Your score still counts, but others see a made-up name instead of yours.'}</p>` : ''}</div>
         <span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p></div>
@@ -3240,6 +3247,8 @@
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
+    else if ('snaprot' in ds) { S.snapRot = S.snapRot === false; if (S.snapRot !== false) UI.rotAt = performance.now(); save(); }
+    else if ('labelsset' in ds) toggleLabels();
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
     else if (ds.idle !== undefined) { S.idleSec = +ds.idle; save(); }
     else if ('goPrivate' in ds) { if (!UI.goPrivate) { UI.goPrivate = true; clearTimeout(UI.goPrivT); UI.goPrivT = setTimeout(() => { UI.goPrivate = false; dirty(); }, 4000); }
@@ -3438,7 +3447,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-154208';
+  const BUILD = '20261029-161637';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

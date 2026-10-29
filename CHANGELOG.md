@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.96 — 2026-10-29
+- Rotation settle (reported on a trackpad: two-finger drag spun the house and monuments off the grid). The house and monuments are single flat sprites for the four quarter-turn views (`hView`, `mon:` art), so at in-between yaw they don't match the grid. `tickYaw` now glides to the nearest quarter turn 450 ms after the player stops turning (`UI.rotAt`, set in `setView` when yaw changes; skipped while a pointer or the stick is held), controlled by `S.snapRot` (default on, saved per farm).
+- Settings: new Graphics section holding Snap rotation, Show building names (`data-labelsset`, mirrors the eye button and X), the players-online counters and the market ticker toggle (moved from "Top of the screen" and Notifications). Test: t_snap.py.
+
 ## v0.95 — 2026-10-29
 - Mega expansions for the special stores (Joel's request). `hold.max` 4 → 8 and `hold.mega: 4` on Silo, Cold Cellar and Material Yard: expansions past `mega` add double `hold.step` (`holdAt` in game.js). Costs unchanged in form (`storeCost`, level 4-7: 4,200g / 7,100g / 12,050g / 20,500g plus bricks and crates). Totals: Cold Cellar 200 to 1,640, Silo and Yard 250 to 2,050. Grand order size still scales with main storage only (`cap()`), left alone on purpose. Existing saves keep their level. Test: t_mega.py.
 

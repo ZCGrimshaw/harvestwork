@@ -975,6 +975,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.96', at: '2026-10-29 10:00', notes: ['When you stop turning the map, it now glides to the nearest straight view, so big buildings like your house and the monuments line up with the grid again (they are flat pictures drawn for the four straight views, so they looked off at in-between angles). Settings has a new Graphics section: a switch for this (Snap rotation to straight views, on by default) with the building names, player counters and market ticker switches moved in beside it.'] },
   { v: '0.95', at: '2026-10-29 09:30', notes: ['Silos, Cold Cellars and Material Yards can now be expanded eight times instead of four. The new last four are mega expansions that add twice as much space each (a fully expanded Cold Cellar now holds 1,640, up from 680; Silos and Material Yards hold 2,050, up from 850). They cost more each time, so they are a late-game goal.'] },
   { v: '0.94', at: '2026-10-29 09:00', notes: ['You can now see what is inside your Silos, Cold Cellars and Material Yards. Select one of these buildings to see the goods it holds, and in Storage a new “Where” row lets you view everything, one store at a time, or just what is in main storage.'] },
   { v: '0.93.3', backend: true, at: '2026-10-28 15:10', notes: ['Automatic error reports.'] },
