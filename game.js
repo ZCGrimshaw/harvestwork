@@ -147,7 +147,8 @@
   const SK = D.storeKinds, CROP_IDS = new Set(Object.values(D.crops).map(c => c.item));
   const storeKind = (() => { const m = {}, named = new Set(Object.values(SK).flatMap(K => K.ids || [])); Object.keys(D.items).forEach(id => { const it = D.items[id];
     for (const k in SK) { const K = SK[k]; if ((K.ids || []).includes(id) || (!named.has(id) && ((K.crops && CROP_IDS.has(id)) || (K.cats || []).includes(it.cat)))) { m[id] = k; break; } } }); return id => m[id] || null; })();
-  const holdOf = b => { const H = D.buildings[b.type].hold; return H ? H.base + H.step * (b.lvl || 0) : 0; };
+  const holdAt = (H, lv) => H.base + H.step * Math.min(lv, H.mega == null ? lv : H.mega) + (H.mega == null ? 0 : H.step * 2 * Math.max(0, lv - H.mega)); // expansions past H.mega are mega: double the step
+  const holdOf = b => { const H = D.buildings[b.type].hold; return H ? holdAt(H, b.lvl || 0) : 0; };
   let HC = { at: -1, S: null, v: null }; // used() runs often; the tile scan is cached for a tenth of a second
   function holdCaps() { const now = performance.now(); if (HC.S === S && now - HC.at < 100) return HC.v;
     const o = {}; S.tiles.forEach(t => { const B = t.b && D.buildings[t.b.type]; if (B && B.hold) o[B.hold.cls] = (o[B.hold.cls] || 0) + holdOf(t.b); }); HC = { at: now, S, v: o }; return o; }
@@ -2144,7 +2145,7 @@
     if (B) { P.push(esc(B.desc));
       if (B.kind === 'sprinkler') P.push(`That’s the ${(B.radius * 2 + 1) ** 2 - 1} tiles around it, so no more watering by hand there. Plots it waters still earn Good quality.`);
       if (B.kind === 'station') { const rs = Object.values(D.recipes).filter(r => r.station === it.building).map(r => D.items[Object.keys(r.out)[0]].name); if (rs.length) P.push(`Makes ${esc(nmList(rs))}.`); }
-      if (B.hold) P.push(`Holds ${B.hold.base} ${SK[B.hold.cls].name} outside main storage, up to ${B.hold.base + B.hold.step * B.hold.max} when fully expanded.`);
+      if (B.hold) P.push(`Holds ${B.hold.base} ${SK[B.hold.cls].name} outside main storage, up to ${holdAt(B.hold, B.hold.max)} when fully expanded.`);
       else if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
       P.push(`Place the kit on empty grass you own${B.place && Object.keys(B.place).length ? ` (placing also takes ${costTxt(B.place)})` : ''}.`); }
     const crop = Object.values(D.crops).find(c => c.item === id), seedOf = Object.values(D.crops).find(c => c.seed === id);
@@ -2530,7 +2531,7 @@
       h += `<div class="row"><div class="grow1">All your ${esc(K.name)}: <b>${Math.min(inIt, tot)}</b> of ${tot} in ${B.name}${tot > holdOf(b) ? 's' : ''}${inIt > tot ? ` · ${inIt - tot} more in main storage` : ''}<div class="pb"><i style="width:${tot ? Math.min(100, Math.round(inIt / tot * 100)) : 0}%"></i></div></div></div>`;
       const goods = Object.keys(S.inv).filter(id => storeKind(id) === H.cls && count(id) > 0).sort((x, y) => count(y) - count(x));
       h += goods.length ? `<div class="storelist"><p class="state"><b>What’s here</b> (${goods.length} kind${goods.length === 1 ? '' : 's'})</p><div class="invgrid">${goods.map(id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small></div></div>`).join('')}</div></div>` : `<p class="hint">Nothing stored yet.</p>`;
-      h += lv < H.max ? btn({ a: 'storeup', i }, `Expand: ${holdOf(b)} → ${holdOf(b) + H.step}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
+      h += lv < H.max ? btn({ a: 'storeup', i }, `${lv >= (H.mega == null ? H.max : H.mega) ? 'Mega expand' : 'Expand'}: ${holdOf(b)} → ${holdAt(H, lv + 1)}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
       return h + `<p class="hint small">${esc(K.name.charAt(0).toUpperCase() + K.name.slice(1))} go here first; only what doesn’t fit takes space in main storage. Everything is still shared, so stations and orders use it as usual.</p>` + moveSection(i) + salvageSection(i); }
     return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i) + salvageSection(i);
   }
@@ -3018,7 +3019,7 @@
         if (B.place && Object.keys(B.place).length) h += `<p><b>To place:</b> its kit plus ${esc(costTxt(B.place))}.</p>`; else if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>To place:</b> its kit (nothing else).</p>`;
         if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>Limit:</b> ${B.perArea || 1} per area you own${B.perArea > 1 ? '' : ''}. Survey new land (Discovery → Land Surveying) to build more.</p>`;
         if (B.storage) h += `<p><b>Storage:</b> adds ${B.storage} to shared storage.</p>`;
-        if (B.hold) h += `<p><b>Holds:</b> ${B.hold.base} ${esc(SK[B.hold.cls].name)} apart from main storage, +${B.hold.step} each expansion (up to ${B.hold.max} times).</p>`;
+        if (B.hold) h += `<p><b>Holds:</b> ${B.hold.base} ${esc(SK[B.hold.cls].name)} apart from main storage, +${B.hold.step} each expansion, and +${B.hold.step * 2} for each of the last ${B.hold.max - (B.hold.mega == null ? B.hold.max : B.hold.mega)} (mega) expansions (up to ${B.hold.max} times).</p>`;
         if (B.slots) h += `<p><b>Batches at once:</b> ${B.slots}, more with Capacity upgrades.</p>`;
         if (rs.length) h += `<p><b>Makes:</b></p><ul class="manlist">${rs.map(([, R]) => `<li>${Object.keys(R.out).map(k => ico(k)).join('')} ${esc(outName(R).join(' + '))} <small class="muted">from ${esc(inTxtPlain(R.in))}${R.requires ? ` · needs ${esc(nmList([].concat(R.requires).map(k => (D.discoveries.find(d => d.id === k) || { name: k }).name)))}` : ''}</small></li>`).join('')}</ul>`;
         if (id === 'house') h += `<p><b>Sizes:</b> ${HZ().levels.map(L => `${L.name} ${L.w}×${L.h} (${L.slots} spots)`).join(', ')}.</p>`;
@@ -3437,7 +3438,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261029-153402';
+  const BUILD = '20261029-154208';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

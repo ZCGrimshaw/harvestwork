@@ -104,7 +104,7 @@ Not built yet; picked up when we choose to.
   makes the Farmer's Manor (the biggest house size) and the Pyramid monument "do weird things". Two fingers turn and tilt the view (pointer code near
   `pinch`, game.js), so the likely suspect is how these large multi-tile sprites are drawn or sorted while the view yaws or tilts. Needs a repro first:
   which device, and what "weird" looks like (jumping, flickering, drawn behind other things, disappearing).
-- **More cold storage (pinned 2026-10-28, from Joel: "Give more cold-storage (allow mega-upgrade or something). Everything is cold-storage and the
+- **More cold storage (pinned 2026-10-28, DONE in v0.95 as option B, mega expansions for all three stores; Grand order sizing left alone, watch Joel's feedback; from Joel: "Give more cold-storage (allow mega-upgrade or something). Everything is cold-storage and the
   mega-orders have us saving everything."):** The Cold Cellar holds every cooked, baked, preserved and brewed good plus eggs and milk (`storeKinds.coldcellar`),
   which in the late game is nearly everything a player makes. One cellar per area, 200 + 120 per expansion, 4 expansions = 680 maximum each
   (`hold` in `data.js`). Grand ("mega") orders ask for 5 goods with quantities that scale with storage (`C.grand.fill`), so players hoard goods for them, and

@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.95 — 2026-10-29
+- Mega expansions for the special stores (Joel's request). `hold.max` 4 → 8 and `hold.mega: 4` on Silo, Cold Cellar and Material Yard: expansions past `mega` add double `hold.step` (`holdAt` in game.js). Costs unchanged in form (`storeCost`, level 4-7: 4,200g / 7,100g / 12,050g / 20,500g plus bricks and crates). Totals: Cold Cellar 200 to 1,640, Silo and Yard 250 to 2,050. Grand order size still scales with main storage only (`cap()`), left alone on purpose. Existing saves keep their level. Test: t_mega.py.
+
 ## v0.94 — 2026-10-29
 - See what is in each store (Joel's request). Storage drawer: a "Where" chip row (All / one per built store / Main storage; `UI.cat.invwhere`, via `storeKind` and `holdCaps`) filters the list, with the right empty-state text. Silo, Cold Cellar and Material Yard panels list their goods (`storelist`, grouped by `storeKind(id) === hold.cls`, biggest stack first). Goods that overflow into main storage still show under their store. Test: t_storewhere.py.
 
