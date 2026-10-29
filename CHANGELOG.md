@@ -3,6 +3,14 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.98 — 2026-10-29
+- House interior ("Go inside"). Full-screen `#room` overlay with a crisp native canvas (`#roomcv`, drawn by `ART.drawRoom`, geometry shared through `ART.roomGeom(n)`): an n×n floor of 32×16 diamonds and two back walls of n 16-px spots. The map isn't drawn while it's open.
+- Data: `D.house.room` (`levels` Snug 4×4 free, then Comfy 5×5 3,000g … Palatial 9×9 120,000g with late materials; `pieces` placement kinds floor / small (floor or on a table) / rug (2×2 under furniture) / wall; free `window`; `walls` and `floors` styles).
+- Save: `b.room = { v, lv, wall, floor, p: [{ k, q, at: 'f'|'l'|'r', x, y, f }], w: [[item, q]] }` on the house's main tile. `roomFix` runs from `migrate` (every load) and on the house panel: it moves anything in the old display spots (`b.d`) to the waiting list and empties `b.d`, and sends any piece that doesn't fit (bad data, unknown id) back to the waiting list (windows are just dropped). Items are never in two places: placed and waiting pieces are out of storage; "To storage" needs room. No copy is kept in `b.d`: an older copy could otherwise "Store" a piece the room also holds and double it. Older copies keep `b.room` untouched (unknown data is saved as-is) and anything they put in `b.d` moves to the waiting list on the next load.
+- Removed the old Display / Store buttons and their handlers (`decoPut`, `decoTake`); house texts and the Manual now point to Go inside; house sizes outside list trophy case spots.
+- Pause: `paused()` includes `UI.room && S.housePause !== false` (Settings → Pausing, shown once you have a house). Keys inside: Esc (cancel / deselect / leave), R turn, M move, Delete put away.
+- Hooks: `HW.interior` (open, close, state, fix, tap, btn, fits, ui). Tests: t_room.py (old-save migration, auto place, table + small piece, refusals, wall pieces, turn, put away, grow, styles, night and snow, pause on/off, reload, old-copy repair; desktop and phone), t_room2.py (select by tap, move with a real click, keys).
+
 ## v0.97 — 2026-10-29
 - Store contents fixed (Joel: Stained Glass and flour were in the Cold Cellar). `storeKinds.coldcellar` takes the whole `good` category, which includes non-food crafts. `storeKinds.silo.ids` now has flour and malt; `storeKinds.yard.ids` gains dyed_cloth, clay_pot, basket, iron_tools, glass_jar, stained_glass, gem_ring, gem_necklace, blanket. Named ids are matched only through their own store's `ids` (`storeKind`), so no save change: the store is worked out from the item each time. Test: t_kinds.py.
 

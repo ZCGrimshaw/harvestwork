@@ -555,10 +555,10 @@ window.HW_DATA = {
     glassworks: { name: 'Glass Furnace', kind: 'station', slots: 2, place: { brick: 8, stone: 4 }, desc: 'Melts sand over charcoal into glass, then blows jars and leads stained-glass panes.' },
     carpenter: { name: 'Carpenter’s Bench', kind: 'station', slots: 2, place: { plank: 6, brick: 2 }, desc: 'Builds furniture, frames pictures and mounts fish trophies for your house.' },
     brewhouse: { name: 'Brewhouse', kind: 'station', slots: 2, place: { plank: 6, stone: 4 }, desc: 'Malts wheat, then brews it with hops into ale and stout.' },
-    house:     { name: 'House', kind: 'house', desc: 'Your family home. Put the decor you make on display inside it, and keep your medals, monument models and fish trophies in its trophy case.' }
+    house:     { name: 'House', kind: 'house', desc: 'Your family home. Go inside to decorate its room with the decor you make, and keep your medals, monument models and fish trophies in its trophy case.' }
   },
 
-  /* Your house (Discovery 'homemaking'): one per farm, built on empty grass. It holds decor on display, one piece per spot.
+  /* Your house (Discovery 'homemaking'): one per farm, built on empty grass. Its decor goes in the room inside (house.room below).
      House Additions ('additions') grows it a size at a time onto free grass beside it; w×h is the footprint in tiles
      (it can face either way). Spots carry over when it grows. */
   house: {
@@ -569,7 +569,40 @@ window.HW_DATA = {
       { name: 'House', w: 1, h: 2, slots: 6, trophy: 5, cost: { gold: 1500, plank: 30, brick: 24 } },
       { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 8, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
       { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 12, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
-    ]
+    ],
+    /* Inside the house ("Go inside"): a room you decorate, separate from the size of the house outside. The floor is n×n cells with
+       two back walls of n spots each. Every house starts at the first size; the rest are paid upgrades that get steep on purpose,
+       so a new player has a room to decorate while the big rooms are a late-game goal. (`slots` on the levels above is from the
+       old display spots; decor now lives in the room.) */
+    room: {
+      levels: [
+        { name: 'Snug', n: 4 },
+        { name: 'Comfy', n: 5, cost: { gold: 3000, plank: 30, brick: 20 } },
+        { name: 'Roomy', n: 6, cost: { gold: 8000, plank: 40, brick: 40, roof_tile: 20, glass: 10 } },
+        { name: 'Spacious', n: 7, cost: { gold: 20000, brick: 60, roof_tile: 30, glass: 20, gear: 10 } },
+        { name: 'Grand', n: 8, cost: { gold: 50000, brick: 80, roof_tile: 40, glass: 30, gear: 20 } },
+        { name: 'Palatial', n: 9, cost: { gold: 120000, brick: 100, roof_tile: 50, glass: 40, gear: 30, copper_ingot: 10 } }
+      ],
+      // where each decor item goes: 'floor' (one cell), 'small' (floor or on a table), 'rug' (2×2, flat, furniture stands on it), 'wall'
+      pieces: { chair: { at: 'floor', turn: true }, table: { at: 'floor', top: true }, bookshelf: { at: 'floor', turn: true }, rug: { at: 'rug' },
+        vase: { at: 'small' }, lamp: { at: 'small' }, jewel_box: { at: 'small' }, painting: { at: 'wall' }, curtains: { at: 'wall' } },
+      window: { name: 'Window', at: 'wall' },   // free and unlimited: decoration only, it shows the season, weather and time of day outside
+      walls: [
+        { name: 'Cream', base: '#e6d8ba', alt: '#d6c6a2', pat: 'plain' },
+        { name: 'Sage stripes', base: '#b9c9a0', alt: '#a4b78a', pat: 'stripe' },
+        { name: 'Rose', base: '#e2bcb2', alt: '#cfa498', pat: 'dots' },
+        { name: 'Sky stripes', base: '#b4cadb', alt: '#9db7cb', pat: 'stripe' },
+        { name: 'Timber', base: '#a8784a', alt: '#93653a', pat: 'boards' },
+        { name: 'Stone', base: '#aaa49b', alt: '#948e85', pat: 'bricks' }
+      ],
+      floors: [
+        { name: 'Oak boards', base: '#a8784a', alt: '#93653a', pat: 'boards' },
+        { name: 'Pine boards', base: '#d2aa6a', alt: '#bd9557', pat: 'boards' },
+        { name: 'Stone tiles', base: '#b6b0a6', alt: '#a19b91', pat: 'check' },
+        { name: 'Red tiles', base: '#b8664c', alt: '#a3553f', pat: 'check' },
+        { name: 'Green carpet', base: '#5f8b4b', alt: '#557f41', pat: 'plain' }
+      ]
+    }
   },
 
   // Station upgrade axes. Level costs are indexed by current level.
@@ -775,8 +808,8 @@ window.HW_DATA = {
     { id: 'salvage', pic: ['grass:0', 'workbench', 'crate'], name: 'Salvage', cost: 3, req: ['rollers'], text: 'Take down a station, storage building or sprinkler when you already have another of the same kind. Half of the gold and materials it cost, upgrades included, come back.', where: 'Select the building → Take it down.' },
 
     // home & decor
-    { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Put the decor you make on display inside the house. Every house also has a trophy case for Weekly Challenge medals, Valley Monument models and fish trophies. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
-    { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size holds more decor. It needs free grass beside it.', where: 'Select your house → Grow the house.' },
+    { id: 'homemaking', pic: ['grass:0', 'house:1.1.0', 'chair'], name: 'Homemaking', cost: 3, req: ['kiln', 'fishing'], text: 'Build a Cottage for your family and a Carpenter’s Bench to make chairs, tables and fish trophies. Go inside the house to decorate its room with what you make. Every house also has a trophy case for Weekly Challenge medals, Valley Monument models and fish trophies. Later discoveries add vases, rugs, curtains, lamps, bookshelves and paintings.', where: 'Select empty grass you own → Build a Cottage. Open Market → Stations → Carpenter’s Bench.' },
+    { id: 'additions', pic: ['grass:1', 'house:1.2.1', 'brick'], name: 'House Additions', cost: 3, req: ['homemaking', 'surveying'], text: 'Grow your house a size at a time: Cottage (1×1), House (1×2), Farmhouse (2×2) and Manor (2×3). Every size has more trophy case spots. It needs free grass beside it. (The room inside grows separately: Go inside → Bigger room.)', where: 'Select your house → Grow the house.' },
 
     // fifth wave: late-game content to spend tokens on
     { id: 'orchard', pic: ['farm_tilled', 'crop:pears.2', 'pear'], name: 'Orchard Grove', cost: 6, req: ['apples'], text: 'Pear, cherry and plum trees join the market. Press pears into perry, bake cherry pie and make plum jam. Pear trees are hardy.', where: 'Open Market → Buy; Cider Press → Perry; Oven → Cherry Pie; Preserver → Plum Jam.' },
@@ -975,6 +1008,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.98', at: '2026-10-29 12:00', notes: ['Go inside your house! Select your house → Go inside to decorate a room of your own. Pick a piece, then tap a lit spot to place it: chairs, tables, bookshelves and rugs on the floor (furniture can stand on rugs), vases, lamps and jewel boxes on the floor or on a table, and paintings and curtains on the walls. Windows are free to add and show the real season, weather and time of day outside. Tap a placed piece to move it, turn it or put it away. Change the walls and floor under Walls & floor. Every house starts with a 4×4 room; Bigger room grows it inside, up to 9×9, without changing the house outside (the big sizes are a late-game goal). Decor you already had on display is waiting inside for you to place; Place them for me does it in one tap. The game pauses while you are inside (Settings → Pausing to change that).'] },
   { v: '0.97', at: '2026-10-29 10:30', notes: ['Some goods were kept in the wrong store. Flour and malt now go in the Silo with the grain, and finished crafts that are not food (Dyed Cloth, Clay Pots, Baskets, Iron Tools, Glass Jars, Stained Glass, Gem Rings and Necklaces, Blankets) now go in the Material Yard. The Cold Cellar keeps eggs, milk and all your food and drink. Goods you already own move to the right store by themselves, so your Cold Cellar has more room.'] },
   { v: '0.96', at: '2026-10-29 10:00', notes: ['When you stop turning the map, it now glides to the nearest straight view, so big buildings like your house and the monuments line up with the grid again (they are flat pictures drawn for the four straight views, so they looked off at in-between angles). Settings has a new Graphics section: a switch for this (Snap rotation to straight views, on by default) with the building names, player counters and market ticker switches moved in beside it.'] },
   { v: '0.95', at: '2026-10-29 09:30', notes: ['Silos, Cold Cellars and Material Yards can now be expanded eight times instead of four. The new last four are mega expansions that add twice as much space each (a fully expanded Cold Cellar now holds 1,640, up from 680; Silos and Material Yards hold 2,050, up from 850). They cost more each time, so they are a late-game goal.'] },

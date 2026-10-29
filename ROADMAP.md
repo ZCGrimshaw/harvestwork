@@ -68,7 +68,7 @@ Not built yet; picked up when we choose to.
   clock without opening the menu (today only the menu, idle timeout and full-storage hold pause the world; see `paused()`).
   Open: it should show a clear "Paused" state, keep working while panels are open, and not apply during races or the weekly
   challenge (the clock keeps running there).
-- **Walk-in house interior (pinned 2026-10-22, not built; Opus work):** a "Go inside" room view for the house with a floor grid
+- **Walk-in house interior (pinned 2026-10-22; SHIPPED in v0.98 as a pop-out room, decor first: floor, rugs, small pieces on tables, wall pieces, free windows, wall and floor styles, 6 fixed room sizes bought separately from the outside. Next ideas: layout bonuses or charm, medals and models on the walls, visiting other players' houses):** a "Go inside" room view for the house with a floor grid
   (4×4 cells per house tile: Cottage 4×4, House 4×8, Farmhouse 8×8, Manor 8×12), floor pieces (chairs, tables, bookshelves, lamps,
   rugs flat underneath) and wall pieces (paintings, curtains, fish trophy) on the two back walls, placed by tap or drag with rotate
   and store. Needs larger room sprites for the 9 decor pieces and a save-format change; current display spots (`d`) would be placed

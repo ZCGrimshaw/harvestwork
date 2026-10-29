@@ -125,6 +125,7 @@
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null; fixMsOrder();
+    { const o = houseIdx(); if (o >= 0) roomFix(S.tiles[o].b); }   // the room inside the house (and decor from the old display spots)
     S.tiles.forEach(T => { if (!T.r && D.gather[T.t]) T.r = initRes(T.t); });   // a gathering tile must always carry its resource
     S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
   }
@@ -1111,7 +1112,7 @@
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
     if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
     if (it.cat === 'kit') return 'Select empty grass you own → Place.';
-    if (it.cat === 'decor') return it.trophy ? 'Put it in your house’s trophy case: select your house → Trophy case.' : 'Put it on display: select your house → Display.';
+    if (it.cat === 'decor') return it.trophy ? 'Put it in your house’s trophy case: select your house → Trophy case.' : 'Place it in your room: select your house → Go inside.';
     return ''; }
   function rollMarket() {
     const kits = Object.keys(D.items).filter(id => D.items[id].cat === 'kit' && D.items[id].buy && unlocked(D.items[id].requires));
@@ -1501,9 +1502,9 @@
     housebuild: { label: () => `Build a ${HZ().levels[0].name}`,
       check: t => { if (!unlocked('homemaking')) return 'Unlock Homemaking in Discovery'; if (houseIdx() >= 0) return 'You already have a house';
         if (!isEmptyGrass(t.i)) return 'Pick empty grass you own'; return canPay(HZ().build); },
-      run: t => { const L = HZ().levels[0]; pay(HZ().build); T_(t.i).b = { type: 'house', lv: 0, w: L.w, h: L.h, d: Array(L.slots).fill(null) }; S.built++;
+      run: t => { const L = HZ().levels[0]; pay(HZ().build); T_(t.i).b = { type: 'house', lv: 0, w: L.w, h: L.h, d: [] }; roomFix(T_(t.i).b); S.built++;
         gainScore(C.score.build, t.i); first('build:house', C.firsts.build, `${L.name} built`); float(t.i, `${L.name} built!`, '#b8f08a'); stepOffHouse(t.i);
-        toast(`<b>Your ${esc(L.name)} is built.</b> Make decor at a Carpenter’s Bench (Open Market → Stations), then select the house to put it on display. It has ${L.slots} display spots.`, 'goal'); emit('build', { st: 'house' }); } },
+        toast(`<b>Your ${esc(L.name)} is built.</b> Make decor at a Carpenter’s Bench (Open Market → Stations), then select the house and press Go inside to decorate your room.`, 'goal'); emit('build', { st: 'house' }); } },
     housegrow: { label: t => { const b = T_(t.i).b, nx = b && b.type === 'house' && HZ().levels[(b.lv || 0) + 1]; return nx ? `Grow into a ${nx.name}` : 'Grow the house'; },
       check: t => { const b = T_(t.i).b; if (!unlocked('additions')) return 'Unlock House Additions in Discovery'; if (!b || b.type !== 'house' || b.pt != null) return 'No house here';
         const nx = HZ().levels[(b.lv || 0) + 1]; if (!nx) return 'It’s as big as it gets'; const x = growOpt(t.i, t.p); if (!x) return 'Pick a direction again';
@@ -1514,7 +1515,7 @@
         T_(n).b = b; houseTiles(n).forEach(j => { if (j !== n) T_(j).b = { type: 'house', pt: n }; });
         S.queue.forEach(q => { if (q.i === o) q.i = n; }); if (houseAt(UI.sel) === n || UI.sel === o) UI.sel = n; UI.growPick = null;
         gainScore(C.score.upgrade * 3, n); float(n, `Now a ${nx.name}!`, '#b8f08a'); stepOffHouse(n);
-        toast(`<b>Your house is now a ${esc(nx.name)}</b> (${x.W}×${x.H}) with ${nx.slots} display spots.`, 'goal'); } },
+        toast(`<b>Your house is now a ${esc(nx.name)}</b> (${x.W}×${x.H}) with ${nx.trophy} trophy case spots.`, 'goal'); } },
     housemove: { label: () => 'Move the house',
       check: t => { if (!unlocked('rollers')) return 'Unlock Rollers & Skids'; const b = T_(t.p) && T_(t.p).b; if (!b || b.type !== 'house' || b.pt != null) return 'Nothing to move';
         if (t.i === t.p) return 'Pick a different spot'; const s = houseSpot(t.i, b.w, b.h); if (s.bad) return `${s.bad.charAt(0).toUpperCase() + s.bad.slice(1)} is in the way`; return canPay(houseMoveCost(b)); },
@@ -1847,6 +1848,7 @@
   cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * .0015), e.offsetX * DPR, e.offsetY * DPR); }, { passive: false });
   window.addEventListener('keydown', e => {
     if (e.target.closest('textarea,select,input:not([type=range]):not([type=checkbox])')) return;
+    if (UI.room) { roomKey(e); return; }
     const k = e.key, s = 40 / cam.z * CAM_SPEED;
     if (k === 'ArrowLeft' || k === 'a') cam.u -= s; else if (k === 'ArrowRight' || k === 'd') cam.u += s;
     else if (k === 'ArrowUp' || k === 'w') cam.v -= s / 2; else if (k === 'ArrowDown' || k === 's') cam.v += s / 2;
@@ -2160,7 +2162,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
-    if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: put it on display in your house (select the house → Display). Orders never ask for decor, but the market buys it.');
+    if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: place it in the room inside your house (select the house → Go inside). Orders never ask for decor, but the market buys it.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
@@ -2606,15 +2608,181 @@
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
     return head(B.name, esc(B.desc)) + `<p class="state">Covering ${n} farm plot${n === 1 ? '' : 's'}.</p><p class="hint">Plots it waters still earn Good quality when they’re watered at both growth stages. Place it among your plots to cover up to ${max}.</p>` + btn({ a: 'pickup', i }, `Pick up this ${esc(B.name.toLowerCase())}`, { sub: 'Free · the kit goes back to storage, ready to place again' }) + moveSection(i) + salvageSection(i);
   }
+  /* ---------- inside the house: a room you decorate (Go inside) ----------
+     Saved on the house's main tile as b.room = { v, lv, wall, floor, p: placed pieces, w: waiting list }. A placed piece is
+     { k: item id or 'window', q: quality, at: 'f' (floor) | 'l' | 'r' (left or right wall), x, y (floor only), f (turned) }.
+     The waiting list holds [item, quality] pairs that belong to the house but aren't placed: decor from the old display
+     spots goes there (roomFix), and so does anything put away. Pieces in the room or waiting list are out of storage.
+     roomFix runs on every load: it moves anything an older copy of the game put in the old spots (b.d) to the waiting list,
+     and sends any piece that no longer fits back to it, so nothing is ever lost or doubled. */
+  const RZ = () => HZ().room;
+  const roomLvOf = R => RZ().levels[Math.min(Math.max(0, R.lv | 0), RZ().levels.length - 1)];
+  const pieceDef = k => k === 'window' ? RZ().window : RZ().pieces[k] || (D.items[k] && D.items[k].cat === 'decor' && !D.items[k].trophy ? { at: 'floor' } : null);
+  const pieceName = k => k === 'window' ? RZ().window.name : D.items[k] ? D.items[k].name : k;
+  function roomFix(b) {
+    if (!b) return null; const R = b.room && typeof b.room === 'object' && !Array.isArray(b.room) ? b.room : (b.room = {});
+    R.v = 1; R.lv = Math.min(Math.max(0, R.lv | 0), RZ().levels.length - 1);
+    R.wall = Math.min(Math.max(0, R.wall | 0), RZ().walls.length - 1); R.floor = Math.min(Math.max(0, R.floor | 0), RZ().floors.length - 1);
+    if (!Array.isArray(R.w)) R.w = []; if (!Array.isArray(R.p)) R.p = [];
+    if (Array.isArray(b.d) && b.d.some(Boolean)) { b.d.forEach(x => { if (Array.isArray(x) && typeof x[0] === 'string') R.w.push([x[0], Math.min(2, Math.max(0, x[1] | 0))]); }); b.d = []; }
+    const keep = []; R.p.forEach(p => { if (!p || typeof p !== 'object' || typeof p.k !== 'string') return;
+      if (pieceDef(p.k) && roomFits(R, p, keep)) keep.push(p); else if (p.k !== 'window') R.w.push([p.k, Math.min(2, Math.max(0, p.q | 0))]); });
+    R.p = keep; R.w = R.w.filter(x => Array.isArray(x) && typeof x[0] === 'string');
+    return R; }
+  const roomOf = () => { const o = houseIdx(); return o < 0 ? null : (T_(o).b.room && T_(o).b.room.v ? T_(o).b.room : roomFix(T_(o).b)); };
+  // can piece p go where it says, among the placed pieces in list (ignoring skip)?
+  function roomFits(R, p, list, skip) { const n = roomLvOf(R).n, d = pieceDef(p.k); if (!d) return false;
+    const others = list.filter(q => q !== skip && q !== p), defOf = q => pieceDef(q.k) || { at: 'floor' }, int = v => Number.isInteger(v);
+    if (d.at === 'wall') return (p.at === 'l' || p.at === 'r') && int(p.x) && p.x >= 0 && p.x < n && !others.some(q => q.at === p.at && q.x === p.x);
+    if (p.at !== 'f' || !int(p.x) || !int(p.y) || p.x < 0 || p.y < 0) return false;
+    if (d.at === 'rug') return p.x + 1 < n && p.y + 1 < n && !others.some(q => q.at === 'f' && defOf(q).at === 'rug' && Math.abs(q.x - p.x) < 2 && Math.abs(q.y - p.y) < 2);
+    if (p.x >= n || p.y >= n) return false;
+    const here = others.filter(q => q.at === 'f' && q.x === p.x && q.y === p.y && defOf(q).at !== 'rug');
+    if (d.at === 'small') return !here.some(q => defOf(q).at === 'small') && here.every(q => defOf(q).top);
+    return !here.length; }
+  function roomWhyNot(R, p, skip) { const d = pieceDef(p.k), n = roomLvOf(R).n;
+    if (d.at === 'wall') return 'There’s already something on that part of the wall.';
+    if (d.at === 'rug' && (p.x + 1 >= n || p.y + 1 >= n)) return 'A rug needs 2×2 floor squares.';
+    if (d.at === 'rug') return 'Rugs can’t overlap.';
+    if (d.at === 'small') return 'That spot is taken. Small pieces can go on an empty square or on a table.';
+    return 'That square is taken.'; }
+  const roomSpots = (R, k, skip) => { const d = pieceDef(k), n = roomLvOf(R).n, out = [];
+    if (d.at === 'wall') ['l', 'r'].forEach(at => { for (let x = 0; x < n; x++) out.push({ k, at, x }); });
+    else for (let y = 0; y < n - (d.at === 'rug' ? 1 : 0); y++) for (let x = 0; x < n - (d.at === 'rug' ? 1 : 0); x++) out.push({ k, at: 'f', x, y });
+    return out.filter(p => roomFits(R, p, R.p, skip)); };
+  const bestQ = id => { const a = S.inv[id]; return !a ? -1 : a[2] ? 2 : a[1] ? 1 : a[0] ? 0 : -1; };
+  const roomDecorOwned = () => Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'decor' && !D.items[id].trophy && count(id) > 0);
+  function openRoom() { const o = houseIdx(); if (o < 0) return; roomFix(T_(o).b); UI.room = true; UI.rm = { tab: 'place', hand: null, sel: null, msg: '' };
+    $('#room').hidden = false; $('#app').classList.add('inroom'); UI.html['#rtray'] = null; dirty(); }
+  function closeRoom() { if (!UI.room) return; UI.room = false; UI.rm = null; $('#room').hidden = true; $('#app').classList.remove('inroom'); save(); dirty(); }
+  const roomMsg = t => { if (UI.rm) { UI.rm.msg = t; dirty(); } };
+  function roomPlace(cand) { const R = roomOf(), h = UI.rm.hand; if (!R || !h) return false;
+    const skip = h.src === 'move' ? R.p[h.i] : null;
+    if (!roomFits(R, cand, R.p, skip)) { roomMsg(roomWhyNot(R, cand, skip)); SND.play('warn'); return false; }
+    let placed;
+    if (h.src === 'move') { if (!skip) return false; Object.assign(skip, { at: cand.at, x: cand.x }); if (cand.at === 'f') skip.y = cand.y; else delete skip.y; placed = skip; }
+    else if (h.src === 'wait') { const j = R.w.findIndex(x => x[0] === h.k && (x[1] | 0) === h.q); if (j < 0) { UI.rm.hand = null; return false; } R.w.splice(j, 1); placed = Object.assign(cand, { q: h.q }); R.p.push(placed); }
+    else if (h.src === 'inv') { const a = S.inv[h.k]; let q = a && a[h.q] > 0 ? h.q : bestQ(h.k); if (q < 0) { roomMsg('You don’t have one in storage any more.'); UI.rm.hand = null; return false; }
+      a[q]--; placed = Object.assign(cand, { q }); R.p.push(placed); }
+    else if (h.src === 'window') { placed = Object.assign(cand, { q: 0 }); R.p.push(placed); }
+    else return false;
+    if (cand.at === 'f' && h.f) placed.f = 1;
+    UI.rm.hand = null; UI.rm.sel = R.p.indexOf(placed); UI.rm.msg = ''; save(); SND.play('contract'); dirty(); return true; }
+  // what is drawn where on screen, front first, for tapping
+  function roomPick(px, py) { const R = roomOf(), G = ART.roomGeom(roomLvOf(R).n), H = { chair: 25, table: 16, bookshelf: 33, lamp: 11, vase: 17, jewel_box: 8 };
+    const fl = R.p.map((p, i) => ({ p, i })).filter(e => e.p.at === 'f' && pieceDef(e.p.k).at !== 'rug').sort((a, b) => (b.p.x + b.p.y) - (a.p.x + a.p.y) || roomZ(R, b.p) - roomZ(R, a.p));
+    for (const e of fl) { const [cx, cy] = G.cell(e.p.x, e.p.y), z = roomZ(R, e.p), h = (H[e.p.k] || 12) + z; if (px >= cx - 13 && px <= cx + 13 && py <= cy + 7 && py >= cy - 6 - h) return e.i; }
+    const w = G.wallAt(px, py); if (w) { const i = R.p.findIndex(p => p.at === w[0] && p.x === w[1]); if (i >= 0) return i; }
+    const c = G.floorAt(px, py); if (c) { const i = R.p.findIndex(p => p.at === 'f' && pieceDef(p.k).at === 'rug' && c[0] >= p.x && c[0] <= p.x + 1 && c[1] >= p.y && c[1] <= p.y + 1); if (i >= 0) return i; }
+    return -1; }
+  const roomZ = (R, p) => pieceDef(p.k) && pieceDef(p.k).at === 'small' && R.p.some(q => q !== p && q.at === 'f' && q.x === p.x && q.y === p.y && pieceDef(q.k) && pieceDef(q.k).top) ? 15 : 0;
+  function roomTap(px, py) { const R = roomOf(); if (!R || !UI.rm) return; const n = roomLvOf(R).n, G = ART.roomGeom(n), h = UI.rm.hand;
+    if (h) { const d = pieceDef(h.k); let cand = null;
+      if (d.at === 'wall') { const w = G.wallAt(px, py); if (w) cand = { k: h.k, at: w[0], x: w[1] }; }
+      else { const c = G.floorAt(px, py); if (c) cand = { k: h.k, at: 'f', x: d.at === 'rug' ? Math.min(c[0], n - 2) : c[0], y: d.at === 'rug' ? Math.min(c[1], n - 2) : c[1] }; }
+      if (!cand) { roomMsg(d.at === 'wall' ? 'Tap a lit spot on one of the walls.' : 'Tap one of the lit squares on the floor.'); return; }
+      roomPlace(cand); return; }
+    const i = roomPick(px, py); UI.rm.sel = i >= 0 ? (UI.rm.sel === i ? null : i) : null; UI.rm.msg = ''; dirty(); }
+  // put every waiting piece in the first free spot that suits it (tables first for small pieces); what doesn't fit keeps waiting
+  function roomAuto() { const R = roomOf(); if (!R) return; let n0 = 0; const order = { rug: 0, floor: 1, wall: 2, small: 3 };
+    const todo = R.w.slice().sort((a, b) => (order[(pieceDef(a[0]) || { at: 'x' }).at] ?? 9) - (order[(pieceDef(b[0]) || { at: 'x' }).at] ?? 9));
+    todo.forEach(([k, q]) => { const d = pieceDef(k); if (!d) return; let sp = roomSpots(R, k);
+      if (d.at === 'small') sp.sort((a, b) => roomZ(R, Object.assign({}, b, { q: 0 })) - roomZ(R, Object.assign({}, a, { q: 0 })));
+      if (d.at === 'wall') sp.sort((a, b) => a.x - b.x || (a.at < b.at ? -1 : 1)); if (d.at === 'floor' || d.at === 'rug') sp.sort((a, b) => (a.x + a.y) - (b.x + b.y));
+      const s = sp[0]; if (!s) return; const j = R.w.findIndex(x => x[0] === k && (x[1] | 0) === (q | 0)); if (j < 0) return; R.w.splice(j, 1); R.p.push(Object.assign(s, { q: q | 0 })); n0++; });
+    save(); dirty(); roomMsg(n0 ? `Placed ${n0} piece${n0 === 1 ? '' : 's'}.${R.w.length ? ` ${R.w.length} didn’t fit; a bigger room has more space.` : ''}` : 'There was no free space for them.'); }
+  function roomGrow() { const R = roomOf(); if (!R) return; const nx = RZ().levels[(R.lv | 0) + 1]; if (!nx) return;
+    const why = canPay(nx.cost); if (why) { roomMsg(why + '.'); SND.play('warn'); return; }
+    pay(nx.cost); R.lv = (R.lv | 0) + 1; gainScore(C.score.build * (R.lv + 1), houseIdx()); SND.play('contract'); save(); dirty();
+    toast(`<b>Your room is now ${esc(nx.name)}</b>: ${nx.n}×${nx.n} floor and ${nx.n} spots on each wall.`, 'goal'); }
+  function roomSky() { return { h: hour(), season: noSeasons() ? 'spring' : season().id, rain: raining(), snow: !noSeasons() && wxNow() === 'snow' }; }
+  function drawRoomView() { const R = roomOf(), cv2 = $('#roomcv'), st = $('#room .rstage'); if (!R || !cv2 || !st) return;
+    const n = roomLvOf(R).n, G = ART.roomGeom(n); if (cv2.width !== G.w || cv2.height !== G.h) { cv2.width = G.w; cv2.height = G.h; }
+    let s = Math.min(st.clientWidth / G.w, st.clientHeight / G.h); s = s >= 2 ? Math.floor(s) : Math.max(.5, s);
+    const cw = Math.round(G.w * s) + 'px'; if (cv2.style.width !== cw) { cv2.style.width = cw; cv2.style.height = Math.round(G.h * s) + 'px'; }
+    const W = RZ().walls[R.wall | 0], F = RZ().floors[R.floor | 0], sel = UI.rm && UI.rm.sel != null ? R.p[UI.rm.sel] : null, h = UI.rm && UI.rm.hand;
+    const colr = k => { const it = D.items[k]; return it && it.icon ? [it.icon[1], it.icon[2]] : ['#efe6cf', '#8a5a2e']; }, SUN = '#f5c542';
+    const M = { n, wall: W, floor: F, sky: roomSky(), night: hour() >= 20.5 || hour() < 6.5, wallPieces: [], rugs: [], floorPieces: [], hiCells: [], hiWalls: [] };
+    R.p.forEach(p => { const [a, b] = colr(p.k), d = pieceDef(p.k), ring = p === sel ? SUN : null;
+      if (p.at !== 'f') M.wallPieces.push({ k: p.k, at: p.at, x: p.x, a, b, ring }); else if (d.at === 'rug') M.rugs.push({ x: p.x, y: p.y, a, b, ring });
+      else M.floorPieces.push({ k: p.k, x: p.x, y: p.y, f: p.f, a, b, z: roomZ(R, p), ring }); });
+    if (h) { const skip = h.src === 'move' ? R.p[h.i] : null; roomSpots(R, h.k, skip).forEach(p => { if (p.at === 'f') { M.hiCells.push([p.x, p.y, SUN]); if (pieceDef(h.k).at === 'rug') { M.hiCells.push([p.x + 1, p.y, SUN], [p.x, p.y + 1, SUN], [p.x + 1, p.y + 1, SUN]); } } else M.hiWalls.push([p.at, p.x, SUN]); }); }
+    ART.drawRoom(cv2.getContext('2d'), M); }
+  function renderRoom() { if (!UI.room || !UI.rm) return; const R = roomOf(); if (!R) { closeRoom(); return; }
+    const L = roomLvOf(R), o = houseIdx(), b = T_(o).b, rm = UI.rm, nx = RZ().levels[(R.lv | 0) + 1];
+    setHTML('#rtitle', `Inside your ${esc(houseName(b))}`);
+    setHTML('#rsub', `${esc(L.name)} room · ${L.n}×${L.n} floor · ${R.p.length} piece${R.p.length === 1 ? '' : 's'} placed${R.w.length ? ` · ${R.w.length} waiting` : ''}${S.housePause !== false && !S.race ? ' · <b>Game paused</b>' : ''}`);
+    let t = `<div class="tabs" role="tablist">${[['place', 'Decorate'], ['style', 'Walls & floor'], ['grow', 'Bigger room']].map(([k, nm]) => `<button class="tab ${rm.tab === k ? 'on' : ''}" data-rm-tab="${k}" role="tab" aria-selected="${rm.tab === k}">${nm}</button>`).join('')}</div>`;
+    if (rm.msg) t += `<p class="rmsg">${rm.msg}</p>`;
+    const sel = rm.sel != null ? R.p[rm.sel] : null, it = k => k === 'window' ? '<span class="rwin" aria-hidden="true"></span>' : ico(k);
+    if (rm.tab === 'place') {
+      if (rm.hand) t += `<div class="rcard"><div class="row">${it(rm.hand.k)}<div class="grow1"><b>${rm.hand.src === 'move' ? 'Moving' : 'Placing'}: ${esc(pieceName(rm.hand.k))}</b><small>${pieceDef(rm.hand.k).at === 'wall' ? 'Tap a lit spot on a wall.' : pieceDef(rm.hand.k).at === 'small' ? 'Tap a lit square, on the floor or on a table.' : pieceDef(rm.hand.k).at === 'rug' ? 'Tap a lit square: the rug covers 2×2 and furniture can stand on it.' : 'Tap a lit square on the floor.'}</small></div><button class="btn sm ghost" data-rm-cancel>Cancel</button></div></div>`;
+      else if (sel) { const d = pieceDef(sel.k); t += `<div class="rcard"><div class="row">${it(sel.k)}<div class="grow1"><b>${esc(pieceName(sel.k))}</b>${sel.q ? ' ' + qtag(sel.q) : ''}<small>${sel.at === 'f' ? 'On the floor' : `On the ${sel.at === 'l' ? 'left' : 'right'} wall`}</small></div></div>
+        <div class="rbtns"><button class="btn sm" data-rm-move>Move</button>${d.turn ? '<button class="btn sm" data-rm-turn>Turn</button>' : ''}<button class="btn sm ghost" data-rm-away>${sel.k === 'window' ? 'Remove' : 'Put away'}</button><button class="btn sm ghost" data-rm-desel>Done</button></div></div>`; }
+      else t += `<p class="hint small">Pick a piece below, then tap a lit spot in the room. Tap a placed piece to move, turn or put it away.</p>`;
+      const wait = {}; R.w.forEach(([k, q]) => { const key = k + ':' + (q | 0); wait[key] = (wait[key] || 0) + 1; });
+      const wk = Object.keys(wait);
+      if (wk.length) { t += `<span class="eyebrow">Waiting to place</span><div class="rlist">` + wk.map(key => { const [k, q] = key.split(':'), ok = !!pieceDef(k);
+          return `<div class="rpiece">${it(k)}<span><b>${esc(pieceName(k))}</b>${+q ? ' ' + qtag(+q) : ''}${wait[key] > 1 ? ` <small>×${wait[key]}</small>` : ''}</span>${ok ? `<button class="btn sm" data-rm-take="wait:${k}:${q}">Place</button>` : ''}<button class="linkish small" data-rm-tostore="${k}:${q}">To storage</button></div>`; }).join('') + `</div>`;
+        t += `<button class="btn sm ghost" data-rm-auto>Place them for me</button>`; }
+      const own = roomDecorOwned();
+      t += `<span class="eyebrow">Decor in storage</span>` + (own.length ? `<div class="rlist">` + own.map(k => `<div class="rpiece">${it(k)}<span><b>${esc(D.items[k].name)}</b> <small>×${count(k)}</small></span><button class="btn sm" data-rm-take="inv:${k}">Place</button></div>`).join('') + `</div>` : `<p class="hint small">No decor in storage. ${esc(decoWhere())}</p>`);
+      t += `<span class="eyebrow">Free to place</span><div class="rlist"><div class="rpiece">${it('window')}<span><b>Window</b> <small>for decoration</small></span><button class="btn sm" data-rm-take="window">Place</button></div></div>`;
+    } else if (rm.tab === 'style') {
+      t += `<span class="eyebrow">Walls</span><div class="chips">${RZ().walls.map((w, k) => `<button class="chipf ${(R.wall | 0) === k ? 'on' : ''}" data-rm-wall="${k}" aria-pressed="${(R.wall | 0) === k}"><i class="sw" style="background:${w.base}"></i>${esc(w.name)}</button>`).join('')}</div>`;
+      t += `<span class="eyebrow">Floor</span><div class="chips">${RZ().floors.map((f, k) => `<button class="chipf ${(R.floor | 0) === k ? 'on' : ''}" data-rm-floor="${k}" aria-pressed="${(R.floor | 0) === k}"><i class="sw" style="background:${f.base}"></i>${esc(f.name)}</button>`).join('')}</div>`;
+      t += `<p class="hint small">Free to change any time.</p>`;
+    } else {
+      t += `<p class="state">Now: <b>${esc(L.name)}</b>, ${L.n}×${L.n} floor with ${L.n} spots on each wall.</p>`;
+      if (!nx) t += `<p class="hint">This is the biggest room a house can have.</p>`;
+      else { const ce = canPay(nx.cost); t += `<p class="hint small">The room grows inside; the house outside stays the same size. Everything you’ve placed stays put.</p>`
+        + `<button class="btn ${ce ? '' : 'pri'}" data-rm-grow ${ce ? 'disabled' : ''}>Make it ${esc(nx.name)}: ${nx.n}×${nx.n}<small>${costTxt(nx.cost)}${ce ? ' · ' + esc(ce) : ''}</small></button>`; }
+      const later = RZ().levels.slice((R.lv | 0) + 2); if (later.length) t += `<p class="hint small">After that: ${later.map(x => `${esc(x.name)} ${x.n}×${x.n} (${x.cost.gold.toLocaleString()}g)`).join(' · ')}.</p>`;
+    }
+    setHTML('#rtray', t); }
+  // room events: the tray's buttons, taps in the room, and keys while inside
+  function roomButton(ds) { const R = roomOf(), rm = UI.rm; if (!R || !rm) return false;
+    const sel = rm.sel != null ? R.p[rm.sel] : null;
+    if (ds.rmTab) { rm.tab = ds.rmTab; rm.msg = ''; rm.hand = null; }
+    else if (ds.rmTake) { const [src, k, q] = ds.rmTake.split(':');
+      if (src === 'window') rm.hand = { src: 'window', k: 'window', q: 0 };
+      else if (src === 'wait') rm.hand = { src: 'wait', k, q: +q | 0 };
+      else if (src === 'inv') { const bq = bestQ(k); if (bq < 0) return true; rm.hand = { src: 'inv', k, q: bq }; }
+      rm.sel = null; rm.msg = roomSpots(R, rm.hand.k).length ? '' : 'There’s no free spot for that. Put something away, or make the room bigger.'; }
+    else if ('rmCancel' in ds) { rm.hand = null; rm.msg = ''; }
+    else if ('rmDesel' in ds) { rm.sel = null; rm.msg = ''; }
+    else if ('rmMove' in ds && sel) rm.hand = { src: 'move', i: rm.sel, k: sel.k, q: sel.q | 0, f: sel.f };
+    else if ('rmTurn' in ds && sel) { sel.f = sel.f ? 0 : 1; save(); }
+    else if ('rmAway' in ds && sel) { R.p.splice(rm.sel, 1); if (sel.k !== 'window') R.w.push([sel.k, sel.q | 0]); rm.sel = null; rm.msg = sel.k === 'window' ? '' : `${pieceName(sel.k)} is waiting to be placed again.`; save(); }
+    else if (ds.rmTostore) { const [k, q] = ds.rmTostore.split(':'), j = R.w.findIndex(x => x[0] === k && (x[1] | 0) === (+q | 0)); if (j < 0) return true;
+      if (!D.items[k]) { rm.msg = 'This game version doesn’t know that piece, so it stays in the house.'; }
+      else if (room() < 1) { rm.msg = esc(FULL); SND.play('warn'); }
+      else { R.w.splice(j, 1); addItem(k, 1, +q | 0, true); rm.msg = `${esc(D.items[k].name)} is back in storage.`; save(); } }
+    else if ('rmAuto' in ds) roomAuto();
+    else if (ds.rmWall != null) { R.wall = +ds.rmWall | 0; save(); }
+    else if (ds.rmFloor != null) { R.floor = +ds.rmFloor | 0; save(); }
+    else if ('rmGrow' in ds) roomGrow();
+    else if ('roomClose' in ds) closeRoom();
+    else return false;
+    dirty(); return true; }
+  $('#room').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (roomButton(el.dataset)) e.stopPropagation(); });
+  $('#roomcv').addEventListener('click', e => { if (!UI.room) return; const c = e.currentTarget, rc = c.getBoundingClientRect();
+    roomTap((e.clientX - rc.left) * c.width / rc.width, (e.clientY - rc.top) * c.height / rc.height); });
+  document.addEventListener('click', e => { const el = e.target.closest('[data-room-open]'); if (el) { openRoom(); e.stopPropagation(); } }, true);
+  function roomKey(e) { const k = e.key, rm = UI.rm; if (!rm) return;
+    if (k === 'Escape') { if (rm.hand) rm.hand = null; else if (rm.sel != null) rm.sel = null; else closeRoom(); dirty(); e.preventDefault(); }
+    else if ((k === 'r' || k === 'R') && rm.sel != null) roomButton({ rmTurn: '' });
+    else if ((k === 'Delete' || k === 'Backspace') && rm.sel != null) { roomButton({ rmAway: '' }); e.preventDefault(); }
+    else if ((k === 'm' || k === 'M') && rm.sel != null) roomButton({ rmMove: '' }); }
   /* ---------- your house panel: decor on display, and growing it ---------- */
   function decoWhere() { const o = [`chairs, tables${unlocked('loom') ? ', bookshelves' : ''}${unlocked('dyeing') ? ', paintings' : ''} and fish trophies at a Carpenter’s Bench (Open Market → Stations)`];
     if (unlocked('wildflowers') && unlocked('pottery')) o.push('flower vases at the Potter’s Wheel'); if (unlocked('dyeing')) o.push('rugs and curtains at the Loom');
     if (unlocked('glassworks')) o.push('oil lamps at the Glass Furnace'); return `Make ${nmList(o)}.`; }
   function growSection(o) { const b = T_(o).b, nx = HZ().levels[(b.lv || 0) + 1];
     if (!nx) return `<p class="hint">Your ${esc(houseName(b))} is as big as a house gets.</p>`;
-    if (!unlocked('additions')) return `<p class="hint">Unlock “House Additions” in Discovery to grow it into a ${esc(nx.name)} (${nx.w}×${nx.h} tiles, ${nx.slots} display spots).</p>`;
+    if (!unlocked('additions')) return `<p class="hint">Unlock “House Additions” in Discovery to grow it into a ${esc(nx.name)} (${nx.w}×${nx.h} tiles, ${nx.trophy} trophy case spots).</p>`;
     const opts = growOpts(o), ok = opts.filter(x => !x.bad), no = opts.filter(x => x.bad), ce = canPay(nx.cost), cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
-    let h = `<p class="state">Next: <b>${esc(nx.name)}</b>, ${nx.w}×${nx.h} tiles with ${nx.slots} display spots. Cost: ${costTxt(nx.cost)}.</p>`;
+    let h = `<p class="state">Next: <b>${esc(nx.name)}</b>, ${nx.w}×${nx.h} tiles with ${nx.trophy} trophy case spots. Cost: ${costTxt(nx.cost)}.</p>`;
     const why = no.length ? `<p class="hint small">${no.map(x => `${esc(cap1(x.dir))}: ${esc(x.bad)} is in the way.`).join(' ')}</p>` : '';
     if (!ok.length) return h + `<p class="hint">There’s no room to grow it. It needs free grass you own beside it.</p>` + why;
     h += `<p class="hint small">Choose which way it grows. The new tiles light up on the map; press again to build.</p>`;
@@ -2623,20 +2791,16 @@
     return h + why; }
   function houseMoveHTML(o, i) { const b = T_(o).b; if (!unlocked('rollers')) return '';
     return `<div class="more"><span class="eyebrow">Move the house</span><p class="hint">Keeps everything on display. It needs a free ${b.w}×${b.h} patch of grass you own. Costs ${costTxt(houseMoveCost(b))}${(S.moveHeat || 0) > 0 ? ' (higher after recent moves; the surcharge eases every few days)' : ''}.</p><button class="btn ghost" data-move-start="${o}">Pick a new spot</button></div>`; }
-  function housePanel(o, i) { const b = T_(o).b, L = houseLv(b), sl = L.slots, d = b.d || (b.d = []), n = decoUsed(b), full = n >= sl;
+  function housePanel(o, i) { const b = T_(o).b, L = houseLv(b), R = roomFix(b), RL = roomLvOf(R);
     let h = head(`${S.name}’s ${L.name}`, esc(D.buildings.house.desc));
-    h += `<p class="state">A ${b.w}×${b.h} ${esc(L.name.toLowerCase())} · <b>${n}</b> of ${sl} display spots filled.</p>`;
-    h += `<span class="eyebrow">On display</span><div class="decogrid">` + Array.from({ length: sl }, (_, k) => { const x = d[k];
-      return x ? `<div class="deco" data-info="${x[0]}">${ico(x[0])}<small>${esc(D.items[x[0]].name)}${x[1] ? ' ' + qtag(x[1]) : ''}</small><button class="linkish small" data-deco-take="${o}:${k}">Store</button></div>` : ''; }).join('')
-      + (sl > n ? `<div class="deco empty"><small>${sl - n} empty spot${sl - n === 1 ? '' : 's'}</small></div>` : '') + `</div>`;
-    const own = Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'decor' && !D.items[id].trophy && count(id) > 0);
-    h += `<span class="eyebrow">Decor in storage</span>`;
-    h += own.length ? own.map(id => `<div class="row">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> <small class="muted">×${count(id)}</small></div><button class="btn sm" data-deco-put="${o}:${id}" ${full ? 'disabled' : ''}>Display</button></div>`).join('')
-        + (full ? `<p class="hint small">Every spot is filled. Store a piece to swap it${HZ().levels[(b.lv || 0) + 1] ? ', or grow the house for more spots' : ''}.</p>` : '')
-      : `<p class="hint">No decor in storage. ${esc(decoWhere())}</p>`;
+    h += `<p class="state">A ${b.w}×${b.h} ${esc(L.name.toLowerCase())}. Inside: a ${esc(RL.name.toLowerCase())} ${RL.n}×${RL.n} room with <b>${R.p.length}</b> piece${R.p.length === 1 ? '' : 's'} placed${R.w.length ? ` and ${R.w.length} waiting to be placed` : ''}.</p>`;
+    h += `<button class="btn pri" data-room-open>Go inside<small>Decorate the room: furniture, rugs, paintings, curtains and windows</small></button>`;
+    const own = roomDecorOwned().length;
+    if (own || R.w.length) h += `<p class="hint small">${R.w.length ? `${R.w.length} piece${R.w.length === 1 ? ' is' : 's are'} waiting inside for you to place.` : ''}${own ? ` You have decor in storage ready to place.` : ''}</p>`;
+    else h += `<p class="hint small">${esc(decoWhere())}</p>`;
     h += trophyCaseHTML(o, b);
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
-    h += `<p class="hint small">Pieces on display leave your storage, so they don’t take up room. Store one to take it back.</p>`;
+    h += `<p class="hint small">Pieces in your room leave storage, so they don’t take up space. Put one away to keep it in the house, then send it back to storage from the waiting list.</p>`;
     if (UI.moving === o) return head(`Moving the ${L.name}`, 'Choose where its top corner goes.') + houseMoveHere(i, o);
     return h + houseMoveHTML(o, i); }
   function trophyCaseHTML(o, b) { const tc = caseOf(b), cs = caseSlots(b), full = tc.length >= cs, offers = caseOffers();
@@ -2932,6 +3096,7 @@
       h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         <span class="eyebrow">Pausing</span><div class="opts">
         <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while the Menu or Settings is open</button>
+        ${houseIdx() >= 0 ? `<button class="toggle ${S.housePause !== false ? 'on' : ''}" data-housepause aria-pressed="${S.housePause !== false}"><i></i>Pause the game while you’re inside your house</button>` : ''}
         <button class="toggle ${S.fullPause ? 'on' : ''}" data-fullpause aria-pressed="${!!S.fullPause}"><i></i>Pause the game when storage is full</button>
         <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
         <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p>
@@ -3036,7 +3201,7 @@
     Object.values(D.upgrades).forEach(U => add('u:' + U.name, 'upg', `Station ${U.name} upgrade`, null, `station tuning ${U.name} level`, () => `<p>Upgrades any station (Discovery → Station Tuning). Each level costs more.</p><ul class="manlist">${U.cost.map((c, l) => `<li><b>${esc(U.label(l + 1))}</b> <small class="muted">${esc(costTxt(c))}${U.gate && U.gate[l] ? ` · needs ${esc((D.discoveries.find(d => d.id === U.gate[l]) || { name: U.gate[l] }).name)}` : ''}</small></li>`).join('')}</ul>`));
     Object.keys(D.tools).forEach(k => { const T = D.tools[k]; add('t:' + k, 'upg', `${T.name} upgrades`, null, `tool toolsmithing ${T.tiers.join(' ')}`, () => `<p>Upgrade it at the Homestead (Discovery → Toolsmithing).</p><ul class="manlist">${T.tiers.map((t, l) => `<li><b>${esc(t)}</b> · ${esc(T.desc[l])}${l ? ` <small class="muted">${esc(costTxt(T.cost[l - 1]))}</small>` : ''}</li>`).join('')}</ul>`); });
     add('u:home', 'upg', 'Homestead storage upgrades', null, 'storage capacity expand root cellar granary', () => `<p>Select the Homestead → Expand storage. Capacity grows with each level, and keeps growing past the listed ones.</p><ul class="manlist">${D.homeUpgrades.map((c, l) => `<li><b>Level ${l + 2}</b> <small class="muted">${esc(costTxt(c))}${D.homeGate[l] ? ` · needs ${esc((D.discoveries.find(d => d.id === D.homeGate[l]) || { name: D.homeGate[l] }).name)}` : ''}</small></li>`).join('')}</ul>`);
-    add('u:house', 'upg', 'House sizes', null, 'house additions cottage farmhouse manor decor', () => `<p>Build with Homemaking; grow with House Additions. The new size needs free grass beside the house.</p><ul class="manlist"><li><b>${esc(HZ().levels[0].name)}</b> ${HZ().levels[0].w}×${HZ().levels[0].h} · ${HZ().levels[0].slots} spots <small class="muted">${esc(costTxt(HZ().build))}</small></li>${HZ().levels.slice(1).map(L => `<li><b>${esc(L.name)}</b> ${L.w}×${L.h} · ${L.slots} spots <small class="muted">${esc(costTxt(L.cost))}</small></li>`).join('')}</ul>`);
+    add('u:house', 'upg', 'House sizes', null, 'house additions cottage farmhouse manor decor', () => `<p>Build with Homemaking; grow with House Additions. The new size needs free grass beside the house. The room inside grows on its own (Go inside → Bigger room): ${RZ().levels.map(x => `${esc(x.name)} ${x.n}×${x.n}${x.cost ? ` (${x.cost.gold.toLocaleString()}g)` : ''}`).join(', ')}.</p><ul class="manlist"><li><b>${esc(HZ().levels[0].name)}</b> ${HZ().levels[0].w}×${HZ().levels[0].h} · ${HZ().levels[0].trophy} trophy spots <small class="muted">${esc(costTxt(HZ().build))}</small></li>${HZ().levels.slice(1).map(L => `<li><b>${esc(L.name)}</b> ${L.w}×${L.h} · ${L.trophy} trophy spots <small class="muted">${esc(costTxt(L.cost))}</small></li>`).join('')}</ul>`);
     add('u:farmhand', 'upg', 'Farmhand', null, 'helper worker jobs loop hire crew errands', () => `<p>Hire one helper (Discovery → Farmhand) at the Homestead for ${esc(costTxt(D.farmhand.hire))}. They loop through up to ${D.farmhand.maxSteps} jobs you give them (more with Seasoned Farmhand), work out the jobs they can do, and skip any that have nothing to do. Repeat Recipes, Errands and seed buying all build on them.</p>`);
     // discoveries
     D.discoveries.forEach(d => add('d:' + d.id, 'disc', d.name, null, `discovery unlock ${d.text} ${d.where}`, () => {
@@ -3157,7 +3322,7 @@
     UI.noticeK = S.race ? '' : noticeKey();
     { const b = $('#zoom [data-mon-show]'); if (b) b.hidden = !S.green || !!S.race; }
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar();
+    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom();
   }
   function progress(key) {
     const [k, a, b] = key.split(':');
@@ -3247,6 +3412,7 @@
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
+    else if ('housepause' in ds) { S.housePause = S.housePause === false; save(); }
     else if ('snaprot' in ds) { S.snapRot = S.snapRot === false; if (S.snapRot !== false) UI.rotAt = performance.now(); save(); }
     else if ('labelsset' in ds) toggleLabels();
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
@@ -3296,11 +3462,6 @@
         float(i, `${MEDAL[m.place][0]} medal on show`, '#f6e27a'); } }
     else if (ds.man) { UI.manOpen = UI.manOpen === ds.man ? null : ds.man; }
     else if (ds.growPick) { UI.growPick = UI.growPick === ds.growPick ? null : ds.growPick; }
-    else if (ds.decoPut) { const [o, id] = ds.decoPut.split(':'), b = T_(+o).b; if (!b || b.type !== 'house') return;
-      const sl = decoSlots(b), d = b.d || (b.d = []), k = Array.from({ length: sl }, (_, j) => j).find(j => !d[j]); const a = S.inv[id];
-      if (k === undefined || !a || count(id) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; d[k] = [id, q]; save(); SND.play('contract'); float(+o, `${D.items[id].name} on display`, '#f6e27a'); }
-    else if (ds.decoTake) { const [o, k] = ds.decoTake.split(':').map(Number), b = T_(o).b, x = b && b.d && b.d[k]; if (!x) return;
-      if (room() < 1) { toast(esc(FULL), 'warn'); return; } addItem(x[0], 1, x[1], true); b.d[k] = null; save(); }
     else if (ds.casePut) { const [o, t, ...r] = ds.casePut.split(':'), k = r.join(':'), b = T_(+o).b; if (!b || b.type !== 'house' || S.race) return;
       const tc = caseOf(b); if (tc.length >= caseSlots(b) || tc.some(e => e.t === t && e.k === k)) return;
       if (t === 'medal') { const m = NET.medals.find(x => medalKey(x) === k); if (!m || medalAt(m) !== undefined) return; tc.push({ t, k }); }
@@ -3407,7 +3568,7 @@
     if (UI.idle) return;
     if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
     else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.room && S.housePause !== false) || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -3438,7 +3599,7 @@
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     if (UI.cart && (UI.cart.t += dt) > 2.4) UI.cart = null;
-    draw(); placePanel();
+    if (UI.room) drawRoomView(); else draw(); placePanel();
     uiT -= dt; if (UI.dirty || uiT <= 0) { renderUI(); UI.dirty = false; uiT = .5; }
     document.querySelectorAll('[data-prog]').forEach(el => { el.style.width = (Math.min(1, progress(el.dataset.prog)) * 100).toFixed(1) + '%'; });
   }
@@ -3812,7 +3973,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; } }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

@@ -817,6 +817,123 @@ window.HW_ART = (function () {
   }
   // which sprites change with the scene: ground and plants always; trees in spring (blossom); everything but crops and people on a snow day
   const seasonal = (k, objs) => scene === 'spring' ? k === 'tree' : GROUND.has(k) || PLANT.has(k) || (scene === 'snow' && objs);
+  /* ---------- inside the house: a corner room (floor + two back walls), drawn crisp at native size ----------
+     The floor is n×n cells of the map's 32×16 diamond; the left wall rises along the x = 0 edge and the right wall along
+     y = 0, each n spots of 16 px wide. game.js does the layout and hit testing with the same numbers (roomGeom). */
+  const RWH = 60, RPAD = 10;
+  function roomGeom(n) { const ox = n * 16 + RPAD, oy = RWH + RPAD;
+    return { n, w: n * 32 + RPAD * 2, h: RWH + n * 16 + RPAD * 2 + 4, ox, oy, wh: RWH,
+      cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],         // centre of floor cell (x, y)
+      floorAt(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2;
+        return u >= 0 && v >= 0 && u < n && v < n ? [Math.floor(u), Math.floor(v)] : null; },
+      wallAt(px, py) { const dx = px - ox; if (Math.abs(dx) < .5) return null; const t = Math.abs(dx) / 16, base = oy + t * 8;
+        if (t >= n || py > base || py < base - RWH) return null; return [dx < 0 ? 'l' : 'r', Math.floor(t)]; } }; }
+  const hex2 = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  function shade(h, f) { if (!h || h[0] !== '#') return h; const c = hex2(h).map(v => Math.max(0, Math.min(255, Math.round(f >= 1 ? v + (255 - v) * (f - 1) : v * f))));
+    return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); }
+  function mixc(a, b, t) { const A = hex2(a), B = hex2(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+  // crisp polygon fill (scanlines through pixel centres), so shapes stay pixel art when the room is scaled up
+  function poly(r, col, pts) { let y0 = 1e9, y1 = -1e9; pts.forEach(p => { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+    for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) { const yc = y + .5, xs = [];
+      for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length];
+        if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) xs.push(a[0] + (yc - a[1]) * (b[0] - a[0]) / (b[1] - a[1])); }
+      xs.sort((p, q) => p - q); for (let k = 0; k + 1 < xs.length; k += 2) { const xa = Math.round(xs[k]), xb = Math.round(xs[k + 1]); if (xb > xa) r(col, xa, y, xb - xa, 1); } } }
+  // a box standing on a floor cell: u, v in cell units from the cell centre (−.5….5; negative = toward the back walls), z in pixels up
+  function isoBox(r, cx, cy, sw, u0, u1, v0, v1, z0, z1, col) {
+    if (sw) [u0, u1, v0, v1] = [v0, v1, u0, u1];
+    const P = (u, v, z) => [cx + (u - v) * 16, cy + (u + v) * 8 - z];
+    poly(r, shade(col, .78), [P(u0, v1, z0), P(u1, v1, z0), P(u1, v1, z1), P(u0, v1, z1)]);   // front-left face
+    poly(r, shade(col, .62), [P(u1, v0, z0), P(u1, v1, z0), P(u1, v1, z1), P(u1, v0, z1)]);   // front-right face
+    poly(r, col, [P(u0, v0, z1), P(u1, v0, z1), P(u1, v1, z1), P(u0, v1, z1)]); }              // top
+  // sky seen through a window: s = { h: hour 6…22, season, rain, snow }
+  function skyRows(s, rows) { const h = s.h, night = h >= 20.5 || h < 6.5, dusk = !night && (h >= 18.5 || h < 8);
+    const top = night ? '#17213f' : dusk ? (h < 12 ? '#6f86c0' : '#5a5f9e') : s.rain ? '#8d9aa8' : s.snow ? '#b9c6d2' : '#6fb2e6';
+    const low = night ? '#2b3a62' : dusk ? (h < 12 ? '#f0b87a' : '#f08a5a') : s.rain ? '#aeb8c2' : s.snow ? '#dfe6ec' : '#bfe3f6';
+    return Array.from({ length: rows }, (_, i) => mixc(top, low, rows > 1 ? i / (rows - 1) : 0)); }
+  const SEASON_GROUND = { spring: '#7cc04b', summer: '#9cbc3e', autumn: '#c98a3a', winter: '#eef3f6' };
+  function drawRoom(g, R) {
+    const G = roomGeom(R.n), n = R.n, wh = RWH;
+    const r = (col, x, y, ww = 1, hh = 1) => { g.fillStyle = col; g.fillRect(x | 0, y | 0, ww, hh); };
+    g.clearRect(0, 0, G.w, G.h);
+    // wall-space pixel: side 'l'/'r', t = px along the wall from the back corner, v = px up from the floor
+    const wpx = (side, t, v) => [side === 'l' ? G.ox - 1 - t : G.ox + t, G.oy + Math.floor((t + (side === 'l' ? 1 : 0)) / 2) - 1 - v];
+    const wr = (side, t0, v0, w, h, col) => { for (let t = t0; t < t0 + w; t++) { const [x, y] = wpx(side, t, v0 + h - 1); r(col, x, y, 1, h); } };
+    const W = R.wall, F = R.floor;
+    ['l', 'r'].forEach(side => { const dim = side === 'r' ? .9 : 1, base = shade(W.base, dim), alt = shade(W.alt, dim);
+      for (let t = 0; t < n * 16; t++) for (let v = 0; v < wh; v++) { let col = base;
+        if (W.pat === 'stripe' && t % 8 < 3) col = alt;
+        else if (W.pat === 'dots' && t % 6 === 2 && v % 7 === 3) col = alt;
+        else if (W.pat === 'boards' && (t % 8 === 0 || ((t / 8 | 0) * 13 + v) % 29 === 0)) col = alt;
+        else if (W.pat === 'bricks' && (v % 6 === 0 || (t + ((v / 6 | 0) % 2) * 5) % 10 === 0)) col = alt;
+        if (v < 5) col = shade('#6e4628', dim); else if (v === 5) col = shade('#4e301a', dim);          // skirting board
+        if (v >= wh - 3) col = v === wh - 1 ? shade('#f2e8d2', dim) : shade('#c9b48a', dim);        // top trim
+        const [x, y] = wpx(side, t, v); r(col, x, y); } });
+    r('#4e301a', G.ox - 1, G.oy - wh - 1, 2, wh + 1);                                               // back corner post
+    // wall pieces
+    const sky = R.sky || { h: 12, season: 'spring' };
+    function glass(side, t0, v0, w, h) { const rows = skyRows(sky, h);
+      for (let k = 0; k < h; k++) wr(side, t0, v0 + k, w, 1, rows[h - 1 - k]);
+      wr(side, t0, v0, w, 2, SEASON_GROUND[sky.season] || SEASON_GROUND.spring);                     // the ground outside
+      const night = sky.h >= 20.5 || sky.h < 6.5;
+      for (let k = 0; k < w; k++) { const sd = (t0 * 7 + k * 13) % 11;
+        if (night && sd === 3) wr(side, t0 + k, v0 + h - 3 - (k % 3), 1, 1, '#f6f0c8');
+        if (sky.rain && sd % 3 === 0) wr(side, t0 + k, v0 + 3 + (k * 5) % (h - 5), 1, 2, '#dfe9f2');
+        if (sky.snow && sd % 4 === 1) wr(side, t0 + k, v0 + 3 + (k * 7) % (h - 5), 1, 1, '#ffffff'); }
+      if (!night && !sky.rain && !sky.snow && w > 6) wr(side, t0 + w - 4, v0 + h - 5, 2, 2, sky.h < 8 || sky.h > 18.5 ? '#f6a04a' : '#fff2a8'); }
+    (R.wallPieces || []).forEach(p => { const side = p.at, t0 = p.x * 16, a = p.a, b = p.b;
+      if (p.k === 'window' || p.k === 'curtains') {
+        wr(side, t0 + 2, 18, 12, 30, '#efe6cf'); glass(side, t0 + 3, 19, 10, 28);
+        wr(side, t0 + 7, 19, 2, 28, '#efe6cf'); wr(side, t0 + 3, 32, 10, 1, '#efe6cf');               // glazing bars
+        wr(side, t0 + 1, 16, 14, 2, '#8a5a2e'); if (sky.snow || sky.season === 'winter') wr(side, t0 + 2, 18, 12, 1, '#ffffff');
+        if (p.k === 'curtains') { wr(side, t0, 49, 16, 1, '#5e3519');
+          for (let k = 0; k < 4; k++) { wr(side, t0 + 1 + k, 20 - k, 1, 29 + k, k % 2 ? shade(a, .85) : a); wr(side, t0 + 11 + k, 17 + k, 1, 32 - k, k % 2 ? a : shade(a, .85)); } }
+        if (p.hi) wr(side, t0 + 1, 15, 14, 1, p.hi);
+      } else if (p.k === 'painting') {
+        wr(side, t0 + 2, 22, 12, 22, a); wr(side, t0 + 3, 23, 10, 20, shade(a, .7));
+        const rows = skyRows({ h: 12, season: 'summer' }, 18); for (let k = 0; k < 18; k++) wr(side, t0 + 4, 24 + k, 8, 1, rows[17 - k]);
+        wr(side, t0 + 4, 24, 8, 5, '#6aa84a'); wr(side, t0 + 6, 29, 4, 2, '#5a9a3e'); wr(side, t0 + 9, 36, 2, 2, b || '#fff2a8');
+      } else { wr(side, t0 + 3, 24, 10, 16, a || '#c99a1e'); }
+      if (p.ring) { wr(side, t0, 12, 16, 1, p.ring); wr(side, t0, 52, 16, 1, p.ring); wr(side, t0, 12, 1, 41, p.ring); wr(side, t0 + 15, 12, 1, 41, p.ring); } });
+    // floor
+    const R0 = rng(7);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const [cx, cy] = G.cell(x, y), X = cx - 16, Y = cy - 8;
+      let base = F.base; if (F.pat === 'check' && (x + y) % 2) base = F.alt;
+      for (let yy = 0; yy < 16; yy++) { const hw = hwAt(yy); r(base, X + 16 - hw, Y + yy, hw * 2, 1); }
+      if (F.pat === 'boards') for (let yy = 1; yy < 16; yy += 4) { const hw = hwAt(yy); for (let k = -hw; k < hw; k += 2) r(F.alt, X + 16 + k, Y + yy + Math.floor((k + hw) / 4) % 2, 1, 1); }
+      for (let k = 0; k < 4; k++) { const yy = 2 + ((R0() * 12) | 0), hw = hwAt(yy); r(shade(base, .9), X + 16 - hw + 2 + ((R0() * Math.max(1, hw * 2 - 4)) | 0), Y + yy); } }
+    // floor edge (the room's front lip)
+    for (let t = 0; t < n * 16; t++) { r('#3d2617', G.ox - n * 16 + t, G.oy + n * 8 + Math.floor(t / 2) - 0, 1, 3); r('#2e1c10', G.ox + t, G.oy + n * 16 - Math.floor(t / 2) - 1, 1, 3); }
+    // rugs
+    (R.rugs || []).forEach(p => { const P = (u, v) => [G.ox + (u - v) * 16, G.oy + (u + v) * 8], x = p.x, y = p.y;
+      poly(r, p.b || '#e8c04a', [P(x + .08, y + .08), P(x + 1.92, y + .08), P(x + 1.92, y + 1.92), P(x + .08, y + 1.92)]);
+      poly(r, p.a, [P(x + .25, y + .25), P(x + 1.75, y + .25), P(x + 1.75, y + 1.75), P(x + .25, y + 1.75)]);
+      poly(r, p.b || '#e8c04a', [P(x + 1, y + .55), P(x + 1.45, y + 1), P(x + 1, y + 1.45), P(x + .55, y + 1)]);
+      if (p.ring) { poly(r, p.ring, [P(x, y), P(x + 2, y), P(x + 2, y + .06), P(x, y + .06)]); poly(r, p.ring, [P(x, y + 1.94), P(x + 2, y + 1.94), P(x + 2, y + 2), P(x, y + 2)]); } });
+    // highlights for open cells / wall spots (drawn under furniture)
+    (R.hiCells || []).forEach(([x, y, col]) => { const [cx, cy] = G.cell(x, y);
+      for (let yy = 0; yy < 16; yy++) { const hw = hwAt(yy); r(col, cx - 16 + 16 - hw, cy - 8 + yy, 1, 1); r(col, cx - 16 + 16 + hw - 1, cy - 8 + yy, 1, 1); } });
+    (R.hiWalls || []).forEach(([side, k, col]) => { wr(side, k * 16 + 1, 8, 14, 1, col); wr(side, k * 16 + 1, wh - 6, 14, 1, col); wr(side, k * 16 + 1, 8, 1, wh - 13, col); wr(side, k * 16 + 14, 8, 1, wh - 13, col); });
+    // furniture, back to front
+    const glows = [];
+    (R.floorPieces || []).slice().sort((p, q) => (p.x + p.y) - (q.x + q.y) || (p.z || 0) - (q.z || 0)).forEach(p => {
+      const [cx, cy] = G.cell(p.x, p.y), sw = !!p.f, a = p.a, b = p.b, z = p.z || 0, B = (u0, u1, v0, v1, z0, z1, col) => isoBox(r, cx, cy, sw, u0, u1, v0, v1, z + z0, z + z1, col);
+      if (p.ring) { for (let yy = 0; yy < 16; yy++) { const hw = hwAt(yy); r(p.ring, cx - hw, cy - 8 + yy, 1, 1); r(p.ring, cx + hw - 1, cy - 8 + yy, 1, 1); } }
+      if (!z) poly(r, 'rgba(0,0,0,.18)', [[cx - 12, cy], [cx, cy - 6], [cx + 12, cy], [cx, cy + 6]]);
+      if (p.k === 'chair') { [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]].forEach(([u, v]) => B(u - .04, u + .04, v - .04, v + .04, 0, 9, b));
+        B(-.26, .26, -.26, .26, 9, 11, a); B(-.26, .26, -.28, -.2, 11, 22, a); B(-.26, .26, -.28, -.2, 22, 24, b); }
+      else if (p.k === 'table') { [[-.34, -.34], [.34, -.34], [-.34, .34], [.34, .34]].forEach(([u, v]) => B(u - .05, u + .05, v - .05, v + .05, 0, 12, b)); B(-.44, .44, -.44, .44, 12, 15, a); }
+      else if (p.k === 'bookshelf') { B(-.45, .45, -.46, -.12, 0, 32, a); B(-.42, .42, -.13, -.11, 2, 30, '#3d2617');
+        const pal = [b, '#4aa3d8', '#e8c04a', '#7cc04b', '#efe6cf', '#9a4ac8'];
+        [3, 13, 23].forEach((z0, row) => { for (let u = -.4, k = row; u < .38; u += .085, k++) B(u, u + .06, -.13, -.1, z0, z0 + 6 + (k % 3 === 0 ? 1 : 0), pal[(k * 5 + row) % pal.length]); B(-.44, .44, -.13, -.1, z0 - 1, z0, shade(a, .8)); }); }
+      else if (p.k === 'lamp') { B(-.11, .11, -.11, .11, 0, 2, a); B(-.07, .07, -.07, .07, 2, 9, b || '#f6e27a'); B(-.04, .04, -.04, .04, 6, 8, '#fff6c0'); B(-.08, .08, -.08, .08, 9, 10, shade(a, .8));
+        glows.push([cx, cy - z - 6]); }
+      else if (p.k === 'vase') { B(-.1, .1, -.1, .1, 0, 7, a); B(-.06, .06, -.06, .06, 7, 9, shade(a, .85)); B(-.015, .015, -.015, .015, 9, 13, '#4a8a3a');
+        [[-3, 13], [2, 14], [0, 16], [-1, 12]].forEach(([dx, dz], k) => r(k % 2 ? '#f6e27a' : (b || '#e86aa8'), cx + dx, cy - z - dz, 2, 2)); }
+      else if (p.k === 'jewel_box') { B(-.17, .17, -.12, .12, 0, 4, a); B(-.18, .18, -.13, .13, 4, 5, '#e8c040'); B(-.17, .17, -.12, .12, 5, 7, shade(a, 1.2)); r(b || '#3ae0d0', cx - 1, cy - z - 8, 2, 1); }
+      else B(-.2, .2, -.2, .2, 0, 10, a || '#c98a4a'); });
+    if (R.night) { g.save(); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(20,24,60,.2)'; g.fillRect(0, 0, G.w, G.h); g.restore();
+      glows.forEach(([x, y]) => { g.fillStyle = 'rgba(255,214,120,.14)'; g.beginPath(); g.arc(x, y, 18, 0, 7); g.fill(); g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); }); }
+  }
   function base(key) {
       if (cache[key]) return cache[key];
       const [k, a] = key.split(':');
@@ -847,6 +964,7 @@ window.HW_ART = (function () {
     },
     discPic(pic, items) { return discPic(pic, items, base); }, // discovery cards keep the spring look
     monPic(kind, stage) { const k = 'monpic:' + kind + stage; return urls[k] || (urls[k] = base(`mon:${kind}.${stage}.big`).toDataURL()); },
+    roomGeom, drawRoom,
     iconCanvas(id, items) { const k = 'icon:' + id; if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
   };
 })();
