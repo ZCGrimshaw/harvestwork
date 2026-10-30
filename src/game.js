@@ -2622,7 +2622,7 @@
     if (!t.finished) {
       h += `<span class="eyebrow">Phase ${t.phase + 1} of ${n}: ${esc(ph.name)}</span>${ph.blurb ? `<p class="hint small">${esc(ph.blurb)}</p>` : ''}
         <div class="pb"><i style="width:${Math.min(100, t.done / t.need * 100)}%"></i></div><small>${Math.max(0, t.done).toLocaleString()} of ${t.need.toLocaleString()} points for this phase. When it fills, the monument reaches ${esc(K.stages[t.phase + 1])}.</small>`;
-      const rank = (m.top || []).findIndex(x => x.me);
+      const rank = m.rank ? m.rank - 1 : (m.top || []).findIndex(x => x.me);
       h += `<div class="monyou"><b>Your part:</b> ${(m.mine || 0).toLocaleString()} points given${rank >= 0 ? ` (#${rank + 1} on the roll)` : ''}. Today: ${(m.today || 0).toLocaleString()} of ${m.cap.toLocaleString()} points${left ? `, so you can give <b>${left.toLocaleString()}</b> more` : ', all used'}. Resets at 2 AM Pacific, in ${fmtLeftShort(utcReset())}.</div>`;
       const items = Object.entries(ph.items || {}).filter(([id]) => D.items[id]).sort((a, b) => a[1] - b[1] || D.items[a[0]].name.localeCompare(D.items[b[0]].name));
       h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
@@ -2645,8 +2645,14 @@
     return head('Valley Green', esc(D.terrain[T_(i).t].desc)) + `<p class="hint">The Valley Green opened at the edge of your farm for the valley’s monuments. It never cost you land, nothing can be built on it, and it doesn’t count toward your building limits. Finished monuments stay here at full size.</p>
       ${S.green ? `<button class="btn pri" data-goto="${S.green.d}">Open the Monument Depot<small>See what the monument needs and give goods</small></button>` : ''}
       ${greenMoveHTML()}`; }
+  /* The top three givers to a monument, with your own place if you're not among them (top3 and rank come from mon_state). */
+  function monTop3HTML(x) { const top = x.top3 || []; if (!top.length) return '';
+    const medal = ['🥇', '🥈', '🥉'], rank = +x.rank || 0, inTop = top.some(t => t.me);
+    return `<span class="eyebrow">Top givers</span><ol class="montop">${top.map((t, k) => `<li class="${t.me ? 'me' : ''}"><span>${medal[k]} ${esc(t.name)}${t.me ? ' (you)' : ''}</span><b>${t.points.toLocaleString()}</b></li>`).join('')}</ol>`
+      + (!inTop && rank ? `<p class="montop you"><span>You are #${rank.toLocaleString()}</span><b>${(x.mine || 0).toLocaleString()}</b></p>` : ''); }
   function modelPanel(i) { const mm = T_(i).b.m, K = D.monuments[mm.kind] || D.monuments.pyramid, x = earnedModels().find(p => p.id === mm.id) || { name: K.name }, st = monStageOf(mm.id), fin = !!x.finished_at || st >= 4;
     return head(`${monShort(x.name)} model`, 'A Valley Monument you helped build.') + `<div class="medalbig"><img src="${ART.monPic(mm.kind || 'pyramid', st)}" alt="" style="width:84px;height:auto"><p class="state">${fin ? `The valley finished ${esc(x.name)}${x.mine ? `, and you gave ${x.mine.toLocaleString()} points to it` : ''}.` : `The valley is building ${esc(x.name)}. This model shows its current stage: <b>${esc(K.stages[st])}</b>.`}</p></div>
+      ${monTop3HTML(x)}
       ${fin ? '' : '<button class="btn" data-drawer="valley">Open the monument<small>Give goods and watch it grow</small></button>'}<button class="btn ghost" data-mon-away="${i}">Put it away</button><p class="hint small">Place it again any time from the Monument Depot or Menu → Valley Monument.</p>`; }
   function sprinklerPanel(i) {
     const B = D.buildings[T_(i).b.type], n = around(i, B.radius).filter(j => j !== i && farmAt(j)).length, max = (B.radius * 2 + 1) ** 2 - 1;
