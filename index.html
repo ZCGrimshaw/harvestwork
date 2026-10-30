@@ -532,6 +532,18 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
 .thanks .tname { color: var(--paper); font-weight: 700; text-align: center; overflow-wrap: anywhere; }
 #zoom .ibtn.eye { display: grid; place-items: center; }
 #zoom .ibtn.eye.on { background: var(--sun); color: #3a2416; }
+/* first-time greeting */
+#title .tcard.hello { width: min(520px, 100%); padding: 0 0 16px; overflow: hidden; margin: auto; }
+.tport { display: block; width: 100%; height: auto; aspect-ratio: 48 / 40; max-height: 36vh; object-fit: cover; object-position: 50% 38%; image-rendering: pixelated; border-bottom: 2px solid var(--wood-lo); }
+.tbubble { margin: 14px 20px 0; padding: 12px 14px 4px; text-align: left; background: var(--wood-lo); border: 2px solid var(--wood-hi); border-radius: 10px; }
+.tbubble .twho { display: block; font-family: var(--f-display); font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--sun); }
+.tbubble h2 { margin: 2px 0 8px; font-size: 22px; }
+.tbubble p { font-size: 15px; line-height: 1.5; margin: 0 0 10px; }
+.hbasics { margin: 0 0 10px; padding-left: 22px; font-size: 15px; line-height: 1.6; }
+.hdots { display: flex; justify-content: center; gap: 7px; margin: 12px 0 0; }
+.hdots i { width: 8px; height: 8px; border-radius: 50%; background: var(--wood-hi); }
+.hdots i.on { background: var(--sun); }
+#title .tcard.hello .tmenu { margin: 12px 20px 0; }
 #title .tcard.splash, #title .tcard.main { width: min(560px, 100%); padding: 0 0 16px; overflow: hidden; }
 #title .tcard.splash > :not(.tart), #title .tcard.main > :not(.tart) { margin-left: 20px; margin-right: 20px; }
 #title .tcard > .btn { width: calc(100% - 40px); box-sizing: border-box; align-items: center; }
@@ -908,8 +920,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261029-173314"></script>
-<script src="art.js?v=20261029-173314"></script>
-<script src="sound.js?v=20261029-173314"></script>
-<script src="game.js?v=20261029-173314"></script>
+<script src="data.js?v=20261030-022014"></script>
+<script src="art.js?v=20261030-022014"></script>
+<script src="sound.js?v=20261030-022014"></script>
+<script src="game.js?v=20261030-022014"></script>
 </body></html>

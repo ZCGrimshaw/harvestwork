@@ -3797,7 +3797,13 @@
     const back = `<button class="btn ghost" data-t="main">Back</button>`;
     if (t === 'splash') h = `<div class="tcard splash"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Welcome to Harvest Valley</h1>
         <p class="sub">Grow, craft and trade your way from one patch of dirt to a farm that never stops growing.</p>
-        <button class="btn pri big" data-t="main" autofocus>Let’s go</button></div>`;
+        <button class="btn pri big" data-t="start" autofocus>Let’s go</button></div>`;
+    else if (t === 'hello') { const P = helloPages(), n = Math.min(UI.helloPage | 0, P.length - 1), pg = P[n], F = helloFarmer();
+      const dots = P.map((_, k) => `<i class="${k === n ? 'on' : ''}"></i>`).join('');
+      h = `<div class="tcard hello"><img class="tport" src="${ART.portrait(F.seed)}" alt="A friendly farmer, ${esc(F.name)}, tipping a straw hat"><div class="tbubble"><span class="twho">${esc(F.name)}</span>
+        <h2>${pg.h}</h2>${pg.body}</div><div class="hdots" aria-hidden="true">${dots}</div>
+        <div class="tmenu">${n === P.length - 1 ? `<button class="btn pri big" data-t="hello-tut" data-v="1">Yes, show me the ropes<small>A quick tutorial, about two minutes. You can stop it any time.</small></button><button class="btn big" data-t="hello-tut" data-v="0">No thanks, I’ll figure it out<small>You can start the tutorial later in Menu → Game.</small></button>` : `<button class="btn pri big" data-t="hello-next" autofocus>${pg.next || 'Go on…'}</button>`}
+        <button class="btn ghost" data-t="hello-back">Back</button></div></div>`; }
     else if (t === 'main') { const f = UI.tFile;
       h = `<div class="tcard main"><img class="tart" src="title-art.webp" alt=""><h1 class="vh">Harvest Valley</h1><div class="tmenu">
         ${UI.hadSave && !S.race ? `<button class="btn pri big" data-t="continue">Continue<small>${esc(S.name)}’s farm · ${MODES[S.mode || 'online'].name} · Day ${S.day} · ${S.gold}g</small></button>` : ''}
@@ -3898,8 +3904,8 @@
         <label class="field tname">${first ? 'Your name' : 'Name'} <input id="tname" maxlength="14" placeholder="${first && !off ? 'Pick a name' : 'Farmer'}" autocomplete="off" value="${esc(UI.tnameDraft || '')}"></label>
         ${first && off ? `<p class="hint small">The valley can’t be reached right now, so you can start without a name and lock one in later (Menu → Settings). You’ll still count as a visitor once you’re online.</p>` : ''}${first && !off ? `<p class="hint small ${UI.nameErr ? 'err' : ''}">${UI.nameErr ? 'Please type a name to play in the Online Valley. ' : ''}${ft ? 'Your first farm lives in the Online Valley, and it’s where the tutorial runs. You can make it private any time in Menu → Settings. ' : ''}It’s locked to you, so no one else in the valley can use it. It shows on the leaderboard, in the weekly challenge and on your medals, on every farm you play. If it’s taken you’ll get the next free number (Name1, Name2…).</p>` : ''}
         ${ft ? '' : `<div class="modepick">${['online', 'private'].map(m => `<button class="modeopt ${(UI.newMode || 'online') === m ? 'on' : ''}" data-t="pickmode" data-m="${m}"><b>${MODES[m].name}</b><small>${MODES[m].blurb}</small></button>`).join('')}</div>`}
-        <div class="tmenu"><button class="btn pri big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
-        <button class="btn big" data-t="go">Start without the tutorial</button>${back}</div></div>`; }
+        <div class="tmenu"><button class="btn ${UI.helloTut === false ? '' : 'pri'} big" data-t="go-tut">Start with a quick tutorial<small>About two minutes. Skip any time.</small></button>
+        <button class="btn ${UI.helloTut === false ? 'pri' : ''} big" data-t="go">Start without the tutorial</button>${back}</div></div>`; }
     else if (t === 'support') h = `<div class="tcard">${supportHTML()}<div class="tmenu">${back}</div></div>`;
     else if (t === 'restore') { const R = UI.rest || {};
       const slotPick = (o, act) => `<span class="eyebrow">Load it into</span><div class="slots">${[0, 1, 2].map(k => { const f = k === SLOT && UI.hadSave && !S.race ? { name: S.name, day: S.day } : slotInfo(k);
@@ -3955,9 +3961,21 @@
     if (tut) startTut(); else { S.tutOff = 0; save(); toast(`<b>Welcome to Harvest Valley, ${esc(S.name)}.</b> Follow the goal card at the top left to get your homestead going. The tutorial is off; turn it on any time in Menu → Game.`, 'goal'); }
     if (lock) lockFirstName(name); else if (online()) setTimeout(() => { sendScore(); autoBackup(); }, 4000);
   }
+  // The first-time greeting: a random farmer in close-up walks a new player through the basics, then asks about the tutorial.
+  const HELLO_NAMES = { m: ['Old Hank', 'Walt', 'Clyde', 'Dusty', 'Abner', 'Cal'], f: ['Granny Mae', 'Rosie', 'Ida May', 'June', 'Hattie', 'Pearl'] };
+  function helloFarmer() { if (!UI.hfarmer) { const seed = 1 + Math.floor(Math.random() * 99999); UI.hfarmer = { seed, name: HELLO_NAMES[ART.portraitWoman(seed) ? 'f' : 'm'][seed % 6] }; } return UI.hfarmer; }
+  function helloPages() { return [
+    { h: 'Well howdy there, stranger!', next: 'Pleased to meet ya', body: `<p>I’m <b>${esc(helloFarmer().name)}</b>, and unless my old eyes deceive me, this here is your <b>first time</b> joinin’ us in Harvest Valley.</p><p>Pull up a hay bale and let me tell ya what you can do around these parts.</p>` },
+    { h: 'Online or private, your pick', body: `<p>You can run an <b>online farm</b>, where the whole valley shares market prices, swaps news on the ticker and races up the leaderboard. Or a <b>private farm</b>, just you and your crops, with nobody lookin’ over your shoulder.</p><p>Now don’t you fret none about pickin’ wrong. An online farm can be made <b>private</b> any time you like, in Menu → Settings. Your first farm starts out online, and you can change that whenever you’ve a mind to.</p>` },
+    { h: 'The basics of farmin’', body: `<ol class="hbasics"><li><b>Till</b> a patch of ground</li><li><b>Plant</b> a seed in it</li><li><b>Wait</b> while it grows</li><li><b>Harvest</b> what comes up</li><li><b>Sell</b> it at the market</li></ol><p>Once you’ve some coin and a few discoveries, you’ll <b>unlock stations</b>: mills, ovens, sawmills and such, to turn plain crops into goods worth a whole lot more.</p><p>And the tutorial? You can <b>stop it or start it again whenever you want</b>. It never locks you in.</p>` },
+    { h: 'Want me to walk ya through it?', body: `<p>I can show ya the ropes with a quick tutorial, or leave you to it. Either way is just fine by me.</p>` }]; }
   titleEl.addEventListener('click', e => {
     const el = e.target.closest('[data-t]'); if (!el) return; const a = el.dataset.t;
     if (a === 'main') { UI.newSlot = null; openTitle('main'); }
+    else if (a === 'start') { if (firstTime()) { UI.hfarmer = null; UI.helloPage = 0; openTitle('hello'); } else openTitle('main'); }
+    else if (a === 'hello-next') { UI.helloPage = (UI.helloPage | 0) + 1; renderTitle(); }
+    else if (a === 'hello-back') { if ((UI.helloPage | 0) > 0) { UI.helloPage--; renderTitle(); } else openTitle('main'); }
+    else if (a === 'hello-tut') { UI.helloTut = el.dataset.v === '1'; UI.helloSeen = true; openTitle('name'); }
     else if (a === 'continue') closeTitle();
     else if (a === 'monshow') { closeTitle(); showGreen(); }
     else if (a === 'race') { UI.rerr = null; openTitle('race'); }
@@ -3972,7 +3990,7 @@
     else if (a === 'rresume') { if (!resumeRace()) { try { localStorage.removeItem(RINFO); } catch (e) { } renderTitle(); } }
     else if (a === 'slots') { UI.slotWipe = null; UI.slotMode = null; openTitle(UI.hadSave ? 'slots' : 'name'); }
     else if (a === 'mode') { UI.slotWipe = null; UI.slotMode = el.dataset.m; UI.newMode = el.dataset.m;
-      if (!UI.hadSave && ![0, 1, 2].some(k => slotInfo(k))) { openTitle('name'); return; } openTitle('slots'); }
+      if (!UI.hadSave && ![0, 1, 2].some(k => slotInfo(k))) { if (firstTime() && !UI.helloSeen) { UI.helloPage = 0; openTitle('hello'); return; } openTitle('name'); return; } openTitle('slots'); }
     else if (a === 'slotplay') { const k = +el.dataset.k, o = load(SLOT_KEYS[k]); if (!o) return; if (!S.race) save(); setSlot(k); adoptState(o); UI.hadSave = true; closeTitle(); toast(`<b>Welcome back, ${esc(S.name)}.</b> Day ${S.day}, ${S.gold}g.`, 'goal'); }
     else if (a === 'slotnew') { const k = +el.dataset.k, f = slotInfo(k) || (k === SLOT && UI.hadSave);
       if (f && UI.slotWipe !== k) { UI.slotWipe = k; renderTitle(); return; } UI.slotWipe = null; UI.newSlot = k; UI.newMode = UI.slotMode || UI.newMode || 'online'; openTitle('name'); }

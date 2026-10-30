@@ -486,6 +486,42 @@ window.HW_ART = (function () {
     });
   }
 
+
+  /* ---------- close-up farmer portrait for the first-time greeting: 48×40, picked by a seed ---------- */
+  const SKINS = ['#f2c79a', '#e3ac7a', '#c98c5c', '#a8683f', '#7a4a2c'], HAIRS = ['#6b3a1e', '#2a1a14', '#b5651d', '#d8d0c0', '#c9a14a'];
+  function pTraits(seed) {
+    const R = rng(seed * 7919 + 13), pick = a => a[Math.floor(R() * a.length)];
+    const skin = pick(SKINS), hair = pick(HAIRS), shirt = pick(SHIRTS), band = pick(HATS), woman = R() < .45, beard = woman ? 0 : pick([0, 1, 1, 2, 2]), grin = R() < .5, freck = R() < .35, specs = R() < .2;
+    return { skin, hair, shirt, band, woman, beard, grin, freck, specs }; }
+  function portrait(seed) {
+    const { skin, hair, shirt, band, woman, beard, grin, freck, specs } = pTraits(seed), bib = '#3d5a9a';
+    const sk2 = shade(skin, .82), straw = '#e3c26b';
+    return mk(48, 40, (g, r) => {
+      for (let y = 0; y < 40; y++) r(mixc('#9fd3ee', '#eaf4d6', Math.min(1, y / 26)), 0, y, 48, 1);   // sky
+      ell(r, '#fff', 10, 6, 6, 2); ell(r, '#fff', 14, 5, 4, 2); ell(r, '#fff', 38, 9, 5, 2); ell(r, '#f6e27a', 41, 4, 3, 3);
+      ell(r, '#7cc04b', 12, 36, 22, 9); ell(r, '#5aa83f', 40, 38, 20, 8);                          // hills
+      r('#b8432e', 2, 18, 11, 12); r('#8a2f20', 1, 16, 13, 3); r('#8a2f20', 3, 14, 9, 2); r('#f4e7d0', 6, 22, 3, 8); r('#8a2f20', 6, 22, 3, 1); // barn
+      for (let x = 36; x < 48; x += 4) { r('#c9a46a', x, 26, 1, 8); } r('#c9a46a', 34, 28, 14, 1); r('#c9a46a', 34, 31, 14, 1);                // fence
+      if (woman) { r(hair, 15, 14, 3, 16); r(hair, 30, 14, 3, 16); r(shade(hair, .8), 15, 26, 2, 4); r(shade(hair, .8), 31, 26, 2, 4); }       // long hair / braids behind
+      ell(r, shirt, 24, 40, 15, 9); r(shirt, 9, 34, 31, 6);                                         // shoulders
+      r(bib, 19, 32, 11, 8); r(bib, 17, 29, 2, 6); r(bib, 30, 29, 2, 6); r('#f6e27a', 18, 33); r('#f6e27a', 30, 33); r('rgba(0,0,0,.18)', 19, 32, 11, 1);
+      r(sk2, 21, 26, 7, 6);                                                                           // neck
+      ell(r, skin, 24, 19, 7, 8); r(skin, 16, 18, 2, 4); r(skin, 31, 18, 2, 4); r(sk2, 16, 20, 1, 1); r(sk2, 32, 20, 1, 1);
+      if (!woman) { r(hair, 17, 15, 1, 5); r(hair, 31, 15, 1, 5); }
+      if (beard === 2) { ell(r, hair, 24, 25, 7, 4); r(skin, 21, 22, 7, 2); }                          // full beard, face kept clear
+      if (beard) r(hair, 20, 22, 9, 1);                                                               // moustache
+      r('#2a1a14', 20, 19, 2, 2); r('#2a1a14', 27, 19, 2, 2); r('#fff', 20, 19); r('#fff', 27, 19);
+      r(hair, 19, 17, 3, 1); r(hair, 26, 17, 3, 1);
+      r(sk2, 24, 20, 1, 3); r(shade(skin, .7), 23, 22, 3, 1);
+      r('rgba(232,120,110,.5)', 18, 22, 2, 1); r('rgba(232,120,110,.5)', 29, 22, 2, 1);
+      if (freck) [[19, 21], [21, 21], [27, 21], [29, 21], [20, 22], [28, 22]].forEach(([x, y]) => r(sk2, x, y));
+      if (grin) { r('#7a2a22', 21, 24, 7, 2); r('#fff', 22, 24, 5, 1); r('#7a2a22', 20, 23); r('#7a2a22', 28, 23); }
+      else { r('#7a2a22', 22, 24, 5, 1); r('#7a2a22', 21, 23); r('#7a2a22', 27, 23); }
+      if (specs) { r('#4a3a2a', 18, 18, 5, 1); r('#4a3a2a', 18, 21, 5, 1); r('#4a3a2a', 18, 18, 1, 4); r('#4a3a2a', 22, 18, 1, 4); r('#4a3a2a', 25, 18, 5, 1); r('#4a3a2a', 25, 21, 5, 1); r('#4a3a2a', 25, 18, 1, 4); r('#4a3a2a', 29, 18, 1, 4); r('#4a3a2a', 23, 19, 2, 1); }
+      ell(r, straw, 24, 13, 14, 3); r(shade(straw, .8), 11, 14, 26, 1); ell(r, straw, 24, 8, 8, 5); r(band, 16, 11, 17, 2); r('rgba(255,255,255,.3)', 19, 5, 6, 1);   // straw hat
+    });
+  }
+
   /* ---------- item icons: 16×16 ---------- */
   function icon(shape, a, b) {
     return mk(16, 16, (g, r) => {
@@ -971,6 +1007,8 @@ window.HW_ART = (function () {
     },
     discPic(pic, items) { return discPic(pic, items, base); }, // discovery cards keep the spring look
     monPic(kind, stage) { const k = 'monpic:' + kind + stage; return urls[k] || (urls[k] = base(`mon:${kind}.${stage}.big`).toDataURL()); },
+    portraitWoman(seed) { return pTraits(seed).woman; },
+    portrait(seed) { const k = 'portrait:' + seed; return urls[k] || (urls[k] = portrait(seed).toDataURL()); },
     roomGeom, drawRoom,
     iconCanvas(id, items) { const k = 'icon:' + id; if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
   };
