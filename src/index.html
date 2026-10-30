@@ -351,10 +351,6 @@ button, .chipf, input, select { touch-action: manipulation; }
 #logbar .ibtn.on { box-shadow: inset 0 0 0 2px var(--sun), 0 3px 0 rgba(0,0,0,.35); }
 #logbar .infobtn { display: none; }
 #goalchip { display: none; }
-/* weekly challenge pause */
-.stat.wkpausebtn { cursor: pointer; } .stat.wkpausebtn.on { background: var(--sun); color: #3a2416; } .stat.wkpausebtn.on .lbl { color: #3a2416; } .stat.wkpausebtn[disabled] { opacity: .5; cursor: default; }
-#wkpaused { position: absolute; inset: 0; z-index: 19; display: grid; place-items: center; padding: 16px; background: rgba(12,8,4,.62); }
-#wkpaused[hidden] { display: none; } .wkpcard { box-sizing: border-box; width: min(360px, 100%); text-align: center; padding: 22px 22px 16px; background: var(--wood); border: 2px solid var(--wood-lo); box-shadow: inset 0 0 0 2px var(--wood-hi), 0 8px 0 rgba(0,0,0,.45); border-radius: 6px; }
 /* settings: sections, search, tags */
 .ssec.shut .msecb { display: none; } .ssec.searching .msecb { display: block; } .ssec[hidden], .sopt[hidden], .snone[hidden] { display: none; }
 .ssec .opts { align-items: stretch; gap: 4px; } .sopt { margin: 0; width: 100%; } .sopt > .toggle { width: 100%; box-sizing: border-box; } .sopt .hint { margin: 2px 2px 4px; } .sopt .hint.more { margin-top: 0; color: var(--paper); }
