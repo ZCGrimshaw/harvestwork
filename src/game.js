@@ -197,7 +197,11 @@
     for (const q of qs) { if (q < minQ) continue; const k = Math.min(a[q], n); if (k > 0) { a[q] -= k; n -= k; worst = Math.min(worst, q); } if (!n) break; }
     return worst;
   }
-  function canPay(cost) { for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) return `Needs ${cost.gold}g`; } else if (count(k) < cost[k]) return `Needs ${cost[k]} ${D.items[k].name}` + (k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : k === 'fence_kit' ? (unlocked('workbench') ? ` (make ${cost[k] > 1 ? 'them' : 'it'} at the Workbench: ${inTxt(D.recipes.fence_kit.in)} each)` : ' (unlock the Workbench in Discoveries first, then make Land Kits there)') : ''); } return null; }
+  // What is missing for a price, with what you have so far, so the number counts down as goods arrive: "Needs 8 Brick (have 7)".
+  function canPay(cost) { const miss = []; let hint = '';
+    for (const k in cost) { if (k === 'gold') { if (S.gold < cost.gold) miss.push(`${cost.gold}g (have ${S.gold}g)`); } else if (count(k) < cost[k]) { miss.push(`${cost[k]} ${D.items[k].name} (have ${count(k)})`);
+      if (!hint) hint = k === 'stone' ? ' (break boulders on a Boulder Field, or buy at the market)' : k === 'fence_kit' ? (unlocked('workbench') ? ` (make ${cost[k] > 1 ? 'them' : 'it'} at the Workbench: ${inTxt(D.recipes.fence_kit.in)} each)` : ' (unlock the Workbench in Discoveries first, then make Land Kits there)') : ''; } }
+    return miss.length ? 'Needs ' + miss.join(', ') + hint : null; }
   function pay(cost) { for (const k in cost) { if (k === 'gold') S.gold -= cost.gold; else take(k, cost[k]); } }
   // every ingredient of a price, with what you have: ✓ when covered, the shortfall when not
   function costList(cost) {
@@ -1301,7 +1305,7 @@
   function loadErr(i, rid) { const b = T_(i).b, R = D.recipes[rid]; if (!b || !b.q || !R || R.station !== b.type) return 'Not a station';
     if (!unlocked(R.requires)) return 'Recipe locked';
     if (b.q.length >= stationSlots(b)) return 'All slots busy';
-    for (const k in R.in) if (count(k) < R.in[k]) return `Needs ${R.in[k]} ${D.items[k].name}`; return null; }
+    const miss = Object.keys(R.in).filter(k => count(k) < R.in[k]).map(k => `${R.in[k]} ${D.items[k].name} (have ${count(k)})`); return miss.length ? 'Needs ' + miss.join(', ') : null; }
   function fillCount(i, rid) { const b = T_(i).b, R = D.recipes[rid]; if (loadErr(i, rid)) return 0;
     let n = stationSlots(b) - b.q.length; for (const k in R.in) n = Math.min(n, Math.floor(count(k) / R.in[k])); return Math.max(0, n); }
   function doLoad(i, rid) { const b = T_(i).b, R = D.recipes[rid]; let q = Object.keys(R.in).length ? 2 : 0;
@@ -1450,7 +1454,7 @@
     collect: { label: () => 'Collect', check: t => collectErr(t.i), run: t => doCollect(t.i) },
     buy: { label: t => `Buy ${t.n} ${D.items[t.p].name}`, check: t => { const c = buyPrice(t.p) * t.n, bt = D.items[t.p].building;
         if (bt && builtCount(bt) + count(t.p) + t.n > capFor(bt)) return builtCount(bt) >= capFor(bt) ? capMsg(bt) : 'You already have a kit waiting to be placed';
-        if (S.gold < c) return `Needs ${c}g`; if (storable(t.p) && room() < t.n) return FULL; return null; },
+        if (S.gold < c) return `Needs ${c}g (have ${S.gold}g)`; if (storable(t.p) && room() < t.n) return FULL; return null; },
       run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; wk().spent += c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
     storeup: { label: t => `Expand the ${D.buildings[T_(t.i).b.type].name}`,
       check: t => { const b = T_(t.i).b, B = b && D.buildings[b.type]; if (!B || !B.hold) return 'Not a store'; if ((b.lvl || 0) >= B.hold.max) return 'Fully expanded'; return canPay(storeCost(b.lvl || 0)); },
@@ -1665,7 +1669,7 @@
     if (S.helper.errand) return 'Your farmhand is already out on an errand';
     if (!P.missing.length) return 'You already have everything: just press Load';
     if (P.unbuyable.length) return `${D.items[P.unbuyable[0].k].name} isn’t sold at the market${D.items[P.unbuyable[0].k].buy ? '' : ' until you’ve made it once'}`;
-    if (S.gold < P.cost) return `Needs ${P.cost}g`;
+    if (S.gold < P.cost) return `Needs ${P.cost}g (have ${S.gold}g)`;
     if (room() < P.qty) return FULL;
     if (stationSlots(b) - b.q.length < n) return 'Not enough free batch slots';
     if (marketIdx() < 0) return 'No Open Market';
