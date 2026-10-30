@@ -917,14 +917,35 @@
   function resumeWeekly() { const o = weekRun(); if (!o) return false; S.race = null; adoptState(o); UI.hadSave = true;
     if (S.race.done || Date.now() >= S.race.end) finishWeekly(); else closeTitle(); return true; }
   function finishWeekly() { const R = S.race; if (!R.done) { R.done = true; R.final = Math.floor(S.score); save(); SND.play('contract');
-      if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: R.final }).catch(() => {}); }
+      if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: R.final, p_pause: Math.ceil(R.pauseUsed || 0) }).catch(() => {}); }
     openTitle('weeklyend'); rpc('weekly_board', { p_player: PLAYER }).then(b => { UI.wk = b; noteWeekly(b, true); if (UI.title === 'weeklyend') renderTitle(); }).catch(() => {}); }
   function weekWarn(text) { SND.play('warn'); let el = $('#wkwarn'); if (!el) { el = document.createElement('div'); el.id = 'wkwarn'; el.setAttribute('role', 'alert'); document.body.appendChild(el); }
     el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(UI.wwT); UI.wwT = setTimeout(() => el.classList.remove('show'), 2000); }
+  /* Pausing in the weekly challenge: up to WK_PAUSE seconds per run. While you pause (the Pause button, or the Menu or Settings being open)
+     the game stops and the run's end time moves back by the same amount, so nothing is lost. The server is told how much you paused
+     with every score (weekly_score's p_pause, capped at the same 60 s there) so late scores still count. */
+  const WK_PAUSE = 60;
+  const wkLive = () => !!S.race && !!S.race.weekly && !S.race.done && Date.now() >= S.race.start && !UI.title;
+  const wkPauseLeft = () => Math.max(0, WK_PAUSE - ((S.race && S.race.pauseUsed) || 0));
+  const wkMenuOpen = () => ['menu', 'settings', 'manual', 'feedback', 'lb'].includes(UI.drawer) && S.menuPause !== false;
+  const wkPausing = () => wkLive() && wkPauseLeft() > 0 && (!!S.race.pauseOn || wkMenuOpen());
+  const fmtPause = s => `${Math.floor(Math.ceil(s) / 60)}:${String(Math.ceil(s) % 60).padStart(2, '0')}`;
+  function wkPauseTick() { const R = S.race, now = Date.now();
+    if (wkPausing()) { if (UI.wpt) { const add = Math.min((now - UI.wpt) / 1000, wkPauseLeft()); if (add > 0) { R.pauseUsed = (R.pauseUsed || 0) + add; R.end += add * 1000; UI.wlt = Math.max(UI.wlt || 0, 1); } UI.wpt = now;
+        if (wkPauseLeft() <= 0) { R.pauseOn = false; UI.wpt = 0; toast('<b>Pause time used up.</b> The clock is running again.', 'info'); save(); }
+        if (!UI.wpd || now - UI.wpd > 1000) { UI.wpd = now; dirty(); } } else { UI.wpt = now; dirty(); } }
+    else if (UI.wpt) { UI.wpt = 0; save(); dirty(); } }
+  function wkPauseToggle() { if (!wkLive()) return; const R = S.race; if (R.pauseOn) R.pauseOn = false; else if (wkPauseLeft() > 0) R.pauseOn = true; else toast('You’ve used all of your pause time for this run.', 'info'); dirty(); }
+  function renderWkPause() { let el = $('#wkpaused'); const on = wkLive() && !!S.race.pauseOn && wkPausing();
+    if (!on) { if (el) el.hidden = true; return; }
+    if (!el) { el = document.createElement('div'); el.id = 'wkpaused'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Paused'); document.body.appendChild(el); }
+    const html = `<div class="wkpcard"><h2>Paused</h2><p class="sub"><b>${fmtPause(wkPauseLeft())}</b> of pause time left in this run. The clock is stopped.</p><div class="tmenu"><button class="btn pri big" data-wk-pause>Resume</button><button class="btn big" data-drawer="settings">Settings</button></div></div>`;
+    if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } el.hidden = false; }
   function tickWeekly(dt) { const R = S.race;
     if (UI.title === 'weeklygo') { const left = R.start - Date.now(); const el = $('#rcount'); if (el) el.textContent = left > 0 ? Math.ceil(left / 1000) : 'Go!';
       if (left <= -400) { closeTitle(); SND.play('contract'); toast(`<b>Go!</b> ${runMins(R.week)} minutes. ${esc(weekTheme(R.week).blurb)}`, 'goal'); } return; }
     if (R.done || Date.now() < R.start) return;
+    wkPauseTick();
     if (Date.now() >= R.end) { finishWeekly(); return; }
     { const left = R.end - Date.now(); if (UI.wwFor !== R.end) { UI.wwFor = R.end; UI.ww = {}; }
       if (left <= 30000) { if (!UI.ww[30]) { UI.ww[30] = UI.ww[60] = 1; weekWarn('30 seconds left!'); } }
@@ -932,7 +953,7 @@
     if (UI.wlFor !== R.end) { UI.wlFor = R.end; UI.wkLead = undefined; UI.wlt = 0; }   // a new run: fetch the board straight away
     UI.wlt = (UI.wlt || 0) - dt; if (UI.wlt <= 0) { UI.wlt = 30; rpc('weekly_board', { p_player: PLAYER }).then(b => { if (b && Array.isArray(b.top)) { UI.wkLead = b; dirty(); } }).catch(() => {}); }
     UI.rtick = (UI.rtick || 0) - dt;
-    if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score) }).catch(() => {}); }
+    if (UI.rtick <= 0) { UI.rtick = 5; if (R.ranked && R.run) rpc('weekly_score', { p_run: R.run, p_player: PLAYER, p_score: Math.floor(S.score), p_pause: Math.ceil(R.pauseUsed || 0) }).catch(() => {}); }
   }
   /* On a phone the race and weekly bars become a small vertical meter on the left edge (v0.45): one column per racer,
      filling upward, with the time above and your score below. Tap it for the full standings. */
@@ -2224,7 +2245,7 @@
   }
   const pbar = (key, cls = '') => `<div class="pb ${cls}"><i data-prog="${key}"></i></div>`;
 
-  function renderTop() {
+  function renderTop() { renderWkPause();
     const canUnlock = D.discoveries.some(d => !unlocked(d.id) && discOk(d) && S.dp >= d.cost);
     const status = paused() ? 'Paused' : S.cur ? `${S.cur.ph === 'walk' ? 'Walking to' : 'Working:'} ${esc(TASKS[S.cur.a].label(S.cur))}` : 'Idle';
     setHTML('#stats', `
@@ -2236,6 +2257,7 @@
       ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
         : `<button class="stat time season ${season().id}" data-drawer="season" title="${esc(`${season().name}, day ${seasonDay()} of ${SR.len}. ${wxName(wxNow())}: ${wxLine(S.day)} Tomorrow: ${wxName(weatherOn(S.day + 1))}.`)}" aria-label="Day ${S.day}, ${season().name}, ${wxName(wxNow())}. Open seasons and weather"><span class="lbl"><span class="lg">Day ${S.day} · ${season().name}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b><span class="wxtag wx-${wxNow()}${['clear', 'mist', 'fog'].includes(wxNow()) ? ' calm' : ''}">${wxName(wxNow())}</span></button>`}
       ${S.goalMin ? goalBtn() : ''}
+      ${wkLive() ? `<button class="stat wkpausebtn ${S.race.pauseOn ? 'on' : ''}" data-wk-pause title="Pause the weekly run. The clock stops while you pause, up to a minute per run." ${wkPauseLeft() <= 0 ? 'disabled' : ''}><span class="lbl">${S.race.pauseOn ? 'Resume' : 'Pause'}</span><b>${fmtPause(wkPauseLeft())}</b></button>` : ''}
       <div class="status">${status}</div>`);
   }
   // The minimized goal / contract button. On phones it is drawn under the gold counter (#goalchip) and hidden in the top bar; elsewhere it stays in the top bar.
@@ -3445,6 +3467,7 @@
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
+    else if ('wkPause' in ds) { wkPauseToggle(); }
     else if ('tutResume' in ds) { resumeTut(); }
     else if (ds.shint) { UI.shints = UI.shints || {}; UI.shints[ds.shint] = !UI.shints[ds.shint]; }
     else if (ds.sjump) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})); f[ds.sjump] = true; lsSet('harvestworks.mfold', f); UI.setq = ''; UI.sjumpTo = ds.sjump; }
@@ -3670,7 +3693,7 @@
     if (UI.idle) return;
     if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
     else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.room && S.housePause !== false) || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
+  const paused = () => S.race ? (!!UI.title || (!!S.race.weekly && wkPausing())) : !!UI.title || UI.idle || UI.fullHold || (UI.room && S.housePause !== false) || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -3797,7 +3820,8 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { save(); UI.awayAt = Date.now(); return; }
       // Browsers stop the game in a background tab. With "keep running" on, make up the missed time on return.
-      if (UI.awayAt && (S.bgPause === false || S.race) && !UI.title) { const sec = Math.min(CATCHUP_MAX, (Math.min(Date.now(), S.race && S.race.weekly ? S.race.end : Infinity) - UI.awayAt) / 1000); if (sec > 2) startCatchUp(sec); }
+      if (UI.awayAt && wkPausing()) { const away = (Date.now() - UI.awayAt) / 1000; const R = S.race, add = Math.min(away, wkPauseLeft()); R.pauseUsed = (R.pauseUsed || 0) + add; R.end += add * 1000; UI.wpt = Date.now(); }
+      else if (UI.awayAt && (S.bgPause === false || S.race) && !UI.title) { const sec = Math.min(CATCHUP_MAX, (Math.min(Date.now(), S.race && S.race.weekly ? S.race.end : Infinity) - UI.awayAt) / 1000); if (sec > 2) startCatchUp(sec); }
       UI.awayAt = null; });
     requestAnimationFrame(t => { last = t; frame(t); });
     setTimeout(checkForUpdate, 5000); setInterval(checkForUpdate, 120000);
@@ -3874,7 +3898,7 @@
       const rows = (W.top || []).slice(0, 10).map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.score.toLocaleString()}</span></li>`).join('');
       const nextDay = (() => { const n = new Date(srvNow()); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - srvNow(); })();
       h = `<div class="tcard"><span class="twel">Weekly challenge · ${weekLabel(wk)}</span><h2>${esc(th.name)}</h2><p class="sub">${esc(th.blurb)}</p>
-        <p class="hint small">Everyone gets the same head start this week. One ranked ${runMins(wk)}-minute run a day, no pausing; your best run counts. The top three win medals when the week closes${W.ends_at ? `, in ${fmtLeft(Date.parse(W.ends_at) - Date.parse(W.now))}` : ''}.</p>
+        <p class="hint small">Everyone gets the same head start this week. One ranked ${runMins(wk)}-minute run a day, with up to a minute of pausing per run; your best run counts. The top three win medals when the week closes${W.ends_at ? `, in ${fmtLeft(Date.parse(W.ends_at) - Date.parse(W.now))}` : ''}.</p>
         ${W.loading ? '<p class="hint">Loading this week’s board…</p>' : W.off ? '<p class="hint err">The weekly challenge needs the shared valley connection. Play the web version: zcgrimshaw.github.io/harvestwork</p>'
           : `<span class="eyebrow">This week’s best${W.players ? ` · ${W.players} farmer${W.players === 1 ? '' : 's'}` : ''}</span>${rows ? `<ol class="rresults wboard">${rows}</ol>` : '<p class="hint">No ranked runs yet this week. Be the first!</p>'}
             ${W.mine && W.mine.rank > 10 ? `<p class="hint">You: #${W.mine.rank} with ${W.mine.score.toLocaleString()}.</p>` : ''}
