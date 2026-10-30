@@ -3175,43 +3175,49 @@
         if (!NET.myName || UI.lbEdit) h += `<span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}</div>`; }
       h += `<div class="menu"><button class="btn ghost" data-lb-refresh>Refresh</button><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'settings') {
-      h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Saved with this farm, except sound, which is remembered on this device.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
-        <span class="eyebrow">Pausing</span><div class="opts">
-        <button class="toggle ${S.menuPause !== false ? 'on' : ''}" data-menupause aria-pressed="${S.menuPause !== false}"><i></i>Pause the game while the Menu or Settings is open</button>
-        ${houseIdx() >= 0 ? `<button class="toggle ${S.housePause !== false ? 'on' : ''}" data-housepause aria-pressed="${S.housePause !== false}"><i></i>Pause the game while you’re inside your house</button>` : ''}
-        <button class="toggle ${S.fullPause ? 'on' : ''}" data-fullpause aria-pressed="${!!S.fullPause}"><i></i>Pause the game when storage is full</button>
-        <button class="toggle ${S.bgPause !== false ? 'on' : ''}" data-bgpause aria-pressed="${S.bgPause !== false}"><i></i>Pause the game when you switch to another tab or app</button>
-        <p class="hint small">${S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away: when you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`}</p>
-        <span class="optlabel">Pause when I haven’t done anything for</span>
-        <div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div>
-        <p class="hint small">${idleSecs() ? `If you don’t tap, click, scroll or press a key for ${idleLabel(idleSecs())}, the game pauses until you’re back.` : 'The game keeps running even when you step away from the screen.'}</p></div>
-        <span class="eyebrow">Graphics</span><div class="opts">
-        <button class="toggle ${S.snapRot !== false ? 'on' : ''}" data-snaprot aria-pressed="${S.snapRot !== false}"><i></i>Snap rotation to straight views</button>
-        <p class="hint small">${S.snapRot !== false ? 'When you stop turning the map, it glides to the nearest straight view, so big buildings like your house and the monuments line up with the grid.' : 'The map stays wherever you leave it. Big buildings like your house and the monuments only line up with the grid in the four straight views.'}</p>
-        <button class="toggle ${UI.labels ? 'on' : ''}" data-labelsset aria-pressed="${!!UI.labels}"><i></i>Show building names ${isTouch() ? '' : '<span class="muted">(X)</span>'}</button>
-        <button class="toggle ${countsOn() ? 'on' : ''}" data-counts aria-pressed="${countsOn()}"><i></i>Show players online and unique visitors</button>
-        <p class="hint small">The two counters by the Menu button. Always shown on computers; off by default on phones to save room. They’re also in the Info panel. Remembered on this device.</p>
-        ${online() ? `<button class="toggle ${S.tick && S.tick.open ? 'on' : ''}" data-tick-toggle aria-pressed="${!!(S.tick && S.tick.open)}"><i></i>Show the valley market ticker at the top</button>
-        <p class="hint small">The scrolling list of recent trades. Hiding it gives the map more room, especially on a phone.</p>` : ''}</div>
-        <span class="eyebrow">Notifications</span><div class="opts">
-        <button class="toggle ${S.wkAlert !== false ? 'on' : ''}" data-wkalert aria-pressed="${S.wkAlert !== false}"><i></i>Tell me when someone takes #1 from me in the weekly challenge</button>
-        <p class="hint small">You get one notice when you lose first place. If you win #1 back and lose it again, you get one more.</p></div>
-        <span class="eyebrow">Selling</span><div class="opts">
-        <button class="toggle ${S.autoSell ? 'on' : ''}" data-autosell aria-pressed="${!!S.autoSell}"><i></i>Auto-sell surplus goods</button>
-        <p class="hint small">${S.autoSell ? 'On. In Storage, set how many of each good to keep; anything above that sells at the market by itself. Goods without a keep amount are never sold.' : 'Off. You can still set keep amounts in Storage; nothing sells until this is on.'}</p></div>
-        <span class="eyebrow">Notifications</span><div class="opts">
-        <button class="toggle ${S.weekly !== false ? 'on' : ''}" data-weekly aria-pressed="${S.weekly !== false}"><i></i>Show a progress report every 7 days</button>
-        <p class="hint small">A short look back at the week: gold, harvests, goods made, sales and contracts.</p>
-        ${online() ? `<button class="toggle ${S.lbShow !== false ? 'on' : ''}" data-lbshow aria-pressed="${S.lbShow !== false}"><i></i>Show my farmer’s name on the leaderboard</button>
-        <p class="hint small">${S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : S.name && S.name !== 'Farmer' ? 'your farmer’s name' : 'a temporary made-up name (pick your own under Your player name)'} and your score.` : 'Your score still counts, but others see a made-up name instead of yours.'}</p>` : ''}</div>
-        <span class="eyebrow">Your player name</span><div class="opts">${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p></div>
-        ${S.race ? '' : `<span class="eyebrow">This farm</span><div class="opts"><p class="state">${S.mode === 'private' ? '<b>Private farm.</b> No leaderboard and no shared prices. Private farms can’t join the Online Valley later.' : '<b>Online Valley farm.</b> Shared market prices, the valley ticker and the leaderboard.'}</p>
-          ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}</div>`}
-        <span class="eyebrow">Sound</span><div class="opts">
-        <button class="toggle ${SND.prefs.mute ? '' : 'on'}" data-sound-mute aria-pressed="${!SND.prefs.mute}"><i></i>Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}</button>
-        ${[['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day, crickets at dusk, rain and summer cicadas'], ['mus', 'Music', 'A different tune for each season, never the same twice']].map(([k, n, d]) =>
-          `<label class="slider"><span><b>${n}</b><small>${d}</small></span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.prefs[k] * 100)}" data-vol="${k}" aria-label="${n} volume" ${SND.prefs.mute ? 'disabled' : ''}></label>`).join('')}
-        </div>
+      // Settings: collapsible sections by what you're trying to do, a search box, short hints with a "More" for the long ones, and a tag saying whether each is kept per farm or per device.
+      const sh = UI.shints || (UI.shints = {}), tg = k => `<em class="stag ${k}">${k === 'device' ? 'This device' : k === 'session' ? 'This visit' : 'This farm'}</em>`;
+      const tgl = (attr, on, label, tag, words, short, long, key) => `<div class="sopt" data-k="${esc((label.replace(/<[^>]*>/g, '') + ' ' + words).toLowerCase())}"><button class="toggle ${on ? 'on' : ''}" data-${attr} aria-pressed="${!!on}"><i></i>${label}${tag ? ' ' + tg(tag) : ''}</button>${short ? `<p class="hint small">${short}${long ? ` <button class="linkish small" data-shint="${key}" aria-expanded="${!!sh[key]}">${sh[key] ? 'Less' : 'More'}</button>` : ''}</p>` : ''}${long && sh[key] ? `<p class="hint small more">${long}</p>` : ''}</div>`;
+      const item = (words, html) => `<div class="sopt" data-k="${esc(words.toLowerCase())}">${html}</div>`;
+      const sec = (id, title, sub, tag, body) => { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), open = f[id] != null ? f[id] : SET_OPEN.includes(id);
+        return `<section class="msec ssec ${open ? 'open' : 'shut'}" data-ssec="${id}"><button class="msech" data-msec="${id}" aria-expanded="${open}"><span><b>${esc(title)}${tag ? ' ' + tg(tag) : ''}</b><small>${sub}</small></span><i aria-hidden="true">${open ? '▾' : '▸'}</i></button><div class="msecb"><div class="opts">${body}</div></div></section>`; };
+      const onoff = v => v ? 'on' : 'off', idleOn = idleSecs() ? `idle ${idleLabel(idleSecs())}` : '';
+      const pauseN = [S.menuPause !== false, houseIdx() < 0 || S.housePause !== false, !!S.fullPause, S.bgPause !== false], pauseOn = pauseN.filter(Boolean).length;
+      const sound = sec('set-sound', 'Sound', SND.prefs.mute ? 'Muted' : `On · effects ${Math.round(SND.prefs.sfx * 100)}% · ambience ${Math.round(SND.prefs.amb * 100)}% · music ${Math.round(SND.prefs.mus * 100)}%`, 'device',
+        tgl('sound-mute', !SND.prefs.mute, `Sound ${isTouch() ? '' : '<span class="muted">(M)</span>'}`, '', 'mute audio sound on off', '', '', '') +
+        [['sfx', 'Effects', 'Chimes when things finish, and the sounds of work'], ['amb', 'Ambience', 'A breeze, birds by day, crickets at dusk, rain and summer cicadas'], ['mus', 'Music', 'A different tune for each season, never the same twice']].map(([k, n, d]) =>
+          item(`${n} volume ${d}`, `<label class="slider"><span><b>${n}</b><small>${d}</small></span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.prefs[k] * 100)}" data-vol="${k}" aria-label="${n} volume" ${SND.prefs.mute ? 'disabled' : ''}></label>`)).join(''));
+      const pausing = sec('set-pause', 'Pausing', `${pauseOn} of ${houseIdx() >= 0 ? 4 : 3} on${idleOn ? ' · ' + idleOn : ''}`, 'farm',
+        tgl('menupause', S.menuPause !== false, 'Pause while the Menu or Settings is open', '', 'pause menu settings open', '', '', '') +
+        (houseIdx() >= 0 ? tgl('housepause', S.housePause !== false, 'Pause while you’re inside your house', '', 'pause house inside room interior', '', '', '') : '') +
+        tgl('fullpause', S.fullPause, 'Pause when storage is full', '', 'pause storage full', '', '', '') +
+        tgl('bgpause', S.bgPause !== false, 'Pause when you switch to another tab or app', '', 'pause background tab away app switch catch up', S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away.`, `When you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`, 'bg') +
+        item('pause idle inactive step away not done anything', `<span class="optlabel">Pause when I haven’t done anything for</span><div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div><p class="hint small">${idleSecs() ? `No tap, click, scroll or key for ${idleLabel(idleSecs())} pauses the game until you’re back.` : 'The game keeps running when you step away.'}</p>`));
+      const look = sec('set-look', 'Look and layout', `Snap ${onoff(S.snapRot !== false)} · names ${onoff(UI.labels)} · counters ${onoff(countsOn())}${online() ? ' · ticker ' + onoff(S.tick && S.tick.open) : ''}`, '',
+        tgl('snaprot', S.snapRot !== false, 'Snap rotation to straight views', 'farm', 'snap rotate turn map straight view graphics', S.snapRot !== false ? 'The map glides to the nearest straight view when you stop turning.' : 'The map stays wherever you leave it.', 'Big buildings like your house and the monuments only line up with the grid in the four straight views, so snapping keeps them tidy.', 'snap') +
+        tgl('labelsset', UI.labels, `Show building names ${isTouch() ? '' : '<span class="muted">(X)</span>'}`, 'session', 'labels names buildings text graphics', '', '', '') +
+        tgl('counts', countsOn(), 'Show players online and unique visitors', 'device', 'counters players online visitors', 'The two counters by the Menu button.', 'Always shown on computers; off by default on phones to save room. They’re also in the Info panel.', 'counts') +
+        (online() ? tgl('tick-toggle', S.tick && S.tick.open, 'Show the valley market ticker at the top', 'farm', 'ticker market trades scrolling top bar', 'The scrolling list of recent trades.', 'Hiding it gives the map more room, especially on a phone.', 'tick') : ''));
+      const alerts = sec('set-alerts', 'Alerts and reports', `#1 alert ${onoff(S.wkAlert !== false)} · weekly report ${onoff(S.weekly !== false)}`, 'farm',
+        tgl('wkalert', S.wkAlert !== false, 'Tell me when someone takes #1 from me in the weekly challenge', '', 'notification alert weekly challenge first place leaderboard', 'One notice each time you lose first place.', 'If you win #1 back and lose it again, you get one more.', 'wk') +
+        tgl('weekly', S.weekly !== false, 'Show a progress report every 7 days', '', 'weekly report progress notification summary', 'A short look back at the week: gold, harvests, goods made, sales and contracts.', '', ''));
+      const helpers = sec('set-help', 'Helpers and automation', `Auto-sell ${onoff(S.autoSell)}${unlocked('repeat') ? ' · repeat ' + onoff(S.repOn !== false) : ''}${S.cloud && S.cloud.at ? ' · auto-backup ' + onoff(S.cloud.auto !== false) : ''} · tutorial ${S.tut ? 'running' : tutLeft() ? 'off' : 'available'}`, 'farm',
+        tgl('autosell', S.autoSell, 'Auto-sell surplus goods', '', 'sell selling surplus keep amount storage market', S.autoSell ? 'On. Goods above their keep amount sell by themselves.' : 'Off. Nothing sells by itself.', S.autoSell ? 'In Storage, set how many of each good to keep. Goods without a keep amount are never sold.' : 'You can still set keep amounts in Storage; nothing sells until this is on.', 'as') +
+        (unlocked('repeat') ? tgl('rall', S.repOn !== false, 'Repeat at stations', '', 'repeat stations loop crafting master switch', S.repOn !== false ? 'Stations on Repeat reload by themselves.' : 'Every station’s Repeat is paused.', '', '') : '') +
+        (S.cloud && S.cloud.at ? tgl('cloud-auto', S.cloud.auto !== false, 'Back up automatically', '', 'backup cloud save auto', 'Keeps a cloud copy of this farm up to date.', '', '') : '') +
+        item('tutorial replay stop start help guide', S.tut ? `<button class="btn ghost sm" data-tut-skip>Stop the tutorial<small>Turn it back on any time from here</small></button>` : `<button class="btn ghost sm" data-tut-replay>${tutBtnLabel()}</button>`));
+      const you = sec('set-you', 'You and privacy', online() ? (S.lbShow !== false ? 'Name shown on the leaderboard' : 'Name hidden on the leaderboard') : 'Player name', '',
+        item('player name locked claim', `<span class="optlabel">Your player name ${tg('device')}</span>${nameHTML()}<p class="hint small">Shown on the leaderboard, in the weekly challenge and on your medals, on every farm you play.</p>`) +
+        (online() ? tgl('lbshow', S.lbShow !== false, 'Show my farmer’s name on the leaderboard', 'farm', 'leaderboard name privacy hide show anonymous', S.lbShow !== false ? `Other players see ${NET.myName ? `your locked name <b>${esc(NET.myName)}</b> ✓` : S.name && S.name !== 'Farmer' ? 'your farmer’s name' : 'a temporary made-up name'} and your score.` : 'Your score still counts, but others see a made-up name.', '', '') : ''));
+      const danger = S.race ? '' : sec('set-danger', 'This farm', S.mode === 'private' ? 'Private farm' : 'Online Valley farm', 'farm',
+        item('private online mode leaderboard shared prices danger', `<p class="state">${S.mode === 'private' ? '<b>Private farm.</b> No leaderboard and no shared prices. Private farms can’t join the Online Valley later.' : '<b>Online Valley farm.</b> Shared market prices, the valley ticker and the leaderboard.'}</p>
+          ${S.mode !== 'private' ? `<button class="btn ${UI.goPrivate ? 'danger' : 'ghost'} sm" data-go-private>${UI.goPrivate ? 'Tap again: this can’t be undone' : 'Make this farm private'}</button><p class="hint small">It leaves the leaderboard and stops sharing prices. A private farm can’t come back to the Online Valley.</p>` : ''}`));
+      const jump = [['set-sound', 'Sound'], ['set-pause', 'Pausing'], ['set-look', 'Look'], ['set-alerts', 'Alerts'], ['set-help', 'Helpers'], ['set-you', 'You']].map(([id, n]) => `<button class="chipf" data-sjump="${id}">${n}</button>`).join('');
+      h = `<div class="phead"><div><h2>Settings</h2><p class="sub">Tags show where each is kept: <em class="stag farm">This farm</em> <em class="stag device">This device</em></p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
+        <label class="ssearchrow"><input id="ssearch" type="search" placeholder="Find a setting, like pause, sound or ticker" autocomplete="off" value="${esc(UI.setq || '')}" aria-label="Find a setting"></label>
+        <div class="chips sjump" role="group" aria-label="Jump to a section">${jump}</div>
+        <p class="hint small snone" hidden>No setting matches that. Try a shorter word.</p>
+        ${sound}${pausing}${look}${alerts}${helpers}${you}${danger}
         <div class="menu"><button class="btn ghost" data-drawer="menu">Back to the menu</button></div>`;
     } else if (UI.drawer === 'menu') {
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
@@ -3251,6 +3257,7 @@
         <span class="eyebrow">Your record</span><p class="sub">Score <b>${S.score}</b> · Day ${S.day} · ${S.tiles.filter(t => t.o).length} tiles · ${S.disc.length} goods discovered</p>`;
     }
     setHTML('#drawer', `<div class="dbox">${h}</div>`);
+    if (UI.drawer === 'settings') applySettingsFilter();
     const sa = UI.drawer === 'menu' && $('#savedago');
     if (sa) { const t = UI.savedAt ? `; last saved ${Math.round((Date.now() - UI.savedAt) / 1000)}s ago` : ''; if (sa.textContent !== t) sa.textContent = t; }
   }
@@ -3320,6 +3327,13 @@
       <label class="field manq">Search <input id="manq" type="text" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. flour, kiln, speed, rug" value="${esc(UI.manQ || '')}"></label>
       ${chips('manual', MAN_KINDS.map(([k, n]) => [k, n, cnt(k)]))}<div id="manres" class="manres">${manualList()}</div>`; }
   // Main menu sections: a header you tap to fold or unfold; which are open is remembered on this device.
+  // Settings search: hide what doesn't match and open every section that has a match. Runs after each draw and on every keystroke.
+  function applySettingsFilter() { const root = $('#drawer'); if (!root || UI.drawer !== 'settings') return; const q = (UI.setq || '').trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean); let any = false;
+    root.querySelectorAll('.ssec').forEach(sec => { let hit = 0; sec.querySelectorAll('.sopt').forEach(it => { const ok = !words.length || words.every(w => it.dataset.k.includes(w) || sec.querySelector('.msech b').textContent.toLowerCase().includes(w)); it.hidden = !ok; if (ok) hit++; });
+      sec.hidden = !!words.length && !hit; sec.classList.toggle('searching', !!words.length && hit > 0); if (hit) any = true; });
+    const n = root.querySelector('.snone'); if (n) n.hidden = any || !words.length;
+    if (UI.sjumpTo) { const t = root.querySelector(`[data-ssec="${UI.sjumpTo}"]`); UI.sjumpTo = null; if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }
+  const SET_OPEN = ['set-sound', 'set-pause']; // Settings sections open the first time
   function msec(id, title, sub, body, open0, force) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), open = force || (f[id] != null ? f[id] : open0);
     return `<section class="msec ${open ? 'open' : ''}"><button class="msech" data-msec="${id}" aria-expanded="${open}"><span><b>${esc(title)}</b><small>${sub}</small></span><i aria-hidden="true">${open ? '▾' : '▸'}</i></button>${open ? `<div class="msecb">${body}</div>` : ''}</section>`; }
   // Spread the word: a short invite with a selectable address and a Copy button.
@@ -3432,6 +3446,8 @@
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
     else if ('tutResume' in ds) { resumeTut(); }
+    else if (ds.shint) { UI.shints = UI.shints || {}; UI.shints[ds.shint] = !UI.shints[ds.shint]; }
+    else if (ds.sjump) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})); f[ds.sjump] = true; lsSet('harvestworks.mfold', f); UI.setq = ''; UI.sjumpTo = ds.sjump; }
     else if ('titleOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; openTitle('main'); }
     else if ('tutReplay' in ds) { UI.drawer = null; resumeTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
@@ -3492,7 +3508,7 @@
     else if ('goalRestore' in ds) { S.goalMin = false; UI.goalsOpen = true; save(); }
     else if ('counts' in ds) { lsSet('harvestworks.counts', !countsOn()); applyCounts(); }
     else if ('menupause' in ds) { S.menuPause = S.menuPause === false; save(); }
-    else if (ds.msec) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), cur = f[ds.msec] != null ? f[ds.msec] : !['save', 'controls'].includes(ds.msec); f[ds.msec] = !cur; lsSet('harvestworks.mfold', f); }
+    else if (ds.msec) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})), cur = f[ds.msec] != null ? f[ds.msec] : ds.msec.startsWith('set-') ? SET_OPEN.includes(ds.msec) : !['save', 'controls'].includes(ds.msec); f[ds.msec] = !cur; lsSet('harvestworks.mfold', f); }
     else if ('autosell' in ds) { S.autoSell = !S.autoSell; save(); }
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
@@ -3620,6 +3636,7 @@
   document.addEventListener('input', e => {
     if (e.target.id === 'msearch') { UI.msearch = e.target.value; const l = $('#mlist'); if (l) { l.innerHTML = marketBody(+e.target.dataset.i); if (isTouch()) l.innerHTML = l.innerHTML.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap'); UI.html['#panel'] = null; } return; }
     if (e.target.id === 'manq') { UI.manQ = e.target.value; UI.manOpen = null; const r = $('#manres'); if (r) r.innerHTML = manualList(); return; }
+    if (e.target.id === 'ssearch') { UI.setq = e.target.value; applySettingsFilter(); return; }
     if (e.target.id === 'fbmsg') { fbState().msg = e.target.value; const c = $('#fbcount'); if (c) c.textContent = e.target.value.length; return; }
     if (e.target.id === 'fbname') { fbState().name = e.target.value; return; }
     if (e.target.id === 'lbname') { UI.lbDraft = e.target.value; if (UI.claim && UI.claim.taken) UI.claim = null; return; }

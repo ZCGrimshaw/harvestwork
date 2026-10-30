@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.102 — 2026-10-29
+- Settings reorganised (`UI.drawer === 'settings'`). Seven collapsible sections (Sound, Pausing, Look and layout, Alerts and reports, Helpers and automation, You and privacy, This farm), open state saved in `harvestworks.mfold` under `set-*` ids (`SET_OPEN` = Sound and Pausing open by default). Each header shows a one-line status. A search box and jump chips: `applySettingsFilter()` hides non-matching `.sopt` rows by their `data-k` keywords and runs after every draw, so a toggle keeps the filter. Short hint under each switch, long text behind `data-shint` More/Less (`UI.shints`). Scope tags `.stag`: This farm / This device / This visit (building names are not saved). Tutorial replay or stop, Repeat master (`data-rall`) and auto-backup moved in. All existing `data-*` handlers are unchanged; no save-format change. Search text is `UI.setq` (`UI.sq` was already the sell quantities). Test: t_settings.py (desktop and phone).
+
 ## v0.101 — 2026-10-29
 - `#tutbtn` (in `#hud`, after `#goals`): shown when `tutLeft()` (skipped, not racing, no title screen). About twice the Valley market button (250×68 on desktop, 220×56 on phones). On desktop it is absolutely positioned and `renderTutBtn()` sets its top under the goal card (or under where the card would be when minimised); on phones it flows in the HUD column. `data-tut-resume` calls `resumeTut()`. `endTut` now calls `dirty()`. Test: t_tutbtn.py. ROADMAP: pinned the Settings menu UX rework.
 

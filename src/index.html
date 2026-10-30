@@ -351,6 +351,13 @@ button, .chipf, input, select { touch-action: manipulation; }
 #logbar .ibtn.on { box-shadow: inset 0 0 0 2px var(--sun), 0 3px 0 rgba(0,0,0,.35); }
 #logbar .infobtn { display: none; }
 #goalchip { display: none; }
+/* settings: sections, search, tags */
+.ssec.shut .msecb { display: none; } .ssec.searching .msecb { display: block; } .ssec[hidden], .sopt[hidden], .snone[hidden] { display: none; }
+.ssec .opts { align-items: stretch; gap: 4px; } .sopt { margin: 0; width: 100%; } .sopt > .toggle { width: 100%; box-sizing: border-box; } .sopt .hint { margin: 2px 2px 4px; } .sopt .hint.more { margin-top: 0; color: var(--paper); }
+.ssearchrow { display: block; margin: 4px 0 8px; } .ssearchrow input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 12px; }
+.sjump { margin: 0 0 6px; flex-wrap: wrap; } .snone { text-align: center; }
+.stag { display: inline-block; vertical-align: middle; margin-left: 6px; padding: 1px 7px; border-radius: 9px; font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .03em; border: 1px solid var(--wood-hi); background: rgba(0,0,0,.25); color: var(--paper-dim); }
+.stag.device { color: #9fd3ee; border-color: #4a7a96; } .stag.farm { color: #b8f08a; border-color: #5a8a3c; } .stag.session { color: #f0d48a; border-color: #8a7a3c; }
 /* shown once a player has skipped the tutorial: twice the size of the Valley market button, under the goal card */
 #tutbtn { position: absolute; left: 10px; width: 250px; min-height: 68px; box-sizing: border-box; padding: 8px 14px; text-align: left; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 2px;
   border: 2px solid var(--wood-lo); border-radius: var(--r); background: var(--wood); color: var(--sun); font: inherit; box-shadow: inset 0 0 0 2px var(--wood-hi), 0 3px 0 rgba(0,0,0,.35); pointer-events: auto; z-index: 3; }
