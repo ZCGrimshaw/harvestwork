@@ -5,6 +5,7 @@ Not built yet; picked up when we choose to.
 - ~~Map expansion~~ (done in v0.25: survey 6×6 areas with their own terrain, plus building caps and moving buildings).
 - More discoveries as the tree is worked through (more area themes, orchards, more automation).
 - ~~Visibility as the farm grows~~ (done: v0.21 auto-fade + See-through toggle; v0.22 buildings 25% shorter).
+- **Settings menu UX (pinned 2026-10-29, working on it):** rework Menu → Settings for a better experience. It has grown a lot (Graphics, Pausing, ticker, weekly reports, cloud backup, house pause and more), so look at grouping and order, search or a short jump list, plain-language labels, fewer long paragraphs, and keeping each option's explanation close to its switch. Settle what to change with Aaron first, then build.
 - **Supporter pack (pinned 2026-10-13):** cosmetic-only perks for Ko-fi supporters (nothing that affects gold or the shared market).
   First pack: supporter outfits/hats (S.shirt / S.hat already exist), one seasonal theme (autumn), ambient life
   (butterflies, birds, fireflies, lit windows, station smoke/steam). Later: more themes, placeable decorations,

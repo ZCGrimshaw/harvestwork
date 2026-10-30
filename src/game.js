@@ -2248,7 +2248,7 @@
     const title = g ? g.title : m ? m.name : 'All contracts complete';
     const el = $('#goals'); el.hidden = !!S.goalMin;
     setHTML('#goalchip', S.goalMin ? goalBtn() : '');
-    if (S.goalMin) { UI.html['#goals'] = ''; return; }
+    if (S.goalMin) { UI.html['#goals'] = ''; renderTutBtn(); return; }
     const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
     let body = '';
     if (UI.goalsOpen) body = g ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>`
@@ -2257,7 +2257,13 @@
           <p>${esc(m.hint)} Deliver at the Order Board.</p>${isComplex(m.need) ? `<button class="gtree" data-tree="ms">See everything it takes ▸</button>` : ''}`
         : `<p>Chase a higher score with Excellent goods and tuned stations.</p>`;
     setHTML('#goals', `<div class="goalhead"><span class="eyebrow">${eyebrow}</span>${ctl}</div><div class="goaltitle">${esc(title)}</div>${body}`);
+    renderTutBtn();
   }
+  // After skipping the tutorial: a big button under the goal card (or the minimised goal chip) that turns it back on.
+  function renderTutBtn() {
+    const el = $('#tutbtn'); if (!el) return; const on = !!S && !S.race && tutLeft() && !UI.title; el.hidden = !on; if (!on) return;
+    if (getComputedStyle(el).position !== 'absolute') { el.style.top = ''; return; }
+    const g = $('#goals'), base = parseFloat(getComputedStyle(g).top) || 66; el.style.top = (base + (g.hidden ? 0 : g.offsetHeight + 8)) + 'px'; }
   function renderQueue() {
     const all = [S.cur, ...S.queue].filter(Boolean), F = S.helper;
     const fh = F ? `<div class="chip helper ${F.on ? '' : 'off'}"><span>Farmhand: ${F.errand ? `errand for ${esc(D.items[Object.keys(D.recipes[F.errand.r].out)[0]].name)} (${{ go: 'walking to the market', shop: 'shopping', back: 'heading back', load: 'loading' }[F.errand.ph]})` : !F.on ? 'paused' : !F.steps.length ? 'no jobs yet' : F.cur ? esc(TASKS[F.cur.a].label(F.cur)) : 'waiting for work'}</span>
@@ -3425,6 +3431,7 @@
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
+    else if ('tutResume' in ds) { resumeTut(); }
     else if ('titleOpen' in ds) { save(); UI.drawer = null; UI.hadSave = true; openTitle('main'); }
     else if ('tutReplay' in ds) { UI.drawer = null; resumeTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
@@ -4056,7 +4063,7 @@
   function startTut(n = 0) { S.tut = { n }; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt }; UI.html['#coach'] = null; dirty(); }
   function tutAdvance() { if (!S.tut) return; S.tut.n++; S.tutOff = null; tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
     if (S.tut.n >= TUT.length) endTut(false); else dirty(); }
-  function endTut(skipped) { const at = S.tut ? S.tut.n : 0; S.tutOff = skipped ? at : null; S.tutDone = !skipped; S.tut = null; $('#coach').hidden = true; UI.html['#coach'] = null; save(); if (skipped) toast('Tutorial off. Turn it back on in Menu → Game and it picks up where you left off.', 'info'); else toast('<b>Tutorial done.</b> Keep following the goal card.', 'goal'); }
+  function endTut(skipped) { const at = S.tut ? S.tut.n : 0; S.tutOff = skipped ? at : null; S.tutDone = !skipped; S.tut = null; $('#coach').hidden = true; UI.html['#coach'] = null; save(); dirty(); if (skipped) toast('Tutorial off. Turn it back on in Menu → Game and it picks up where you left off.', 'info'); else toast('<b>Tutorial done.</b> Keep following the goal card.', 'goal'); }
   function tutTick() { if (!S || !S.tut || UI.title) return; const st = TUT[S.tut.n]; if (!st) return endTut(false);
     if (!tutBase) tutBase = { u: cam.u, v: cam.v, z: cam.z, yaw: UI.yaw, tilt: UI.tilt };
     if ((st.done && st.done(tutBase)) || (st.skip && st.skip())) { tutAdvance(); } }

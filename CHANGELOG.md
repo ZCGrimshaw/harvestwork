@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.101 — 2026-10-29
+- `#tutbtn` (in `#hud`, after `#goals`): shown when `tutLeft()` (skipped, not racing, no title screen). About twice the Valley market button (250×68 on desktop, 220×56 on phones). On desktop it is absolutely positioned and `renderTutBtn()` sets its top under the goal card (or under where the card would be when minimised); on phones it flows in the HUD column. `data-tut-resume` calls `resumeTut()`. `endTut` now calls `dirty()`. Test: t_tutbtn.py. ROADMAP: pinned the Settings menu UX rework.
+
 ## v0.100.1 — 2026-10-29 · backend (hidden from the in-game updates log)
 - Aaron cameo in the first-time greeting: `pTraits(0)` is a fixed fair, freckled, red-haired and red-bearded farmer with laugh lines and grey flecks (`aged`), picked with a 1 in 7 chance by `helloFarmer()`.
 
