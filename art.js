@@ -492,9 +492,10 @@ window.HW_ART = (function () {
   function pTraits(seed) {
     const R = rng(seed * 7919 + 13), pick = a => a[Math.floor(R() * a.length)];
     const skin = pick(SKINS), hair = pick(HAIRS), shirt = pick(SHIRTS), band = pick(HATS), woman = R() < .45, beard = woman ? 0 : pick([0, 1, 1, 2, 2]), grin = R() < .5, freck = R() < .35, specs = R() < .2;
-    return { skin, hair, shirt, band, woman, beard, grin, freck, specs }; }
+    if (seed === 0) return { skin: '#f7d9c4', hair: '#b8431c', shirt: '#5aa83f', band: '#7a4b28', woman: false, beard: 2, grin: true, freck: true, specs: false, aged: true };   // Aaron: red hair and beard, fair, middle-aged
+    return { skin, hair, shirt, band, woman, beard, grin, freck, specs, aged: false }; }
   function portrait(seed) {
-    const { skin, hair, shirt, band, woman, beard, grin, freck, specs } = pTraits(seed), bib = '#3d5a9a';
+    const { skin, hair, shirt, band, woman, beard, grin, freck, specs, aged } = pTraits(seed), bib = '#3d5a9a';
     const sk2 = shade(skin, .82), straw = '#e3c26b';
     return mk(48, 40, (g, r) => {
       for (let y = 0; y < 40; y++) r(mixc('#9fd3ee', '#eaf4d6', Math.min(1, y / 26)), 0, y, 48, 1);   // sky
@@ -518,6 +519,8 @@ window.HW_ART = (function () {
       if (grin) { r('#7a2a22', 21, 24, 7, 2); r('#fff', 22, 24, 5, 1); r('#7a2a22', 20, 23); r('#7a2a22', 28, 23); }
       else { r('#7a2a22', 22, 24, 5, 1); r('#7a2a22', 21, 23); r('#7a2a22', 27, 23); }
       if (specs) { r('#4a3a2a', 18, 18, 5, 1); r('#4a3a2a', 18, 21, 5, 1); r('#4a3a2a', 18, 18, 1, 4); r('#4a3a2a', 22, 18, 1, 4); r('#4a3a2a', 25, 18, 5, 1); r('#4a3a2a', 25, 21, 5, 1); r('#4a3a2a', 25, 18, 1, 4); r('#4a3a2a', 29, 18, 1, 4); r('#4a3a2a', 23, 19, 2, 1); }
+      if (aged) { [[19, 20], [29, 20], [18, 21], [30, 21]].forEach(([x, y]) => r(sk2, x, y)); r(sk2, 21, 16, 3, 1); r(sk2, 26, 16, 3, 1); r(sk2, 20, 23); r(sk2, 28, 23);   // crow's feet, brow and smile lines
+        [[19, 26], [22, 28], [26, 27], [29, 25], [24, 29]].forEach(([x, y]) => r('#d8c9b8', x, y)); r('#d8c9b8', 17, 17); r('#d8c9b8', 31, 17); }   // a few grey flecks
       ell(r, straw, 24, 13, 14, 3); r(shade(straw, .8), 11, 14, 26, 1); ell(r, straw, 24, 8, 8, 5); r(band, 16, 11, 17, 2); r('rgba(255,255,255,.3)', 19, 5, 6, 1);   // straw hat
     });
   }

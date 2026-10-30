@@ -1010,6 +1010,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.100.1', at: '2026-10-29 20:05', backend: true, notes: ['The welcome greeter can now be Aaron, with red hair, a red beard and a middle-aged smile.'] },
   { v: '0.100', at: '2026-10-29 19:50', notes: ['New players get a proper welcome. A friendly, folksy farmer (a different one each time) greets you up close, explains the Online and Private farms (and that an online farm can be made private any time), the basics of farming from tilling to selling and unlocking stations, and then asks if you want the tutorial on or off. The tutorial can be started or stopped whenever you like.'] },
   { v: '0.99.4', at: '2026-10-29 15:40', notes: ['If Repeat is switched off for all stations, or paused on one station, that station’s recipe now says so right under the Repeat switch, with a button to turn it back on. Before, it could look like Repeat was on but nothing was happening.'] },
   { v: '0.99.3', at: '2026-10-29 15:00', notes: ['Tapping the Storage counter at the top now opens your storage on “Main storage”, so you can see exactly which goods are filling it (the 1,036 of 8,620 number). The Where buttons still switch to the Silo, Cold Cellar, Material Yard or All.'] },

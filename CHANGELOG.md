@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.100.1 — 2026-10-29 · backend (hidden from the in-game updates log)
+- Aaron cameo in the first-time greeting: `pTraits(0)` is a fixed fair, freckled, red-haired and red-bearded farmer with laugh lines and grey flecks (`aged`), picked with a 1 in 7 chance by `helloFarmer()`.
+
 ## v0.100 — 2026-10-29
 - First-time greeting. The splash's "Let’s go" (`data-t="start"`) opens `hello` for `firstTime()` players, also reached from "Online Valley" when the splash was skipped (`UI.helloSeen`). Four pages (`helloPages()`): welcome, Online vs Private (online can be made private later), basics (till, plant, wait, harvest, sell, unlock stations; tutorial can be stopped or started any time), and the tutorial choice. A random farmer (`helloFarmer()`, seeded; `ART.portrait(seed)`, a 48×40 pixel close-up with sky, barn and fence; `pTraits(seed)` picks skin, hair, shirt, hat band, beard, grin, freckles, glasses) talks in a speech bubble. The choice (`UI.helloTut`) only highlights the matching button on the name screen, so nothing changes for the existing flow. Test: t_hello.py (desktop and phone).
 

@@ -3686,7 +3686,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261030-022014';
+  const BUILD = '20261030-022205';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -3963,7 +3963,7 @@
   }
   // The first-time greeting: a random farmer in close-up walks a new player through the basics, then asks about the tutorial.
   const HELLO_NAMES = { m: ['Old Hank', 'Walt', 'Clyde', 'Dusty', 'Abner', 'Cal'], f: ['Granny Mae', 'Rosie', 'Ida May', 'June', 'Hattie', 'Pearl'] };
-  function helloFarmer() { if (!UI.hfarmer) { const seed = 1 + Math.floor(Math.random() * 99999); UI.hfarmer = { seed, name: HELLO_NAMES[ART.portraitWoman(seed) ? 'f' : 'm'][seed % 6] }; } return UI.hfarmer; }
+  function helloFarmer() { if (!UI.hfarmer) { if (Math.random() < 1 / 7) UI.hfarmer = { seed: 0, name: 'Aaron' }; else { const seed = 1 + Math.floor(Math.random() * 99999); UI.hfarmer = { seed, name: HELLO_NAMES[ART.portraitWoman(seed) ? 'f' : 'm'][seed % 6] }; } } return UI.hfarmer; }
   function helloPages() { return [
     { h: 'Well howdy there, stranger!', next: 'Pleased to meet ya', body: `<p>I’m <b>${esc(helloFarmer().name)}</b>, and unless my old eyes deceive me, this here is your <b>first time</b> joinin’ us in Harvest Valley.</p><p>Pull up a hay bale and let me tell ya what you can do around these parts.</p>` },
     { h: 'Online or private, your pick', body: `<p>You can run an <b>online farm</b>, where the whole valley shares market prices, swaps news on the ticker and races up the leaderboard. Or a <b>private farm</b>, just you and your crops, with nobody lookin’ over your shoulder.</p><p>Now don’t you fret none about pickin’ wrong. An online farm can be made <b>private</b> any time you like, in Menu → Settings. Your first farm starts out online, and you can change that whenever you’ve a mind to.</p>` },
