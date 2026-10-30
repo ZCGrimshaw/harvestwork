@@ -731,7 +731,91 @@ window.HW_ART = (function () {
     });
     c.ax = cx; c.ay = by; return c;
   }
-  const MONUMENTS = { pyramid };
+
+  /* The Leaning Tower of Pisa: a white marble cylinder built slice by slice from the ground up (each slice an ellipse, painted bottom to top,
+     so the front of every slice shows and the last one is the top). Six arcaded galleries over a tall ground storey, then the belfry.
+     The lean grows as it rises, as the real one did. Same footprint, plinths and modes as the Pyramid. */
+  function pisa(stage, mode) {
+    const S = mode === 'deco' ? 1 : 3, T = Math.max(1, Math.round(S * .7));
+    const H = (mode === 'deco' ? 29 : 36) * S, Rr = (mode === 'deco' ? 5.5 : 6) * S, W = (mode === 'deco' ? 13 : 14) * S, M = 9 * S;
+    const Hb = H * .88, lean = [0, .015, .05, .09, .12][stage], built = [0, .2, .55, 1, 1][stage] * Hb;
+    const cx = Math.max(W + 3 * S, mode === 'deco' ? 0 : 16 * S + 1), by = M + H;
+    const w = cx * 2, h = by + W / 2 + (mode === 'big' ? 12 * S : mode === 'site' ? 5 * S : 4);
+    const c = mk(w, h, (g, r0) => {
+      const R = rng(11 + stage), r = (col, x, y, ww = 1, hh = 1) => r0(col, Math.round(x), Math.round(y), Math.max(1, Math.round(ww)), Math.max(1, Math.round(hh)));
+      const ln = (col, x0, y0, x1, y1, t = 1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) r(col, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, t, t); };
+      const each = fn => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) fn(x, y, x + .5, y + .5); };
+      const dia = (x, y, hw, yc) => Math.abs(x - cx) / hw + Math.abs(y - yc) / (hw / 2);
+      if (mode === 'big') { // floating plinth in pale marble with gold trim, shadow far below
+        each((x, y, px, py) => { const dx = (px - cx) / (13 * S), dy = (py - (h - 3 * S)) / (2.5 * S); if (dx * dx + dy * dy <= 1) r('rgba(0,0,0,.3)', x, y); });
+        each((x, y, px, py) => { const hw = 16 * S;
+          if (dia(px, py, hw, by) <= 1) r((x * 7 + y * 13) % 13 === 0 ? '#eef0e4' : '#dfe3d2', x, y);
+          else if (py > by && dia(px, py - 3 * S, hw, by) <= 1) r(px < cx ? '#b9bca8' : '#959884', x, y);
+          else if (py > by && dia(px, py - 4 * S, hw, by) <= 1 && Math.abs(px - cx) < 14 * S && (x >> 1) % 3) r('#f6d24a', x, y); });
+      } else if (mode === 'site') { // a grassy Field of Miracles lawn edged in marble, filling the 3×3 footprint
+        each((x, y, px, py) => { const hw = 16 * S - 2, d = dia(px, py, hw, by);
+          if (d <= 1) r(d > .9 ? '#e4e6d8' : (x * 5 + y * 11) % 17 === 0 ? '#8fc65a' : '#7cb84e', x, y);
+          else if (py > by && dia(px, py - 3, hw, by) <= 1) r(px < cx ? '#b4b7a4' : '#93967f', x, y); });
+      } else each((x, y, px, py) => { const dx = (px - cx - 2) / (9 * S), dy = (py - by - S) / (3.5 * S); if (dx * dx + dy * dy <= 1) r('rgba(30,20,10,.25)', x, y); });
+      if (stage === 0) { // the surveyed site: a ring of stakes and string, a sign, and the first marble blocks
+        const n = 10, pts = []; for (let k = 0; k < n; k++) { const a = k / n * 6.283; pts.push([cx + Math.cos(a) * Rr * 1.5, by + Math.sin(a) * Rr * .75]); }
+        for (let k = 0; k < n; k++) { const a = pts[k], b = pts[(k + 1) % n]; ln('#f2ece0', a[0], a[1] - 3 * S, b[0], b[1] - 3 * S); }
+        pts.forEach(p => { r('#7a4b28', p[0], p[1] - 5 * S, Math.max(1, S * .7), 6 * S); r('#c23a3a', p[0] - 1, p[1] - 5 * S, 3 * Math.max(1, S * .7), 2 * Math.max(1, S * .7)); });
+        r('#7a4b28', cx - S, by + 1 * S, Math.max(1, S * .7), 5 * S); r('#e8e4d6', cx - 5 * S, by - 4 * S, 10 * S, 6 * S); r('#7a4b28', cx - 5 * S, by - 4 * S, 10 * S, Math.max(1, S * .6));
+        ln('#7a4b28', cx - 3 * S, by - 2 * S, cx + 3 * S, by - 2 * S); ln('#7a4b28', cx - 3 * S, by, cx + S, by);
+        for (let k = 0; k < 5; k++) { r('#f4f1e6', cx - 8 * S + k * 3 * S, by + 4 * S - (k % 2) * S, 2 * S, 2 * S); r('#bdb8a6', cx - 8 * S + k * 3 * S, by + 5 * S - (k % 2) * S, 2 * S, Math.max(1, S * .6)); }
+        return; }
+      // the tower body, slice by slice. tiers: a tall ground storey, then six galleries of arches.
+      const nG = S > 1 ? 6 : 4, g0 = .2 * Hb, gH = (Hb - g0) / nG, cols = S > 1 ? 14 : 9;
+      const marble = (dx, z, rad, belfry) => {
+        const t = (dx / rad + 1) / 2, base = mixc('#fbf8ee', '#a49b86', Math.pow(t, 1.35));
+        const a = Math.asin(Math.max(-1, Math.min(1, dx / rad))), fr = ((a / (Math.PI * 2 / cols)) % 1 + 1) % 1;
+        let tb, th; if (belfry) { tb = Hb; th = H - Hb; } else if (z < g0) { tb = 0; th = g0; } else { const k = Math.min(nG - 1, Math.floor((z - g0) / gH)); tb = g0 + k * gH; th = gH; }
+        const v = (z - tb) / th;
+        if (v < .1 && !belfry) return v < .04 ? shade(base, .82) : shade(base, 1.07);          // cornice between storeys
+        if (z < g0) { // the ground storey: tall blind arches in low relief
+          const q = fr, arch = .62 + .28 * Math.sqrt(Math.max(0, 1 - (2 * q - 1) ** 2));
+          return q > .2 && v < arch && v > .12 ? shade(base, .9) : base; }
+        if (fr < .32) return v > .86 ? base : shade(base, 1.04);                                   // a column
+        const q = (fr - .32) / .68, arch = .66 + .24 * Math.sqrt(Math.max(0, 1 - (2 * q - 1) ** 2));
+        if (v < arch) return mixc('#6e665a', '#4a4338', t);                                        // the dark gallery behind the arches
+        return base; };
+      const slice = (z, rad, col) => { const zc = cx + lean * z, yc = by - z, ry = rad / 2;
+        for (let dx = -rad; dx <= rad; dx++) { const hy = ry * Math.sqrt(Math.max(0, 1 - (dx / rad) ** 2)); const cl = col(dx, z, rad);
+          for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) r(cl, zc + dx, yc + yy); } };
+      const zTop = Math.min(built, Hb);
+      for (let z = 0; z <= zTop; z++) slice(z, Rr, (dx, zz, rad) => marble(dx, zz, rad, false));
+      { const zc = cx + lean * zTop, yc = by - zTop, ry = Rr / 2; // the top of what's built: a finished gallery floor, or rough courses
+        for (let dx = -Rr + 1; dx <= Rr - 1; dx++) { const hy = (ry - 1) * Math.sqrt(Math.max(0, 1 - (dx / (Rr - 1)) ** 2));
+          for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) r(stage === 4 ? '#d8d2c0' : ((dx + yy) & 3) ? '#d6cfba' : '#bfb6a0', zc + dx, yc + yy); } }
+      if (stage === 4) { // the belfry: a narrower ring of arches with bronze bells, a red tiled cap and the flag of Pisa
+        const rb = Math.round(Rr * .66);
+        for (let z = Hb; z <= H - S; z++) slice(z, rb, (dx, zz, rad) => { const col = marble(dx, zz, rad, true); return col; });
+        const zc = cx + lean * H, yc = by - H;
+        for (let dx = -rb; dx <= rb; dx++) { const hy = (rb / 2) * Math.sqrt(Math.max(0, 1 - (dx / rb) ** 2)); for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) r(dx < 0 ? '#c4583e' : '#9e432f', zc + dx, yc + yy - S * .3); }
+        for (let k = -1; k <= 1; k++) r('#d9a22a', cx + lean * (Hb + (H - Hb) * .45) + k * rb * .55 - T / 2, by - Hb - (H - Hb) * .45, T + (S > 1 ? 1 : 0), T + (S > 1 ? 1 : 0));   // bells
+        r('#7a4b28', zc - T / 2, yc - 7 * S, T, 7 * S); for (let i = 0; i < 3 * S; i++) r(i < 1.5 * S ? '#d6334a' : '#d6334a', zc + T / 2, yc - 7 * S + i, Math.max(1, (4 * S - i) * 1.1), 1);
+        r('#fff', zc + T / 2 + S * .9, yc - 6.2 * S, Math.max(1, S * .6), Math.max(1, S * 1.4)); r('#fff', zc + T / 2 + S * .4, yc - 5.7 * S, Math.max(1, S * 1.6), Math.max(1, S * .5)); }
+      if (stage >= 1 && stage <= 3) { // scaffolding around the tower and a crane on top while it rises
+        const hh = (stage === 3 ? .45 : 1) * (zTop + 5 * S), poles = [[cx - Rr - 2 * S, by + .5 * S], [cx + 1 * S, by + Rr / 2 + 2 * S], [cx + Rr + 2 * S + lean * hh * .5, by + .5 * S]];
+        poles.forEach(p => r('#7a4b28', p[0], p[1] - hh, T, hh));
+        for (let z = 3 * S; z < hh; z += 6 * S) { ln('#c99b5a', poles[0][0], poles[0][1] - z, poles[1][0], poles[1][1] - z, T); ln('#a8743e', poles[1][0], poles[1][1] - z, poles[2][0], poles[2][1] - z, T); }
+        if (stage < 3) { const ax = cx + lean * zTop - S, ay = by - zTop - S;
+          r('#7a4b28', ax, ay - 9 * S, T + (S > 1 ? 1 : 0), 9 * S); ln('#9a6a3c', ax, ay - 9 * S, ax + 9 * S, ay - 6 * S, T); ln('#f2ece0', ax + 8 * S, ay - 6 * S, ax + 8 * S, ay - S, 1);
+          r('#f4f1e6', ax + 6.5 * S, ay - S, 3 * S, 2 * S); r('#bdb8a6', ax + 6.5 * S, ay + .5 * S, 3 * S, T); }
+        const sx = cx + W - 4 * S, sy = by + W / 2 - 4 * S; // marble waiting to go up
+        [[0, 0], [3, 0], [1.5, -2], [6, 1]].forEach(([a, b]) => { r('#f4f1e6', sx + a * S, sy + b * S, 3 * S, 2 * S); r('#bdb8a6', sx + a * S, sy + (b + 1.5) * S, 3 * S, T); }); }
+      if (stage === 4) { // banners, sparkle, and a visitor holding the tower up for a photo
+        [[cx - W + 2 * S, by + .6 * S, '#d6334a'], [cx + W - 2 * S, by + .6 * S, '#f4f1e6']].forEach(([x, y, col]) => {
+          r('#7a4b28', x, y - 10 * S, T, 10 * S); for (let i = 0; i < 4 * S; i++) r(col, x + T, y - 10 * S + i, Math.max(1, (4 * S - i) * 1.1), 1); });
+        for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28, rr = (5 + R() * 4) * S; r(k % 3 ? '#fff3b0' : '#f6d24a', cx + lean * H * .8 + Math.cos(a) * rr * 1.3, by - H * .8 + Math.sin(a) * rr * .7, T, T); }
+        if (S > 1) { const px = cx + Rr + 5 * S, py = by + 3 * S; // legs, body, head, and both arms up towards the lean
+          r('#3d5a9a', px, py - 3 * S, S * .7, 3 * S); r('#3d5a9a', px + S, py - 3 * S, S * .7, 3 * S); r('#e8c04a', px - .2 * S, py - 6 * S, 2.2 * S, 3 * S);
+          r('#f2c79a', px + .1 * S, py - 8 * S, 1.6 * S, 1.8 * S); ln('#f2c79a', px - .2 * S, py - 5.5 * S, px - 2.2 * S, py - 9 * S, Math.max(1, S * .6)); ln('#f2c79a', px + 1.8 * S, py - 5.5 * S, px - .6 * S, py - 9.5 * S, Math.max(1, S * .6)); } }
+    });
+    c.ax = cx; c.ay = by; return c;
+  }
+  const MONUMENTS = { pyramid, pisa };
   function monument(kind, stage, mode) { return (MONUMENTS[kind] || pyramid)(Math.max(0, Math.min(4, stage | 0)), mode); }
   // the Monument Depot: an open wooden shed with an awning; crates pile up in front as you give
   OBJ.depot = n => mk(32, 34, (g, r) => {

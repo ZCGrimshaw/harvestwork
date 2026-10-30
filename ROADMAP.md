@@ -154,7 +154,7 @@ Built in stages; each stage ships on its own.
   changes: the Valley Green opens after the tutorial with a welcome card (instead of a new tutorial goal, which would
   have reopened the finished tutorial for existing players); the floating monument bobs gently rather than rotating;
   the Depot sits on the lawn 3 tiles from the centre. Still to do: a second pedestal on the Green for the next monument
-  (the area grows in bands), the Valley Gallery, and the next monuments. To start the next one, insert a mon_projects
+  (the area grows in bands), the Valley Gallery, and the next monuments (second one: The Leaning Tower of Pisa, v0.105, 2026-10-30). To start the next one, insert a mon_projects
   row (see CHANGELOG v0.42) and add its art to art.js MONUMENTS and data.js monuments.
   Original plan, Stage 4: Valley Monuments (online, co-op; agreed 2026-10-15, now first in line after Stage 1). Replaces the
   old "Valley projects" idea. Every online farm helps build one shared monument; it is co-operative, with no

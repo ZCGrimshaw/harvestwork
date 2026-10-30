@@ -618,7 +618,7 @@
     try { const r = await rpc('mon_state', { p_player: PLAYER }); if (r) setMon(r); } catch (e) { } }
   function setMon(r) { NET.mon = r; NET.monOk = true; lsSet('harvestworks.mon', r); if (r.now) NET.monSkew = Date.now() - Date.parse(r.now);
     const st = lsGet('harvestworks.monstage', {}); (r.mine_all || []).forEach(p => { st[p.id] = monTotals(p).stage; }); if (r.id) st[r.id] = monTotals(r).stage; lsSet('harvestworks.monstage', st);
-    checkMonStage(); openGreenIfReady(); dirty(); }
+    checkMonStage(); openGreenIfReady(); swapGreenMon(); dirty(); }
   // a stage crossed since this device last looked: a ceremony card (once per stage)
   function checkMonStage() { const m = MONK(); if (!m || !S || S.race) return; const seen = lsGet('harvestworks.monseen', {}), st = monTotals(m).stage;
     if (seen[m.id] == null) { seen[m.id] = st; lsSet('harvestworks.monseen', seen); return; }
@@ -654,8 +654,16 @@
     if (r < 0) { // all four corners are taken or off the map: fall back to the nearest unsurveyed area beside your land
       const R = C.worldRegions, c = (R - 1) / 2, cand = S.regions.map((Rg, q) => q).filter(q => !S.regions[q].open && regionNbrs(q).some(n => S.regions[n].open && S.regions[n].theme !== 'green'));
       if (!cand.length) return; cand.sort((a, b) => Math.hypot(a % R - c, (a / R | 0) - c) - Math.hypot(b % R - c, (b / R | 0) - c) || a - b); r = cand[0]; k = null; }
-    const m = MONK(), p = paveGreen(r, { p: m.id, kind: m.kind });
+    const m = MONK(), p = paveGreen(r, { p: m.id, kind: m.kind }); UI.monPrev = null;
     S.green = { r, c: p.c, d: p.d, day: S.day, k }; UI.live = null; save();
+    if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
+  // a new monument has started: the Valley Green's site switches to it (the finished one lives on as models and in the gallery)
+  function swapGreenMon() { const m = MONK(); if (!m || !S || !S.green || S.race) return; const site = S.tiles[S.green.c] && S.tiles[S.green.c].b;
+    if (!site || site.type !== 'mon_site' || site.p === m.id) return;
+    const prev = (m.gallery || []).concat(m.mine_all || []).find(p => p.id === site.p), prevName = prev ? prev.name : site.p ? (D.monuments[site.kind] || {}).name : null;
+    monTiles().forEach(i => { const b = S.tiles[i].b; b.p = m.id; b.kind = m.kind; });
+    if (S.monAuto && Object.keys(S.monAuto).length) S.monAuto = {};   // auto-give was for the last monument's goods: start fresh
+    UI.live = null; UI.monPrev = prevName || null; save();
     if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
   // move the Green to another corner: the old area goes back to being unsurveyed land
   function moveGreen(k) { if (!S.green || S.race) return; const r = greenSpot(k, true); if (r < 0 || r === S.green.r) return;
@@ -2623,7 +2631,7 @@
         <p class="hint small"><b>Auto</b> gives that good by itself whenever you have some, a batch every 20 seconds or so, until today’s allowance is used. It gives every one you have, so leave it off for goods you need for building. It works while the game is open, and switches itself off (with a heads-up) when today’s allowance is used up.</p>
         <div class="monyou bday">${builderDay() ? '<b>Builder’s day:</b> because you’ve given today, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down. It lasts until 2 AM Pacific.' : '<b>Builder’s day:</b> give anything today and, until 2 AM Pacific, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down.'}</div>
         <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance (the last item may go a little over), or what’s left of this phase.</p>`;
-    } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stays on your Valley Green for good, and the next monument will appear here when it starts.</p>`;
+    } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stands on your Valley Green until the next monument starts and takes its place. Any model you earned stays on your farm.</p>`;
     h += modelLine(m);
     if ((m.top || []).length) h += `<span class="eyebrow">Contributors</span><ol class="monroll">${m.top.map(x => `<li class="${x.me ? 'me' : ''}"><span>${esc(x.name)}${x.me ? ' (you)' : ''}</span><b>${x.points.toLocaleString()}</b></li>`).join('')}</ol>${m.givers > m.top.length ? `<p class="hint small">…and ${m.givers - m.top.length} more farm${m.givers - m.top.length === 1 ? '' : 's'}.</p>` : ''}`;
     else h += `<p class="hint small">No one has given anything yet. Be the first name on the roll!</p>`;
@@ -3920,8 +3928,8 @@
         ${(W.top || []).length ? `<ol class="rresults wboard">${W.top.slice(0, 5).map(p => `<li class="${p.me ? 'me' : ''}"><b>${esc(p.name)}</b><span>${p.score.toLocaleString()}</span></li>`).join('')}</ol>` : ''}
         <div class="tmenu"><button class="btn pri big" data-t="wleave">Back to my farm</button><button class="btn big" data-t="weekly">This week’s board</button></div></div>`; }
     else if (t === 'monwelcome' && MONK()) { const m = MONK(), K = monKind(m), st = monTotals(m).stage;
-      h = `<div class="tcard moncard"><span class="twel">New in the valley</span><img class="monheroimg" src="${ART.monPic(m.kind, st)}" alt="">
-        <h2>The valley is building ${esc(m.name)}!</h2><p class="sub">Every online farm builds it together. A <b>Valley Green</b> has opened at a corner of your land, with the monument at full size and a <b>Monument Depot</b> where you give goods.</p>
+      const prevN = UI.monPrev; h = `<div class="tcard moncard"><span class="twel">${prevN ? 'Next in the valley' : 'New in the valley'}</span><img class="monheroimg" src="${ART.monPic(m.kind, st)}" alt="">
+        <h2>${prevN ? `Next, the valley is building ${esc(m.name)}!` : `The valley is building ${esc(m.name)}!`}</h2><p class="sub">${prevN ? `${esc(prevN)} is finished, thanks to everyone who helped. Your <b>Valley Green</b> now shows the new monument, and the <b>Monument Depot</b> takes goods for it. Any model you earned stays yours. Auto-give starts fresh, so pick the goods again.` : 'Every online farm builds it together. A <b>Valley Green</b> has opened at a corner of your land, with the monument at full size and a <b>Monument Depot</b> where you give goods.'}</p>
         <div class="monstrip">${[0, 1, 2, 3, 4].map(k => `<span class="${k <= st ? 'on' : ''}"><img src="${ART.monPic(m.kind, k)}" alt=""><small>${k ? k * 25 + '%' : 'Start'}</small></span>`).join('')}</div>
         <ul class="monpts"><li><b>Four stages.</b> It rises at 25, 50, 75 and 100%. Each phase asks for different goods: ${esc(nmList(m.phases.map(p => (p.short || p.name).toLowerCase())))}.</li>
           <li><b>Points.</b> Finer goods count for more. You can give up to ${m.cap.toLocaleString()} points a day, so every farm gets a share of the work.</li>
