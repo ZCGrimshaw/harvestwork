@@ -1312,11 +1312,19 @@
     for (const k in R.in) q = Math.min(q, take(k, R.in[k], 0, 'high'));
     // The Quality upgrade lifts goods one tier above their ingredients, never more (so cheap Basic inputs can't become
     // Excellent). Master Crafting's second level adds a bonus item to every third batch instead.
-    q = Math.min(2, q + D.upgrades.quality.effect[b.lv.quality]);
+    const iq = q; q = Math.min(2, q + D.upgrades.quality.effect[b.lv.quality]);
     let bonus = false; if (b.lv.quality >= 2) { b.qn = (b.qn || 0) + 1; bonus = b.qn % 3 === 0; }
     const ok = Object.keys(R.out)[0];
-    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1) / (1 + mastPerk(ok, 'speed')), qual: q, done: false, bonus });
+    b.q.push({ r: rid, t: 0, dur: R.time * D.upgrades.speed.effect[b.lv.speed] / (wrule('craft', {})[b.type] || 1) / (1 + mastPerk(ok, 'speed')), qual: q, done: false, bonus, iq });
     emit('load', { st: b.type }); }
+  /* Cancel a batch that hasn't started yet (one that is only waiting its turn): its ingredients go back to storage at the quality they
+     were taken at. If the station is on Repeat it is paused, otherwise the empty slot would just be refilled straight away. */
+  function cancelBatch(i, k) { const T = S.tiles[i], b = T && T.b; if (!b || !b.q) return; const j = b.q[k];
+    if (!j || j.done || k === b.q.findIndex(x => !x.done)) return; const R = D.recipes[j.r]; if (!R) return;
+    const iq = j.iq != null ? j.iq : Math.max(0, j.qual - (D.upgrades.quality.effect[b.lv.quality] || 0));
+    b.q.splice(k, 1); for (const id in R.in) addItem(id, R.in[id], iq, true);
+    let rp = false; if (b.rep && !b.rpause) { b.rpause = true; rp = true; }
+    float(i, 'Batch cancelled', '#f0c9bf'); toast(`Cancelled a batch of <b>${esc(R.label || D.items[Object.keys(R.out)[0]].name)}</b>. ${Object.keys(R.in).length ? 'Its ingredients are back in storage.' : ''}${rp ? ' Repeat is paused at this station so the slot stays free.' : ''}`, 'info'); save(); dirty(); }
   function collectErr(i) { const b = T_(i).b; const done = b && b.q ? b.q.filter(x => x.done) : [];
     if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k]; }); return room() >= n ? null : FULL; }
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
@@ -2427,7 +2435,7 @@
     h += `<div class="slots"><span class="eyebrow">Batches ${b.q.length}/${slots}</span>`;
     const SHOW = 4, more = b.q.length - SHOW;
     h += b.q.length ? b.q.slice(0, SHOW).map((j, k) => { const out = Object.keys(D.recipes[j.r].out)[0];
-      return `<div class="row">${ico(out)}<div class="grow1"><b>${esc(D.items[out].name)}</b> ${qtag(j.qual)} ${j.done ? '<span class="ok">· ready</span>' : k === b.q.findIndex(x => !x.done) ? '' : '<span class="muted">· waiting</span>'}${j.done ? '' : pbar(`s:${i}:${k}`)}</div></div>`; }).join('')
+      return `<div class="row">${ico(out)}<div class="grow1"><b>${esc(D.items[out].name)}</b> ${qtag(j.qual)} ${j.done ? '<span class="ok">· ready</span>' : k === b.q.findIndex(x => !x.done) ? '' : '<span class="muted">· waiting</span>'}${j.done ? '' : pbar(`s:${i}:${k}`)}</div>${!j.done && k !== b.q.findIndex(x => !x.done) ? `<button class="qcancel" data-bcancel="${i}:${k}" aria-label="Cancel this batch" title="Cancel this batch">×</button>` : ''}</div>`; }).join('')
         + (more > 0 ? `<p class="hint">+${more} more batch${more === 1 ? '' : 'es'} queued (${b.q.filter(j => j.done).length} ready in total).</p>` : '')
       : `<p class="hint">Empty. Load a recipe below; ingredients come from storage.</p>`;
     if (b.q.some(j => j.done)) h += btn({ a: 'collect', i }, 'Collect finished goods', { cls: 'pri' });
@@ -3528,6 +3536,7 @@
     else if ('fhSpeed' in ds) { const sp = D.farmhand.speeds; S.helper.spd = sp[(sp.indexOf(S.helper.spd || 1) + 1) % sp.length]; }
     else if ('fhFert' in ds) { if (S.helper) { S.helper.fert = !S.helper.fert; save(); } }
     else if ('fhSeeds' in ds) { if (S.helper) { S.helper.seeds = !S.helper.seeds; save(); } }
+    else if (ds.bcancel) { const [ti, bk] = ds.bcancel.split(':'); cancelBatch(+ti, +bk); }
     else if ('rdel' in ds) { const b = S.tiles[+ds.rdel].b; if (b) { b.rep = null; b.repN = null; b.repDone = 0; b.rpause = false; save(); } }
     else if ('rclear' in ds) {
       if (!UI.repClear) { UI.repClear = true; clearTimeout(UI.repClearT); UI.repClearT = setTimeout(() => { UI.repClear = false; dirty(); }, 3000); }
@@ -3745,7 +3754,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261030-234536';
+  const BUILD = '20261031-055818';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
