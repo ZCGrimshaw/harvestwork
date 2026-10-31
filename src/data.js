@@ -234,6 +234,35 @@ window.HW_DATA = {
       hint: [1, 2], hintGold: [0.08, 0.15], hintCap: 0.25, wrongGold: 0.02 } // a hint costs a multiple of the step's reward or a share of the gold you hold, whichever is more, but never more than hintCap of your gold (10g minimum)
   },
 
+  /* The Village (v0.106): a small place of its own you travel to from the Village Gate on your farm. Town folk live in
+     cottages and shop at the General Store, which you keep stocked with goods from your farm. Goods count by their value
+     (better quality counts a little more) and the store's three shelves are used up a little every game day by each town
+     folk. Stocked shelves keep folk happy; happy folk bring more folk while there is room in the cottages. A short
+     shortage only slows growth; folk leave only after a long one, and buildings are never lost. */
+  village: {
+    n0: 8, n1: 12, entrance: [0, 3],          // lots across (8, then 12 with the second area); the road in from the farm starts at the entrance lot
+    bufferDays: 5, minShelf: 240,             // each shelf holds this many days of what the town uses (never less than minShelf points)
+    takings: .6,                              // the store pays this share of each good's value into its till as it sells
+    lowDays: 1,                               // warn when a shelf has less than this many days left
+    groups: [
+      { id: 'pantry', name: 'Pantry', what: 'food', rate: 10, need: 0,
+        goods: ['carrot', 'potato', 'wheat', 'berries', 'tomato', 'pumpkin', 'apple', 'pear', 'cherries', 'plum', 'corn', 'onion', 'pepper', 'cabbage', 'egg', 'milk', 'fish', 'flour', 'bread', 'cheese', 'butter', 'glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'pickled_carrots', 'tomato_sauce', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'cherry_pie', 'smoked_fish', 'cornbread', 'onion_soup', 'pepper_relish', 'sauerkraut', 'salsa', 'pizza', 'quiche', 'fish_pie', 'harvest_roast', 'aged_cheddar', 'blue_cheese', 'smoked_cheese', 'omelette'] },
+      { id: 'household', name: 'Household goods', what: 'cloth, pots and tools', rate: 5, need: 6,
+        goods: ['basket', 'clay_pot', 'glass_jar', 'linen', 'yarn', 'wool', 'blanket', 'dyed_cloth', 'iron_tools', 'canvas', 'crate', 'dye'] },
+      { id: 'treats', name: 'Treats', what: 'sweets and drinks', rate: 4, need: null,
+        goods: ['honey', 'jam', 'plum_jam', 'berry_juice', 'cider', 'perry', 'ale', 'stout', 'cherry_ale', 'mead', 'berry_wine', 'cake', 'honey_cake', 'jam_tart', 'custard'] }
+    ],
+    buildings: {
+      cottage: { name: 'Cottage', cost: { gold: 250, plank: 16, brick: 8 }, houses: 4, desc: 'A home for 4 town folk. Your first one brings a couple of folk straight away.' },
+      store:   { name: 'General Store', cost: { gold: 500, plank: 30, brick: 20 }, max: 1, after: 'cottage', desc: 'Where town folk shop. Keep its shelves stocked with your goods and the village grows. It pays a share of what it sells into its till.' },
+      well:    { name: 'Village Well', cost: { gold: 300, stone: 20, plank: 4 }, max: 1, folk: 8, happy: 10, desc: 'Fresh water for everyone: town folk are happier, so the village grows a little faster.' }
+    },
+    soon: [['Saloon', 15], ['Post Office', 25]], // shown as coming in a later update
+    road: { gold: 5, stone: 1 },
+    grow: { folk: 20, cost: { gold: 2500, plank: 40, brick: 40 } }, // open the second area (8×8 → 12×12)
+    autoEvery: 15                              // seconds of game time between auto-supply runs
+  },
+
   monuments: {
     pyramid: { name: 'The Great Pyramid',
       stages: ['Surveyed plot', 'Foundation', 'Body', 'Detail', 'Complete'],
@@ -480,6 +509,7 @@ window.HW_DATA = {
     coldcellar_kit:{ name: 'Cold Cellar Kit', cat: 'kit', buy: 360, building: 'coldcellar', requires: 'coldcellar', icon: ['kit', '#8fa4b8', '#5a4a3a'] },
     yard_kit:     { name: 'Material Yard Kit', cat: 'kit', buy: 240, building: 'yard', requires: 'yard', icon: ['kit', '#a8844e', '#8a8a94'] },
     smelter_kit:  { name: 'Smelter Kit', cat: 'kit', buy: 160, building: 'smelter', requires: 'smelter', icon: ['kit', '#6e6e78', '#d9824a'] },
+    vgate_kit:    { name: 'Village Gate Kit', cat: 'kit', buy: 150, building: 'vgate', requires: 'village', icon: ['kit', '#c8a060', '#5e3519'] },
     dyevat_kit:   { name: 'Dye Vat Kit', cat: 'kit', buy: 130, building: 'dyevat', requires: 'dyeing', icon: ['kit', '#9a4ac8', '#c98a4a'] },
     potter_kit:   { name: 'Potter’s Wheel Kit', cat: 'kit', buy: 120, building: 'potter', requires: 'pottery', icon: ['kit', '#c8703a', '#c98a4a'] },
     forge_kit:    { name: 'Forge Kit', cat: 'kit', buy: 240, building: 'forge', requires: 'ironworking', icon: ['kit', '#6e737e', '#f06a20'] },
@@ -514,7 +544,8 @@ window.HW_DATA = {
     { id: 'upgrades', name: 'Upgrades', ids: ['tuning', 'cellar', 'warehouse', 'silo', 'coldcellar', 'yard', 'mastery', 'granary', 'grandorders', 'salvage'] },
     { id: 'home', name: 'Home & decor', ids: ['homemaking', 'additions'] },
     { id: 'animals', name: 'Animals', ids: ['chickens', 'dairy', 'sheep', 'creamery'] },
-    { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] }
+    { id: 'newlands', name: 'New lands', ids: ['surveying', 'rollers', 'wildflowers', 'dyeing', 'claydigging', 'pottery', 'reedcutting', 'ironmining', 'ironworking'] },
+    { id: 'village', name: 'The Village', ids: ['village', 'villageauto'] }
   ],
 
   // kind: home | farm | station | market | board | storage | sprinkler | house (your family home, see house below)
@@ -528,6 +559,7 @@ window.HW_DATA = {
     creamery:  { name: 'Creamery', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Churns milk into butter and ages it into cheese.' },
     medal:     { name: 'Medal', kind: 'decor', desc: 'A Weekly Challenge medal, on show.' },
     monument:  { name: 'Monument model', kind: 'decor', desc: 'A small model of a Valley Monument you helped build.' },
+    vgate:     { name: 'Village Gate', kind: 'gate', max: 1, place: { plank: 6, stone: 4 }, desc: 'The road from your farm to your village. Step through to visit it.' },
     depot:     { name: 'Monument Depot', kind: 'depot', desc: 'Where your farm gives goods to the valley’s shared monument. Free, and it never counts toward your building limits.' },
     mon_site:  { name: 'Valley Monument', kind: 'monsite', desc: 'The monument every online farm in the valley is building together.' },
     stove:     { name: 'Stove', kind: 'station', slots: 2, place: { plank: 2, stone: 2 }, desc: 'Turns raw food into cooked dishes worth more than the ingredients.' },
@@ -797,6 +829,8 @@ window.HW_DATA = {
     { id: 'wildflowers', pic: ['flowers:1', 'blooms:3', 'flowers'], name: 'Wildflowers', cost: 2, req: ['surveying'], text: 'Pick wildflowers in Meadow areas. Beehives turn them into extra honey.', where: 'Wildflower Meadow tiles; Beehive → Wildflower Honey.' },
     { id: 'dyeing', pic: ['grass:0', 'dyevat', 'dyed_cloth'], name: 'Dye Works', cost: 3, req: ['wildflowers', 'loom'], text: 'Boil wildflowers into dye, then dye linen into valuable cloth.', where: 'Open Market → Stations.' },
     { id: 'claydigging', pic: ['clay:0', 'claypit:4', 'clay'], name: 'Clay Digging', cost: 2, req: ['surveying'], text: 'Dig clay in Clay Bank areas and fire it into roof tiles at the Brick Kiln.', where: 'Clay Bank tiles; Brick Kiln → Roof Tiles.' },
+    { id: 'village', pic: ['grass:0', 'vgate', 'brick'], name: 'Village Charter', cost: 5, req: ['surveying', 'kiln'], text: 'Found a village of your own down the road. Build cottages for town folk and a General Store to keep stocked with your goods.', where: 'Open Market → Stations → Village Gate Kit. Place the gate, then step through.' },
+    { id: 'villageauto', pic: ['grass:0', 'gstore', 'crate'], name: 'Store Deliveries', cost: 4, req: ['village'], folk: 12, text: 'Auto-supply for the General Store: pick which goods go to it by themselves, how full to keep each shelf, and how many to always keep in storage.', where: 'Village → General Store → Auto-supply.' },
     { id: 'pottery', pic: ['grass:1', 'potter', 'clay_pot'], name: 'Pottery', cost: 3, req: ['claydigging', 'kiln'], text: 'Throw clay into pots on a Potter’s Wheel.', where: 'Open Market → Stations.' },
     { id: 'reedcutting', pic: ['reeds:0', 'reedbed:3', 'basket'], name: 'Reed Cutting', cost: 2, req: ['surveying'], text: 'Cut reeds in Marsh areas and weave them into baskets.', where: 'Reed Marsh tiles; Workbench → Basket.' },
     { id: 'ironmining', pic: ['ore:0', 'orevein:3', 'iron_ore'], name: 'Iron Mining', cost: 3, req: ['surveying', 'prospecting'], text: 'Mine iron ore from seams in the Iron Hills.', where: 'Iron Seam tiles.' },
@@ -1015,6 +1049,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.106', at: '2026-10-31 14:30', notes: ['New: your own Village! Unlock the Village Charter in Discovery (after Land Surveying and the Brick Kiln), buy a Village Gate Kit at the market, place it on your farm and step through. The village is a place of its own, so it never crowds your farm.', 'It starts small: build a Cottage and a couple of town folk move in. Then build a General Store and keep its Pantry, Household and Treats shelves stocked with goods from your farm. Happy town folk bring more folk while there are homes for them, and the store pays a share of what it sells into its till. Shelves hold a few days of goods, you get a warning before they run out, and the store suggests what to bring. Folk only leave after a long shortage, and buildings are never lost.', 'Buildings need a road back to the road from your farm. More town folk unlock more: more cottages, the Village Well, Store Deliveries in Discovery (auto-supply, with how full to keep each shelf and how many to keep in storage) and, at 20 folk, more land. Saloon and Post Office are coming later.', 'When you head to town you choose whether your farm pauses (or set Always or Never in Settings → Pausing). Your village has its own score and its own Village tab on the leaderboard.'] },
   { v: '0.105', at: '2026-10-30 13:30', notes: ['The Great Pyramid is finished, thank you to every farm that helped! The next Valley Monument is The Leaning Tower of Pisa. Your Valley Green switches to it as soon as it starts, and the Monument Depot shows what it needs: stone and bricks first, then timber, then food and crafts, then bronze for the bells.', 'It has 21 days and a bigger target than the Pyramid. Earn a model of the tower for your farm from 150 points, +1 Discovery for your first gift in each phase, and +2 when it’s finished. Any Pyramid model you earned stays yours.','Tap your model of a monument on your farm to see its top three givers. If you’re not one of them, it shows what place you are in, for the Pyramid and the Tower.','When something you want to build or buy needs goods you don’t have yet, it now says how many you have, like “Needs 8 Brick (have 7)”, and the number counts up as your goods arrive. It lists every missing good, not just the first.','Stations have a small red × on each batch that is waiting its turn. Tap it to cancel that batch and get its ingredients back at the quality they went in. If the station is on Repeat, Repeat pauses there so the free slot doesn’t just fill again.'] },
   { v: '0.104', at: '2026-10-30 11:45', notes: ['Weekly challenge: when you tap Start, you now get a “Last chance to change your settings” screen first. It copies your settings from your main farm, lets you change them for the weekly run only (your main farm keeps its own), and then you start the run. Once it starts the clock runs and you can’t pause it, so everyone plays on the same clock.'] },
   { v: '0.103', at: '2026-10-30 11:00', backend: true, notes: ['You can now pause the Weekly Challenge. Tap the new Pause button in the top bar and the clock stops. You get one minute of pause time per run, and the button shows how much is left.','Opening the Menu or Settings during a weekly run also pauses it (using the same pause time), so you can change your settings without losing your run. Friend races still can’t be paused.'] },

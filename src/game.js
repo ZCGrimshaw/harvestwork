@@ -91,7 +91,7 @@
     const O = S.msOrd, cur = D.milestones[O[S.ms]]; if (!cur || !cur.land || hasLand(cur.land)) return;
     for (let k = S.ms + 1; k < O.length; k++) { const m = D.milestones[O[k]]; if (!m.land || hasLand(m.land)) { [O[S.ms], O[k]] = [O[k], O[S.ms]]; return; } } }
   // a discovery is ready once its prerequisites are unlocked (animals also need your first new area surveyed)
-  const discOk = d => d.req.every(unlocked) && (!d.survey || (S.surveys || 0) > 0);
+  const discOk = d => d.req.every(unlocked) && (!d.survey || (S.surveys || 0) > 0) && (!d.folk || vFolk() >= d.folk);
   const surveyable = r => r >= 0 && S.regions[r] && !S.regions[r].open && regionNbrs(r).some(n => S.regions[n].open && S.regions[n].theme !== 'green');
   const areas = () => 1 + (S.surveys || 0);
   const isVoid = i => S.tiles[i].t === 'void';
@@ -503,7 +503,8 @@
   /* leaderboard: each farm reports its score and day once an in-game day; the board is read when opened */
   const LB_MIN_DAYS = 7;
   function sendScore() { if (!NET.ok || !S.fid || !online() || !UI.hadSave) return; // not for the placeholder farm shown before someone starts one
-    rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {}); }
+    rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {});
+    if (S.village && S.village.b.length && !S.race) rpc('submit_village', { p_farm: S.fid, p_player: PLAYER, p_score: vScore() }).catch(() => {}); }
   // A locked-in name belongs to this device's player and is unique across the valley.
   NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
   const setMyName = n => { NET.myName = n; try { n ? localStorage.setItem('harvestworks.lbname', n) : localStorage.removeItem('harvestworks.lbname'); } catch (e) { } };
@@ -1272,12 +1273,12 @@
   }
   const isEmptyGrass = i => T_(i).o && T_(i).t === 'grass' && !T_(i).b;
   /* building limits: stations and storage are capped per area you own */
-  const capFor = bt => { const B = D.buildings[bt]; return B.kind === 'station' || B.kind === 'storage' ? areas() * (B.perArea || 1) : Infinity; };
+  const capFor = bt => { const B = D.buildings[bt]; if (B.max) return B.max; return B.kind === 'station' || B.kind === 'storage' ? areas() * (B.perArea || 1) : Infinity; };
   const builtCount = bt => S.tiles.reduce((n, T) => n + (T.b && T.b.type === bt && T.b.pt == null ? 1 : 0), 0);
   const kitFor = bt => Object.keys(D.items).find(id => D.items[id].building === bt);
-  const capMsg = bt => { const B = D.buildings[bt], n = capFor(bt); return `Limit reached: ${n} ${B.name}${n === 1 ? '' : 's'} with ${areas()} area${areas() === 1 ? '' : 's'}. Survey new land to build more.`; };
+  const capMsg = bt => { const B = D.buildings[bt], n = capFor(bt); if (B.max) return `You can only have ${B.max === 1 ? 'one' : B.max} ${B.name}.`; return `Limit reached: ${n} ${B.name}${n === 1 ? '' : 's'} with ${areas()} area${areas() === 1 ? '' : 's'}. Survey new land to build more.`; };
   /* moving buildings: expensive, and pricier for each recent move */
-  const MOVABLE = ['station', 'storage', 'sprinkler'];
+  const MOVABLE = ['station', 'storage', 'sprinkler', 'gate'];
   function moveCost(bt) { const k = kitFor(bt), kit = k && D.items[k], B = D.buildings[bt], heat = Math.pow(C.move.heat, S.moveHeat || 0);
     const c = { gold: Math.round((C.move.gold + (kit && kit.buy || 60)) * heat / 10) * 10 };
     if (B.place && (B.place.brick || 0) > 0) c.brick = Math.max(2, Math.round(B.place.brick / 2)); else c.plank = Math.max(2, Math.round(((B.place && B.place.plank) || 2) / 2) + 1);
@@ -1730,6 +1731,7 @@
   function update(dt) {
     S.time += dt;
     const day = Math.floor(S.time / C.dayLength) + 1; if (day !== S.day) { S.day = day; newDay(); }
+    vilTick(dt);
     const rain = raining(), heat = wxNow() === 'heat';
     const bd = builderDay();
     S.tiles.forEach((T, i) => {
@@ -1899,6 +1901,7 @@
   window.addEventListener('keydown', e => {
     if (e.target.closest('textarea,select,input:not([type=range]):not([type=checkbox])')) return;
     if (UI.room) { roomKey(e); return; }
+    if (UI.vil) { vilKey(e); return; }
     const k = e.key, s = 40 / cam.z * CAM_SPEED;
     if (k === 'ArrowLeft' || k === 'a') cam.u -= s; else if (k === 'ArrowRight' || k === 'd') cam.u += s;
     else if (k === 'ArrowUp' || k === 'w') cam.v -= s / 2; else if (k === 'ArrowDown' || k === 's') cam.v += s / 2;
@@ -2246,7 +2249,7 @@
     if (UI.html[sel] === html) return; const el = $(sel), a = document.activeElement;
     if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'search' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
     // keep the reader's place: replacing the markup would otherwise snap a scrolled menu back to the top whenever a number changes
-    const key = sel === '#drawer' ? 'd:' + UI.drawer : sel === '#panel' ? 'p:' + UI.sel : '', scr = [el, ...(key ? el.querySelectorAll('.dbox') : [])].map(e => e.scrollTop);
+    const key = sel === '#drawer' ? 'd:' + UI.drawer : sel === '#panel' ? 'p:' + UI.sel : sel === '#vtray' && UI.vil ? 'v:' + (UI.vil.sel || '') : '', scr = [el, ...(key ? el.querySelectorAll('.dbox') : [])].map(e => e.scrollTop);
     UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
     UI.scrollKey = UI.scrollKey || {};
     if (key && UI.scrollKey[sel] === key) [el, ...el.querySelectorAll('.dbox')].forEach((e, k) => { if (scr[k]) e.scrollTop = scr[k]; });
@@ -2897,6 +2900,218 @@
     else if ((k === 'r' || k === 'R') && rm.sel != null) roomButton({ rmTurn: '' });
     else if ((k === 'Delete' || k === 'Backspace') && rm.sel != null) { roomButton({ rmAway: '' }); e.preventDefault(); }
     else if ((k === 'm' || k === 'M') && rm.sel != null) roomButton({ rmMove: '' }); }
+  /* ================= the village (v0.106) =================
+     A small place of its own, reached through the Village Gate on the farm, with its own save data in S.village:
+     { n: lots across, roads: ['x,y', …], b: [{ k, x, y }], folk, h: happiness 0–100, sh: { group: points on the shelf },
+       till: gold waiting in the store, used: points sold in total, arr / lv: arrival and leaving clocks (game days),
+       auto: { item: { on, keep } }, lvl: { group: % to keep it full }, warn: { group: warned }, peak }.
+     It runs on the farm's game time (update), so pausing the farm pauses the village too. Buildings are 1 lot each and
+     work only when they touch a road that leads back to the entrance (the road in from the farm). */
+  const VD = () => D.village;
+  const vilOn = () => !!S && !S.race && unlocked('village');
+  const gateIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'vgate');
+  const vFolk = () => (S && S.village ? S.village.folk | 0 : 0);
+  function vil() { if (!S.village) S.village = { n: VD().n0, roads: [0, 1, 2].map(k => vKey(VD().entrance[0] + k, VD().entrance[1])), b: [], folk: 0, h: 70, sh: {}, till: 0, used: 0, arr: 0, lv: 0, auto: {}, lvl: {}, warn: {}, peak: 0, autoT: 0 };
+    const V = S.village; ['sh', 'auto', 'lvl', 'warn'].forEach(k => { if (!V[k] || typeof V[k] !== 'object') V[k] = {}; }); if (!Array.isArray(V.roads)) V.roads = [VD().entrance.join(',')]; if (!Array.isArray(V.b)) V.b = []; return V; }
+  const vGroups = () => VD().groups;
+  let VGOF = null; const vGroupOf = id => { if (!VGOF) { VGOF = {}; vGroups().forEach(g => g.goods.forEach(k => { VGOF[k] = g.id; })); } return VGOF[id]; };
+  const vKey = (x, y) => x + ',' + y;
+  const vBAt = (V, x, y) => V.b.find(b => b.x === x && b.y === y);
+  const vRoadAt = (V, x, y) => V.roads.includes(vKey(x, y));
+  const vEntrance = () => VD().entrance;
+  // the roads that lead back to the entrance, and whether a building touches one of them
+  function vReach(V) { const set = new Set(), [ex, ey] = vEntrance(), st = [[ex, ey]]; if (!vRoadAt(V, ex, ey)) return set;
+    while (st.length) { const [x, y] = st.pop(), k = vKey(x, y); if (set.has(k) || !vRoadAt(V, x, y)) continue; set.add(k); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, c]) => st.push([x + a, y + c])); }
+    return set; }
+  const vOnRoad = (V, b, R) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, c]) => (R || vReach(V)).has(vKey(b.x + a, b.y + c)));
+  const vCount = (V, k) => V.b.filter(b => b.k === k).length;
+  const vStore = V => { const s = V.b.find(b => b.k === 'store'); return s && vOnRoad(V, s) ? s : null; };
+  const vHouses = V => { const R = vReach(V); return V.b.filter(b => b.k === 'cottage' && vOnRoad(V, b, R)).length * VD().buildings.cottage.houses; };
+  const vNeeded = (V, g) => g.need != null && V.folk >= g.need;
+  const vCap = (V, g) => Math.max(VD().minShelf, Math.ceil(Math.max(1, V.folk) * g.rate * VD().bufferDays));
+  const vUseDay = (V, g) => V.folk * g.rate;
+  const vDaysLeft = (V, g) => { const u = vUseDay(V, g); return u > 0 ? (V.sh[g.id] || 0) / u : Infinity; };
+  const vPts = (id, q) => Math.max(1, Math.round((D.items[id].value || 1) * (1 + .25 * (q | 0))));
+  // where happiness is heading, and why (shown to the player)
+  function vMood(V) { const st = vStore(V), [pantry, house, treats] = vGroups(), well = V.b.some(b => b.k === 'well' && vOnRoad(V, b));
+    if (!V.folk) return { t: 70, why: 'No one lives here yet.' };
+    if (!st) return { t: 60, why: V.b.some(b => b.k === 'store') ? 'The General Store isn’t on a road yet, so no one can shop.' : 'Folk are settling in. Build a General Store so they can shop, and more will come.' };
+    if (!(V.sh.pantry > 0)) return { t: 10, why: 'The Pantry shelf is empty: folk are hungry!' };
+    let t = 65, why = ['food on the shelf'];
+    if (vNeeded(V, house)) { if (V.sh.household > 0) { t += 20; why.push('household goods'); } else { t -= 30; why.push('but no household goods'); } }
+    if (V.sh.treats > 0) { t += 20; why.push('treats'); }
+    if (well) { t += VD().buildings.well.happy; why.push('fresh water from the well'); }
+    return { t: Math.max(0, Math.min(100, t)), why: 'Happiness comes from ' + why.join(', ').replace(', but', ' but') + '.' }; }
+  const vMoodName = h => h >= 80 ? 'Cheerful' : h >= 60 ? 'Content' : h >= 35 ? 'Grumbling' : h >= 20 ? 'Unhappy' : 'Miserable';
+  // the village score: goods sold (a point per 10), buildings and roads, and how many folk live here, weighted by how happy they are
+  function vScore(V) { V = V || S.village; if (!V) return 0; return Math.floor((V.used || 0) / 10 + V.b.length * 50 + Math.max(0, V.roads.length - 3) * 2 + V.folk * (V.h / 100) * 25); }
+  // goods the store would like next for a shelf: what you have most of first, then what you've made before
+  function vSuggest(g, all) { const have = g.goods.filter(id => D.items[id] && count(id) > 0).sort((a, b) => count(b) - count(a));
+    return all ? have : have.slice(0, 4); }
+  const vKnown = g => g.goods.filter(id => D.items[id] && S.disc.includes(id));
+  function vMax(V, g, id) { const space = vCap(V, g) - (V.sh[g.id] || 0); if (space <= 0) return 0; return Math.min(count(id), Math.max(1, Math.ceil(space / vPts(id, 0)))); }
+  // put goods on a shelf (lowest quality first); returns how many went
+  function vGive(id, n, quiet) { const V = vil(), g = vGroups().find(x => x.id === vGroupOf(id)); if (!g || !vStore(V)) return 0;
+    n = Math.min(n | 0, vMax(V, g, id)); if (n <= 0) return 0; const a = S.inv[id]; let left = n, pts = 0;
+    for (let q = 0; q < 3 && left > 0; q++) { const k = Math.min(a[q] || 0, left); if (k > 0) { a[q] -= k; left -= k; pts += k * vPts(id, q); } }
+    const gave = n - left; V.sh[g.id] = (V.sh[g.id] || 0) + pts; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[g.id] = false;
+    if (!quiet && gave) { SND.play('contract'); vMsg(`Put ${gave} ${esc(D.items[id].name)} on the ${esc(g.name)} shelf.`); }
+    return gave; }
+  function vAuto(V) { if (!unlocked('villageauto') || !vStore(V)) return; let any = 0;
+    vGroups().forEach(g => { const lv = V.lvl[g.id] != null ? V.lvl[g.id] : 75, want = vCap(V, g) * lv / 100; if ((V.sh[g.id] || 0) >= want) return;
+      g.goods.filter(id => V.auto[id] && V.auto[id].on && D.items[id]).sort((a, b) => count(b) - count(a)).forEach(id => {
+        const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = count(id) - (V.auto[id].keep | 0); if (spare <= 0) return;
+        any += vGive(id, Math.min(spare, Math.ceil(need / vPts(id, 0))), true); }); });
+    if (any) { V.autoAt = S.day; UI.vDirty = true; } }
+  // one step of village life, in game seconds
+  function vilTick(dt) { if (!vilOn() || !S.village) return; const V = S.village, dd = dt / C.dayLength, st = vStore(V);
+    if (st && V.folk > 0) vGroups().forEach(g => { const have = V.sh[g.id] || 0; if (have <= 0) return; const use = Math.min(have, vUseDay(V, g) * dd);
+      V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * VD().takings; });
+    const m = vMood(V); V.h += Math.sign(m.t - V.h) * Math.min(Math.abs(m.t - V.h), 15 * dd);
+    const room = vHouses(V);
+    if (st && V.h >= 60 && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + V.h / 100); if (V.arr >= 1) { V.arr = 0; V.folk++; V.peak = Math.max(V.peak || 0, V.folk); logAct(`A new family moved into your village (${V.folk} town folk).`, 'auto'); UI.vDirty = true; } }
+    if ((V.h < 20 || V.folk > room) && V.folk > 0) { V.lv = (V.lv || 0) + dd; if (V.lv >= 2) { V.lv = 0; V.folk--; toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
+    else V.lv = 0;
+    if (st && V.folk > 0 && V.fed) vGroups().forEach(g => { if (!vNeeded(V, g)) return; const d = vDaysLeft(V, g);
+      if (d < VD().lowDays && !V.warn[g.id]) { V.warn[g.id] = true; const sug = vSuggest(g).slice(0, 3).map(id => D.items[id].name);
+        toast(`<b>Village: the ${esc(g.name)} shelf is running low</b> (${d <= 0 ? 'empty' : 'under a day left'}). ${sug.length ? `Bring ${esc(sug.join(', '))}.` : `It takes ${esc(g.what)}.`}`, 'warn'); }
+      else if (d > VD().lowDays * 2) V.warn[g.id] = false; });
+    if (unlocked('villageauto')) { V.autoT = (V.autoT || 0) + dt; if (V.autoT >= VD().autoEvery) { V.autoT = 0; vAuto(V); } } }
+  const vLow = V => V && vStore(V) && V.folk > 0 ? vGroups().filter(g => vNeeded(V, g) && vDaysLeft(V, g) < VD().lowDays) : [];
+  /* ---------- going there: the pause question, the view and the tray ---------- */
+  function vilGo() { if (!vilOn() || gateIdx() < 0) return; vil(); UI.sel = -1; UI.drawer = null; const mode = S.vilPause || 'ask';
+    UI.vil = { sel: null, msg: '', ask: mode === 'ask', pause: mode !== 'never', all: {} };
+    $('#village').hidden = false; $('#app').classList.add('inroom'); UI.html['#vtray'] = null; SND.play('tap'); dirty(); }
+  function vilClose() { if (!UI.vil) return; UI.vil = null; $('#village').hidden = true; $('#app').classList.remove('inroom'); save(); dirty(); }
+  const vMsg = t => { if (UI.vil) { UI.vil.msg = t; dirty(); } };
+  const VPAD = 10, VTOP = 40;
+  function vGeom(n) { const ox = n * 16 + VPAD, oy = VTOP + VPAD;
+    return { n, w: n * 32 + VPAD * 2, h: VTOP + n * 16 + VPAD * 2 + 8, ox, oy, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
+      at(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2; return u >= 0 && v >= 0 && u < n && v < n ? [Math.floor(u), Math.floor(v)] : null; } }; }
+  const VH = { cottage: 34, store: 36, well: 28 };
+  function vPick(px, py) { const V = S.village, G = vGeom(V.n);
+    for (const b of V.b.slice().sort((a, c) => (c.x + c.y) - (a.x + a.y))) { const [cx, cy] = G.cell(b.x, b.y); if (px >= cx - 14 && px <= cx + 14 && py <= cy + 7 && py >= cy - (VH[b.k] || 24)) return [b.x, b.y]; }
+    return G.at(px, py); }
+  function vilTap(px, py) { if (!UI.vil || UI.vil.ask) return; const c = vPick(px, py); if (!c) { UI.vil.sel = null; dirty(); return; }
+    const s = UI.vil.sel; UI.vil.sel = s && s[0] === c[0] && s[1] === c[1] ? null : c; UI.vil.msg = ''; UI.html['#vtray'] = null; dirty(); }
+  function drawVillage() { const V = S.village, cv2 = $('#vilcv'), st = $('#village .rstage'); if (!V || !cv2 || !st) return;
+    const G = vGeom(V.n); if (cv2.width !== G.w || cv2.height !== G.h) { cv2.width = G.w; cv2.height = G.h; }
+    let s = Math.min(st.clientWidth / G.w, st.clientHeight / G.h); s = s >= 2 ? Math.floor(s) : Math.max(.5, s);
+    const cw = Math.round(G.w * s) + 'px'; if (cv2.style.width !== cw) { cv2.style.width = cw; cv2.style.height = Math.round(G.h * s) + 'px'; }
+    const g = cv2.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, G.w, G.h);
+    const R = vReach(V), sel = UI.vil && UI.vil.sel, [ex, ey] = vEntrance(), now = performance.now() / 1000;
+    const cells = []; for (let y = 0; y < V.n; y++) for (let x = 0; x < V.n; x++) cells.push([x, y]); cells.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
+    cells.forEach(([x, y]) => { const [cx, cy] = G.cell(x, y), road = vRoadAt(V, x, y);
+      g.drawImage(ART.get(road ? 'vroad:' + ((x * 7 + y * 3) % 4) : 'grass:' + ((x * 5 + y * 3) % 4)), cx - 16, cy - 8);
+      if (road && !R.has(vKey(x, y))) { g.fillStyle = 'rgba(200,72,58,.35)'; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.fill(); } });
+    if (sel) { const [cx, cy] = G.cell(sel[0], sel[1]); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.stroke(); }
+    const objs = V.b.map(b => ({ x: b.x, y: b.y, img: ART.get(b.k === 'store' ? 'gstore' : b.k), off: !vOnRoad(V, b, R) }));
+    objs.push({ x: ex, y: ey, img: ART.get('vgate'), gate: true });
+    objs.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(o => { const [cx, cy] = G.cell(o.x, o.y); g.drawImage(o.img, cx - 16, cy - (o.img.height - 4));
+      if (o.off) { const by = cy - o.img.height - 2 + Math.sin(now * 4) * 1.5; g.fillStyle = '#c8483a'; g.beginPath(); g.arc(cx, by, 5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(cx - .5, by - 3, 1.5, 4); g.fillRect(cx - .5, by + 2, 1.5, 1.2); } }); }
+  // the build list for an empty lot, with why each one can't be built yet
+  function vBuildWhy(V, k) { const B = VD().buildings[k];
+    if (B.max && vCount(V, k) >= B.max) return `You already have ${B.max === 1 ? 'one' : B.max}.`;
+    if (B.after && !vCount(V, B.after)) return `Build a ${VD().buildings[B.after].name} first.`;
+    if (k === 'cottage' && vCount(V, 'cottage') && !vCount(V, 'store')) return 'Build the General Store before a second cottage.';
+    if (k === 'cottage' && vCount(V, 'cottage')) { const need = vCount(V, 'cottage') * B.houses - 1; if (V.folk < need) return `Needs ${need} town folk (you have ${V.folk}), so the cottages you have are nearly full first.`; }
+    if (B.folk && V.folk < B.folk) return `Needs ${B.folk} town folk (you have ${V.folk}).`;
+    return canPay(B.cost); }
+  function vBuild(k) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, B = VD().buildings[k];
+    if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vBuildWhy(V, k); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
+    pay(B.cost); const first = k === 'cottage' && !vCount(V, 'cottage'); V.b.push({ k, x, y });
+    if (first) { V.folk = Math.max(V.folk, 2); V.h = 70; V.peak = Math.max(V.peak || 0, V.folk); }
+    SND.play('contract'); logAct(`Built a ${B.name} in your village.`, 'you');
+    toast(`<b>${esc(B.name)} built.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : ''}${vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
+    UI.html['#vtray'] = null; save(); dirty(); }
+  function vRoad(on) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, k = vKey(x, y), [ex, ey] = vEntrance();
+    if (on) { if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = canPay(VD().road); if (why) { vMsg(esc(why)); SND.play('warn'); return; } pay(VD().road); V.roads.push(k); SND.play('tap'); }
+    else { if (x === ex && y === ey) return; V.roads = V.roads.filter(r => r !== k); }
+    UI.html['#vtray'] = null; save(); dirty(); }
+  function vGrow() { const V = vil(), G = VD().grow; if (V.n >= VD().n1) return; if (V.folk < G.folk) { vMsg(`Needs ${G.folk} town folk.`); return; }
+    const why = canPay(G.cost); if (why) { vMsg(esc(why)); SND.play('warn'); return; } pay(G.cost); V.n = VD().n1; SND.play('contract');
+    toast('<b>Your village has more land.</b> New lots opened on the far sides of town.', 'goal'); save(); dirty(); }
+  const vBar = (f, warn) => `<div class="pb vbar ${warn ? 'warn' : ''}"><i style="width:${Math.max(0, Math.min(100, f * 100)).toFixed(0)}%"></i></div>`;
+  const vDaysTxt = d => d === Infinity ? '' : d < .05 ? 'empty' : d < 1 ? 'under a day left' : `${d < 10 ? (Math.floor(d * 2) / 2) : Math.floor(d)} days left`;
+  function vShelfHTML(V, g) { const have = V.sh[g.id] || 0, cap = vCap(V, g), d = vDaysLeft(V, g), need = vNeeded(V, g), low = need && d < VD().lowDays;
+    const state = g.need == null ? (have > 0 ? `Stocked · ${vDaysTxt(d)}` : 'Optional: stocked treats make folk happier') : !need ? `Needed from ${g.need} town folk` : have > 0 ? vDaysTxt(d) : 'Empty!';
+    return `<div class="vshelf ${low ? 'low' : ''}"><div class="vsh"><b>${esc(g.name)}</b><small>${esc(g.what)}</small><span>${low ? '⚠ ' : ''}${esc(state)}</span></div>${vBar(have / cap, low)}</div>`; }
+  function vGiveHTML(V, g) { const ui = UI.vil, all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
+    let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}`;
+    if (list.length) h += `<p class="hint small">${all ? 'Everything you have for this shelf:' : 'Suggested: what you have most of.'}</p><div class="rlist">` + list.map(id => { const mx = vMax(V, g, id), on = V.auto[id] && V.auto[id].on;
+      return `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPts(id, 0)} each · have ${count(id)}${mx ? '' : ' · shelf full'}</small></span>${mx ? `<input type="number" class="qty" data-vq="${id}" min="1" max="${mx}" value="${Math.max(1, Math.min(mx, (UI.vq || {})[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)}"><button class="btn sm pri" data-vgive="${id}">Give</button>` : ''}${auto ? `<button class="autog ${on ? 'on' : ''}" data-vauto="${id}" aria-pressed="${!!on}">${on ? 'Auto ✓' : 'Auto'}</button>` : ''}</div>`; }).join('') + `</div>`;
+    else { const k = vKnown(g).slice(0, 6).map(id => D.items[id].name); h += `<p class="hint small">You have nothing for this shelf in storage. ${k.length ? `It takes goods like ${esc(k.join(', '))}.` : `It takes ${esc(g.what)}.`}</p>`; }
+    if (more > 0 || all) h += `<button class="linkish small" data-vall="${g.id}">${all ? 'Show fewer' : `Show all ${list.length + more}`}</button>`;
+    return h + `</div>`; }
+  function vAutoHTML(V) { if (!unlocked('villageauto')) return `<span class="eyebrow">Auto-supply</span><p class="hint small">Unlock <b>Store Deliveries</b> in Discovery (needs ${(D.discoveries.find(d => d.id === 'villageauto') || {}).folk || 12} town folk) and goods go to the store by themselves.</p>`;
+    const on = Object.keys(V.auto).filter(id => V.auto[id].on && D.items[id]);
+    let h = `<span class="eyebrow">Auto-supply</span><p class="hint small">Goods marked <b>Auto</b> go to the store by themselves while the game runs, to keep each shelf at the level you pick. They never take your last few: set how many to keep in storage.</p>`;
+    h += vGroups().map(g => { const lv = V.lvl[g.id] != null ? V.lvl[g.id] : 75; return `<div class="optlabel">${esc(g.name)}: keep it</div><div class="chips">${[0, 25, 50, 75, 100].map(p => `<button class="chipf ${lv === p ? 'on' : ''}" data-vlvl="${g.id}:${p}" aria-pressed="${lv === p}">${p ? p + '% full' : 'Off'}</button>`).join('')}</div>`; }).join('');
+    h += on.length ? `<div class="rlist">${on.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>keep in storage</small></span><input type="number" class="qty" data-vkeep="${id}" min="0" step="1" value="${V.auto[id].keep | 0}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to keep in storage"><button class="autog on" data-vauto="${id}" aria-pressed="true">Auto ✓</button></div>`).join('')}</div>` : `<p class="hint small">No goods on Auto yet. Tap <b>Auto</b> next to a good above.</p>`;
+    return h; }
+  function vCostHTML(V, k) { const B = VD().buildings[k], why = vBuildWhy(V, k), lock = why;
+    return `<div class="vbuild"><div class="row">${`<img class="cimg" src="${ART.get(k === 'store' ? 'gstore' : k).toDataURL()}" alt="">`}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)}</small></div></div>${costList(B.cost)}<button class="btn ${why ? '' : 'pri'}" data-vbuild="${k}" ${why ? 'disabled' : ''}>Build the ${esc(B.name)}${why ? `<small>${esc(lock)}</small>` : ''}</button></div>`; }
+  function renderVillage() { if (!UI.vil) return; const V = vil(), ui = UI.vil, m = vMood(V), room = vHouses(V), sc = vScore(V);
+    setHTML('#vsub', `${V.folk ? `${V.folk} town folk${room ? ` (homes for ${room})` : ''} · ${vMoodName(V.h)} ${Math.round(V.h)}%` : 'No town folk yet'} · village score ${sc.toLocaleString()} · <button class="linkish" data-vil-farm>${ui.pause ? 'Farm paused: let it run' : 'Farm running: pause it'}</button>`);
+    let t = '';
+    if (ui.ask) { t = `<div class="rcard"><b>Pause your farm while you’re in town?</b><p class="hint small">Paused, nothing on the farm (or in the village) moves on until you go back. Running, your farm keeps working, but finished goods wait for you to collect them.</p>
+      <div class="rbtns"><button class="btn sm pri" data-vil-ask="pause">Pause it</button><button class="btn sm" data-vil-ask="run">Keep it running</button></div>
+      <div class="rbtns"><button class="btn sm ghost" data-vil-ask="always">Always pause</button><button class="btn sm ghost" data-vil-ask="never">Never pause</button></div><p class="hint small">You can change this any time in Settings → Pausing.</p></div>`;
+      setHTML('#vtray', t); return; }
+    if (ui.msg) t += `<p class="rmsg">${ui.msg}</p>`;
+    const s = ui.sel, sb = s && vBAt(V, s[0], s[1]), road = s && vRoadAt(V, s[0], s[1]), [ex, ey] = vEntrance();
+    if (s && sb) { const B = VD().buildings[sb.k], on = vOnRoad(V, sb);
+      t += `<div class="rcard"><div class="row"><img class="cimg" src="${ART.get(sb.k === 'store' ? 'gstore' : sb.k).toDataURL()}" alt=""><div class="grow1"><b>${esc(B.name)}</b><small>${on ? 'On the road ✓' : '<b class="warnt">Not on a road yet.</b> Lay a road from the entrance to a lot next to it so it can open.'}</small></div><button class="btn sm ghost" data-vdesel>Done</button></div></div>`;
+      if (sb.k === 'cottage') t += `<p class="hint">${esc(B.desc)} Your cottages on the road have homes for <b>${room}</b>; <b>${V.folk}</b> town folk live here.</p>`;
+      else if (sb.k === 'well') t += `<p class="hint">${esc(B.desc)}</p>`;
+      else if (sb.k === 'store') { t += `<div class="vtill"><span>Takings in the till: <b>${Math.floor(V.till || 0).toLocaleString()}g</b></span><button class="btn sm ${V.till >= 1 ? 'pri' : ''}" data-vcollect ${V.till >= 1 ? '' : 'disabled'}>Collect</button></div>`;
+        if (!V.folk) t += `<p class="hint small">No town folk yet: a cottage on the road brings them.</p>`;
+        t += vGroups().map(g => vGiveHTML(V, g)).join('') + vAutoHTML(V); } }
+    else if (s && road) { const ent = s[0] === ex && s[1] === ey;
+      t += `<div class="rcard"><div class="row"><div class="grow1"><b>${ent ? 'The road from your farm' : 'Road'}</b><small>${ent ? 'Every building needs a road back to here.' : vReach(V).has(vKey(s[0], s[1])) ? 'Connected to the road from your farm ✓' : '<b class="warnt">Not connected</b> to the road from your farm.'}</small></div><button class="btn sm ghost" data-vdesel>Done</button></div>${ent ? '' : '<div class="rbtns"><button class="btn sm ghost" data-vunroad>Remove this road</button></div>'}</div>`; }
+    else if (s) { t += `<div class="rcard"><div class="row"><div class="grow1"><b>Empty lot</b><small>Build here, or lay a road.</small></div><button class="btn sm ghost" data-vdesel>Done</button></div></div>`;
+      t += `<div class="vbuild"><div class="row"><img class="cimg" src="${ART.get('vroad:0').toDataURL()}" alt=""><div class="grow1"><b>Road</b><small>Buildings open only when they touch a road that leads back to the road from your farm.</small></div></div>${costList(VD().road)}<button class="btn ${canPay(VD().road) ? '' : 'pri'}" data-vroad ${canPay(VD().road) ? 'disabled' : ''}>Lay a road here</button></div>`;
+      t += Object.keys(VD().buildings).map(k => vCostHTML(V, k)).join('');
+      t += `<span class="eyebrow">Coming in a later update</span><p class="hint small">${VD().soon.map(([n, f]) => `${esc(n)} (needs ${f} town folk)`).join(' · ')}</p>`; }
+    else {
+      if (!V.b.length) t += `<div class="rcard"><b>Welcome to your village!</b><p class="hint small">It starts small. Tap an empty lot next to the road to build your first <b>Cottage</b>; it brings a couple of town folk. Then build a <b>General Store</b> and keep it stocked with goods from your farm, and more folk will come.</p></div>`;
+      t += `<span class="eyebrow">Town folk</span><p class="hint"><b>${V.folk}</b> living here${room ? `, homes for <b>${room}</b>` : ''}. ${vMoodName(V.h)} (${Math.round(V.h)}%). ${esc(m.why)}${vStore(V) && V.folk >= room && room ? ' Build another cottage to make room for more.' : ''}</p>${vBar(V.h / 100, V.h < 35)}`;
+      if (vStore(V)) { t += `<span class="eyebrow">The General Store</span>` + vGroups().map(g => vShelfHTML(V, g)).join('') + `<div class="vtill"><span>Takings: <b>${Math.floor(V.till || 0).toLocaleString()}g</b></span><button class="btn sm" data-vgo-store>Open the store</button></div>`; }
+      else if (vCount(V, 'cottage')) t += `<p class="hint">${V.b.some(b => b.k === 'store') ? 'Connect the General Store to a road so folk can shop.' : 'Next: build a <b>General Store</b> on an empty lot by the road.'}</p>`;
+      t += `<span class="eyebrow">Village score</span><p class="hint"><b>${sc.toLocaleString()}</b>, on its own leaderboard (Menu → Leaderboard → Village). It grows with goods sold, buildings and roads, and happy town folk.</p>`;
+      if (V.n < VD().n1) t += `<span class="eyebrow">More land</span>${V.folk >= VD().grow.folk ? `${costList(VD().grow.cost)}<button class="btn" data-vgrow ${canPay(VD().grow.cost) ? 'disabled' : ''}>Open more lots${canPay(VD().grow.cost) ? `<small>${esc(canPay(VD().grow.cost))}</small>` : ''}</button>` : `<p class="hint small">At ${VD().grow.folk} town folk you can open a second area with more lots.</p>`}`;
+      t += `<p class="hint small">Tap a lot, road or building to see what you can do there.</p>`; }
+    setHTML('#vtray', t); const sk = String(ui.sel || '') + ':' + (sb ? sb.k : road ? 'road' : ''); if (ui.lastSel !== sk) { ui.lastSel = sk; const tr = $('#vtray'); if (tr) tr.scrollTop = 0; } }
+  function vilButton(ds) { if (!UI.vil) return false; const V = vil(), ui = UI.vil;
+    if ('vilClose' in ds) vilClose();
+    else if (ds.vilAsk) { const a = ds.vilAsk; if (a === 'always') S.vilPause = 'always'; if (a === 'never') S.vilPause = 'never'; ui.pause = a === 'pause' || a === 'always'; ui.ask = false; save(); }
+    else if ('vilFarm' in ds) ui.pause = !ui.pause;
+    else if ('vdesel' in ds) ui.sel = null;
+    else if (ds.vbuild) vBuild(ds.vbuild);
+    else if ('vroad' in ds) vRoad(true);
+    else if ('vunroad' in ds) vRoad(false);
+    else if ('vgrow' in ds) vGrow();
+    else if ('vcollect' in ds) { const g0 = Math.floor(V.till || 0); if (g0 > 0) { S.gold += g0; V.till -= g0; SND.play('sell'); vMsg(`Collected ${g0.toLocaleString()}g from the till.`); save(); } }
+    else if ('vgoStore' in ds) { const st = V.b.find(b => b.k === 'store'); if (st) ui.sel = [st.x, st.y]; }
+    else if (ds.vall) ui.all[ds.vall] = !ui.all[ds.vall];
+    else if (ds.vgive) { const inp = document.querySelector(`[data-vq="${ds.vgive}"]`), n = Math.max(1, parseInt(inp && inp.value, 10) || 1); vGive(ds.vgive, n); save(); }
+    else if (ds.vauto) { const a = V.auto[ds.vauto] || (V.auto[ds.vauto] = { on: false, keep: 0 }); a.on = !a.on; save(); }
+    else if (ds.vlvl) { const [g, p] = ds.vlvl.split(':'); V.lvl[g] = +p; save(); }
+    else return false;
+    UI.html['#vtray'] = null; dirty(); return true; }
+  $('#village').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (vilButton(el.dataset)) e.stopPropagation(); });
+  $('#vilcv').addEventListener('click', e => { if (!UI.vil) return; const c = e.currentTarget, rc = c.getBoundingClientRect();
+    vilTap((e.clientX - rc.left) * c.width / rc.width, (e.clientY - rc.top) * c.height / rc.height); });
+  document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
+  document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
+    else if (d.vkeep && S.village) { const a = S.village.auto[d.vkeep]; if (a) { a.keep = Math.max(0, parseInt(e.target.value, 10) || 0); save(); } } });
+  function vilKey(e) { if (!UI.vil) return; if (e.key === 'Escape') { if (UI.vil.ask) return; if (UI.vil.sel) UI.vil.sel = null; else vilClose(); dirty(); e.preventDefault(); } }
+  // the gate on the farm
+  function gatePanel(i) { const V = S.village, low = vLow(V);
+    let h = head('Village Gate', 'The road from your farm to your village.');
+    if (S.race) return h + `<p class="hint">The village is closed during races and weekly challenges.</p>`;
+    h += V && V.b.length ? `<p class="state">${V.folk} town folk · ${vMoodName(V.h)} · village score ${vScore(V).toLocaleString()}</p>${low.length ? `<p class="hint warnt">⚠ The ${low.map(g => esc(g.name)).join(' and ')} shelf${low.length > 1 ? 'ves are' : ' is'} running low.</p>` : ''}${V.till >= 1 ? `<p class="hint small">${Math.floor(V.till).toLocaleString()}g waiting in the store’s till.</p>` : ''}` : `<p class="hint">Your village is an empty patch of land down the road, waiting for its first cottage.</p>`;
+    return h + `<button class="btn pri" data-vil-go>Go to the village<small>${S.vilPause === 'always' ? 'Your farm pauses while you’re there' : S.vilPause === 'never' ? 'Your farm keeps running while you’re there' : 'You choose whether your farm pauses'}</small></button>` + moveSection(i) + salvageSection(i); }
   /* ---------- your house panel: decor on display, and growing it ---------- */
   function decoWhere() { const o = [`chairs, tables${unlocked('loom') ? ', bookshelves' : ''}${unlocked('dyeing') ? ', paintings' : ''} and fish trophies at a Carpenter’s Bench (Open Market → Stations)`];
     if (unlocked('wildflowers') && unlocked('pottery')) o.push('flower vases at the Potter’s Wheel'); if (unlocked('dyeing')) o.push('rugs and curtains at the Loom');
@@ -3049,7 +3264,7 @@
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
     else if (T.b) { const k = D.buildings[T.b.type].kind;
-      h = k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i), i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
+      h = k === 'gate' ? gatePanel(i) : k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i), i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
       if (k === 'home') S.noticeSeen = UI.noticeK; }
     else if (T.r) h = gatherPanel(i, T);
     else if (greenT(i)) h = greenPanel(i);
@@ -3097,7 +3312,7 @@
       const sel = catSel('disc'), card = d => { const own = unlocked(d.id), reqOk = discOk(d);
         const st = own ? 'own' : reqOk ? (S.dp >= d.cost ? 'can' : 'short') : 'lock';
         return `<div class="card ${st}"><div class="ctop"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div class="ctxt"><b>${esc(d.name)}</b><span class="cost">${own ? 'Unlocked' : d.cost + ' DP'}</span></div></div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p>
-          ${own ? '' : !reqOk ? `<small>Needs ${[...d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : [])].join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
+          ${own ? '' : !reqOk ? `<small>Needs ${[...d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : []), ...(d.folk && vFolk() < d.folk ? [`${d.folk} town folk in your village (you have ${vFolk()})`] : [])].join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
       if (sel === 'avail') h += `<div class="cards">${[...avail].sort((a, b) => rank(a) - rank(b)).map(card).join('')}</div>`;
       else h += D.discoveryBranches.filter(b => sel === 'all' || sel === b.id).map(b => {
         const ds = D.discoveries.filter(d => branchOf(d) === b.id).sort((x, y) => rank(x) - rank(y));
@@ -3209,8 +3424,10 @@
       else { const me = L.me, pace = Math.round(S.score / Math.max(1, S.day) * 10) / 10;
         h += `<div class="wgrid lbme">${[['Your score', fmt(Math.floor(S.score))], ['Days played', S.day], ['Your pace', pace + '/day']].map(([a, b]) => `<div class="wstat"><b>${b}</b><span>${a}</span></div>`).join('')}</div>`;
         h += `<p class="hint">${me ? `You’re <b>#${me.rank}</b> of ${L.farms} by score${me.pace_rank ? ` and <b>#${me.pace_rank}</b> of ${L.paced} by pace` : `; you join the pace board on day ${LB_MIN_DAYS}`}.` : 'Your farm will appear after its next day starts.'}</p>`;
-        h += `<div class="tabs">${[['top', 'Top score'], ['pace', 'Best pace']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-lbtab="${k}">${n}</button>`).join('')}</div>`;
+        h += `<div class="tabs">${[['top', 'Top score'], ['pace', 'Best pace'], ['village', 'Village']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-lbtab="${k}">${n}</button>`).join('')}</div>`;
         const rows = (L[tab] || []);
+        if (tab === 'village') h += `<p class="hint small">Village scores have their own board: goods your General Store sold, buildings and roads, and happy town folk.${S.village && S.village.b.length ? ` Yours is <b>${fmt(vScore())}</b>${L.vme && L.vme.rank ? `, <b>#${L.vme.rank}</b> of ${L.villages}` : ''}.` : ' Found a village (Village Charter in Discovery) to join it.'}</p>` + (rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Village score</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.village)}</td></tr>`).join('')}</tbody></table>` : `<p class="hint">No village scores yet.</p>`);
+        else
         h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
           : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
         const tmp = me && me.temp && me.name ? me.name : null;
@@ -3233,6 +3450,7 @@
       const pausing = S.race && S.race.weekly ? sec('set-pause', 'Pausing', 'Off during the weekly challenge', 'farm', item('pause weekly challenge', '<p class="hint small">The weekly challenge can’t be paused, so these options are hidden. Your farm keeps its own pause settings.</p>')) : sec('set-pause', 'Pausing', `${pauseOn} of ${houseIdx() >= 0 ? 4 : 3} on${idleOn ? ' · ' + idleOn : ''}`, 'farm',
         tgl('menupause', S.menuPause !== false, 'Pause while the Menu or Settings is open', '', 'pause menu settings open', '', '', '') +
         (houseIdx() >= 0 ? tgl('housepause', S.housePause !== false, 'Pause while you’re inside your house', '', 'pause house inside room interior', '', '', '') : '') +
+        (unlocked('village') ? item('pause village town travel go', `<span class="optlabel">When I go to the village</span><div class="chips">${[['ask', 'Ask each time'], ['always', 'Always pause'], ['never', 'Never pause']].map(([k, n]) => `<button class="chipf ${(S.vilPause || 'ask') === k ? 'on' : ''}" data-vilpause="${k}" aria-pressed="${(S.vilPause || 'ask') === k}">${n}</button>`).join('')}</div><p class="hint small">Inside the village you can still pause or let the farm run from the top of the screen.</p>`) : '') +
         tgl('fullpause', S.fullPause, 'Pause when storage is full', '', 'pause storage full', '', '', '') +
         tgl('bgpause', S.bgPause !== false, 'Pause when you switch to another tab or app', '', 'pause background tab away app switch catch up', S.bgPause !== false ? 'Your farm waits for you while you’re away.' : `Your farm keeps working while you’re away.`, `When you come back it catches up on up to ${CATCHUP_MAX / 3600} hours. Time doesn’t pass while the game is closed.`, 'bg') +
         item('pause idle inactive step away not done anything', `<span class="optlabel">Pause when I haven’t done anything for</span><div class="chips">${IDLE_OPTS.map(m => `<button class="chipf ${idleSecs() === m ? 'on' : ''}" data-idle="${m}" aria-pressed="${idleSecs() === m}">${idleLabel(m)}</button>`).join('')}</div><p class="hint small">${idleSecs() ? `No tap, click, scroll or key for ${idleLabel(idleSecs())} pauses the game until you’re back.` : 'The game keeps running when you step away.'}</p>`));
@@ -3266,7 +3484,7 @@
       h = `<div class="phead"><div><h2>Harvest Valley</h2><p class="sub">${S.menuPause !== false ? '<b>Game paused.</b> ' : ''}${S.race ? (S.race.weekly ? 'Weekly challenge: the clock keeps running. ' : 'Racing: the clock keeps running. ') : ''}Progress saves in this browser<span id="savedago"></span>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>
         ${S.race && S.race.weekly ? `<div class="demand"><span><b>${esc(weekTheme(S.race.week).name)}</b> · ${S.race.ranked ? 'ranked run' : 'practice run'}, ${fmtTime(Math.max(0, S.race.end - Date.now()))} left. ${esc(weekTheme(S.race.week).blurb)}</span></div><div class="menu"><button class="btn" data-week-end>End this run now<small>${S.race.ranked ? 'Your score so far counts' : 'Practice doesn’t count'}</small></button></div>`
         : S.race ? `<div class="demand"><span><b>Racing in ${esc(S.race.code)}</b> to ${S.race.target.toLocaleString()} points. No pausing in a race.</span></div><div class="menu"><button class="btn" data-race-leave>Leave the race<small>Back to your own farm</small></button></div>` : ''}
-        ${msec('farm', 'Your farm', 'Puzzles, mastery, the monument and helpers', `<div class="menu"><button class="btn" data-drawer="daily">Daily Puzzle<small>${dqMenuSub()}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}<button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button></div>`, true)}
+        ${msec('farm', 'Your farm', 'Puzzles, mastery, the monument and helpers', `<div class="menu"><button class="btn" data-drawer="daily">Daily Puzzle<small>${dqMenuSub()}</small></button><button class="btn" data-drawer="mastery">Mastery<small>${(() => { const n = MAS.items.filter(id => mastTierRaw(id) > 0).length; return n ? `${n} of ${MAS.items.length} goods started` : 'Grow and raise goods to master them'; })()}</small></button>${!S.race && gateIdx() >= 0 && unlocked('village') ? `<button class="btn" data-vil-go>Village<small>${S.village && S.village.b.length ? `${S.village.folk} town folk · ${vMoodName(S.village.h)}${vLow(S.village).length ? ' · ⚠ shelves low' : ''}` : 'Build your first cottage'}</small></button>` : ''}${online() || earnedModels().length ? `<button class="btn" data-drawer="valley">Valley Monument<small>${MONK() ? esc(MONK().name) + ' · ' + monPct(monTotals(MONK())) + '%' : 'Built together by the valley'}</small></button>` : ''}${unlocked('farmhand') ? '<button class="btn" data-drawer="hands">Farmhands<small>Manage their jobs</small></button>' : ''}<button class="btn" data-drawer="medals">Medals<small>${NET.medals.length ? `${NET.medals.length} won` : 'Win one in the weekly challenge'}</small></button></div>`, true)}
         ${msec('together', 'Play together', 'Races, the weekly challenge and the leaderboard', `<div class="menu"><button class="btn" data-race-open>Race with friends<small>Host or join a race</small></button><button class="btn" data-weekly-open>Weekly challenge<small>This week: ${esc(weekTheme(weekOf(srvNow())).name)}</small></button>${online() ? '<button class="btn" data-lb-open>Leaderboard<small>How your farm compares</small></button>' : ''}</div>`, true)}
         ${msec('save', 'Save and backup', S.cloud && S.cloud.at ? `Backed up ${Math.max(1, Math.round((Date.now() - S.cloud.at) / 60000))} min ago · your farms, codes and files` : 'Not backed up yet · your farms, codes and files', `
         <div class="menu"><button class="btn pri" data-save>Save now</button><button class="btn ghost" data-farms-open>Your farms<small>Switch or start a new one</small></button></div>
@@ -3337,7 +3555,7 @@
     add('u:farmhand', 'upg', 'Farmhand', null, 'helper worker jobs loop hire crew errands', () => `<p>Hire one helper (Discovery → Farmhand) at the Homestead for ${esc(costTxt(D.farmhand.hire))}. They loop through up to ${D.farmhand.maxSteps} jobs you give them (more with Seasoned Farmhand), work out the jobs they can do, and skip any that have nothing to do. Repeat Recipes, Errands and seed buying all build on them.</p>`);
     // discoveries
     D.discoveries.forEach(d => add('d:' + d.id, 'disc', d.name, null, `discovery unlock ${d.text} ${d.where}`, () => {
-      const own = unlocked(d.id), need = [...d.req.filter(r => !unlocked(r)).map(r => (D.discoveries.find(x => x.id === r) || { name: r }).name), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : [])];
+      const own = unlocked(d.id), need = [...d.req.filter(r => !unlocked(r)).map(r => (D.discoveries.find(x => x.id === r) || { name: r }).name), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : []), ...(d.folk && vFolk() < d.folk ? [`${d.folk} town folk in your village`] : [])];
       return `<div class="mandisc"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p></div></div><p><b>${own ? 'Unlocked.' : `Costs ${d.cost} Discovery.`}</b>${own ? '' : need.length ? ` Needs ${esc(nmList(need))} first.` : ' Ready to unlock.'} <button class="linkish small" data-drawer="disc">Open Discovery</button></p>`; }));
     // land
     Object.keys(D.terrain).filter(t => D.terrain[t].cost != null && !D.terrain[t].green && t !== 'void').forEach(t => { const T = D.terrain[t], G = D.gather[t];
@@ -3461,7 +3679,7 @@
     UI.noticeK = S.race ? '' : noticeKey();
     { const b = $('#zoom [data-mon-show]'); if (b) b.hidden = !S.green || !!S.race; }
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom();
+    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom(); renderVillage();
     if (!S.race && ((UI.caseChk = (UI.caseChk || 0) + 1) % 6 === 0)) caseAward();   // about every 3 s
   }
   function progress(key) {
@@ -3558,6 +3776,7 @@
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
     else if ('housepause' in ds) { S.housePause = S.housePause === false; save(); }
+    else if (ds.vilpause) { S.vilPause = ds.vilpause; save(); }
     else if ('snaprot' in ds) { S.snapRot = S.snapRot === false; if (S.snapRot !== false) UI.rotAt = performance.now(); save(); }
     else if ('labelsset' in ds) toggleLabels();
     else if ('bgpause' in ds) { S.bgPause = S.bgPause === false; save(); }
@@ -3714,7 +3933,7 @@
     if (UI.idle) return;
     if (f && el.dataset.k !== 'full') { el.innerHTML = '<span><b>Paused: storage is full.</b> Sell, use or give away some goods, or upgrade storage, and the game carries on by itself.</span>'; el.dataset.k = 'full'; el.hidden = false; }
     else if (!f && el.dataset.k === 'full') { el.hidden = true; el.dataset.k = ''; } }
-  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.room && S.housePause !== false) || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
+  const paused = () => S.race ? !!UI.title : !!UI.title || UI.idle || UI.fullHold || (UI.room && S.housePause !== false) || (UI.vil && UI.vil.pause) || (UI.drawer === 'menu' || UI.drawer === 'settings' || UI.drawer === 'lb' || UI.drawer === 'manual' || UI.drawer === 'feedback') && S.menuPause !== false;
   let last = performance.now(), uiT = 0;
   /* catching up after time away: simulated in half-second steps, spread over a few frames so the page stays responsive */
   const CATCHUP_MAX = 2 * 3600, CATCHUP_STEP = .5, CATCHUP_PER_FRAME = 300;
@@ -3745,7 +3964,7 @@
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     if (UI.cart && (UI.cart.t += dt) > 2.4) UI.cart = null;
-    if (UI.room) drawRoomView(); else draw(); placePanel();
+    if (UI.room) drawRoomView(); else if (UI.vil) drawVillage(); else draw(); placePanel();
     uiT -= dt; if (UI.dirty || uiT <= 0) { renderUI(); UI.dirty = false; uiT = .5; }
     document.querySelectorAll('[data-prog]').forEach(el => { el.style.width = (Math.min(1, progress(el.dataset.prog)) * 100).toFixed(1) + '%'; });
   }
@@ -4147,7 +4366,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil().n), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

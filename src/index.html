@@ -845,33 +845,49 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 }
 
 /* inside the house */
-#room { position: absolute; inset: 0; z-index: 26; display: flex; flex-direction: column; background: var(--wood-lo); }
+:is(#room, #village) { position: absolute; inset: 0; z-index: 26; display: flex; flex-direction: column; background: var(--wood-lo); }
 #app.inroom #toasts { z-index: 27; }
-#room .rhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 16px 10px; background: var(--wood); border-bottom: 2px solid var(--wood-hi); }
-#room .rhead h2 { margin: 0 0 2px; font-size: 20px; }
-#room .rhead .sub { margin: 0; font-size: 13px; color: var(--paper-dim); }
-#room .rbody { flex: 1; min-height: 0; display: flex; }
-#room .rstage { flex: 1; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 12px; background: radial-gradient(ellipse at 50% 40%, #3a2a1c 0%, #1a110a 75%); overflow: hidden; }
+:is(#room, #village) .rhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 16px 10px; background: var(--wood); border-bottom: 2px solid var(--wood-hi); }
+:is(#room, #village) .rhead h2 { margin: 0 0 2px; font-size: 20px; }
+:is(#room, #village) .rhead .sub { margin: 0; font-size: 13px; color: var(--paper-dim); }
+:is(#room, #village) .rbody { flex: 1; min-height: 0; display: flex; }
+:is(#room, #village) .rstage { flex: 1; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 12px; background: radial-gradient(ellipse at 50% 40%, #3a2a1c 0%, #1a110a 75%); overflow: hidden; }
+#vilcv { image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; touch-action: manipulation; }
+#village .rstage { background: radial-gradient(ellipse at 50% 40%, #2e4a2a 0%, #13200f 80%); }
+#village .rhead .sub .linkish { font-size: 13px; }
+#village .vshelf { margin: 6px 0 2px; } #village .vsh { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 13px; } #village .vsh small { color: var(--paper-dim); } #village .vsh span { margin-left: auto; color: var(--paper-dim); }
+#village .vshelf.low .vsh span, #village .warnt { color: #f0a030; font-weight: 600; }
+#village .vbar { height: 8px; } #village .vbar i { background: #6fb440; } #village .vbar.warn i { background: #f0a030; }
+#village .vgrp { margin-top: 8px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,.15); }
+#village .rpiece small { display: block; color: var(--paper-dim); font-size: 12px; }
+#village .rpiece .qty { width: 58px; }
+#village .vtill { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; padding: 6px 8px; background: var(--wood-lo); border-radius: var(--r); }
+#village .vbuild { margin: 10px 0; padding: 8px; background: var(--wood-lo); border-radius: var(--r); }
+#village .vbuild .row, #village .rcard .row { display: flex; align-items: center; gap: 8px; }
+#village .vbuild small { display: block; color: var(--paper-dim); }
+#village .vbuild .btn { width: 100%; margin-top: 6px; }
+#village .cimg { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; flex: none; }
+#village .chips { margin: 4px 0 8px; }
 #roomcv { image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; touch-action: manipulation; }
-#room .rtray { width: 340px; flex: none; overflow-y: auto; padding: 12px 14px 18px; background: var(--wood); border-left: 2px solid var(--wood-hi); box-sizing: border-box; }
-#room .rtray .eyebrow { display: block; margin-top: 14px; }
-#room .rlist { display: grid; gap: 6px; margin-top: 6px; }
-#room .rpiece { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: var(--wood-lo); border-radius: var(--r); }
-#room .rpiece > span:not(.rwin) { flex: 1; min-width: 0; }
-#room .rpiece .ico { width: 32px; height: 32px; }
-#room .rcard { margin: 10px 0 4px; padding: 8px 10px; border: 2px solid var(--sun); border-radius: var(--r); background: var(--wood-lo); }
-#room .rcard .row { display: flex; align-items: center; gap: 8px; }
-#room .rcard small { display: block; color: var(--paper-dim); }
-#room .rcard .ico { width: 36px; height: 36px; }
-#room .rbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-#room .rmsg { margin: 8px 0 0; color: var(--sun); font-size: 13px; }
-#room > .rbody .btn[data-rm-auto] { margin-top: 8px; }
+:is(#room, #village) .rtray { width: 340px; flex: none; overflow-y: auto; padding: 12px 14px 18px; background: var(--wood); border-left: 2px solid var(--wood-hi); box-sizing: border-box; }
+:is(#room, #village) .rtray .eyebrow { display: block; margin-top: 14px; }
+:is(#room, #village) .rlist { display: grid; gap: 6px; margin-top: 6px; }
+:is(#room, #village) .rpiece { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: var(--wood-lo); border-radius: var(--r); }
+:is(#room, #village) .rpiece > span:not(.rwin) { flex: 1; min-width: 0; }
+:is(#room, #village) .rpiece .ico { width: 32px; height: 32px; }
+:is(#room, #village) .rcard { margin: 10px 0 4px; padding: 8px 10px; border: 2px solid var(--sun); border-radius: var(--r); background: var(--wood-lo); }
+:is(#room, #village) .rcard .row { display: flex; align-items: center; gap: 8px; }
+:is(#room, #village) .rcard small { display: block; color: var(--paper-dim); }
+:is(#room, #village) .rcard .ico { width: 36px; height: 36px; }
+:is(#room, #village) .rbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+:is(#room, #village) .rmsg { margin: 8px 0 0; color: var(--sun); font-size: 13px; }
+:is(#room, #village) > .rbody .btn[data-rm-auto] { margin-top: 8px; }
 .rwin { display: inline-block; flex: none; width: 24px; height: 28px; box-sizing: border-box; background: linear-gradient(#6fb2e6 0 45%, #efe6cf 45% 52%, #bfe3f6 52%); border: 3px solid #efe6cf; outline: 2px solid #8a5a2e; outline-offset: -1px; }
 .chipf .sw { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.35); border-radius: 2px; }
 @media (max-width: 700px) {
-  #room .rbody { flex-direction: column; }
-  #room .rtray { width: auto; max-height: 48%; border-left: 0; border-top: 2px solid var(--wood-hi); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
-  #room .rhead h2 { font-size: 17px; }
+  :is(#room, #village) .rbody { flex-direction: column; }
+  :is(#room, #village) .rtray { width: auto; max-height: 48%; border-left: 0; border-top: 2px solid var(--wood-hi); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  :is(#room, #village) .rhead h2 { font-size: 17px; }
 }
 
 /* the trophy case, opened */
@@ -886,8 +902,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .tspot.lit { border: 2px solid var(--sun); background: rgba(245,197,66,.14); }
 .tspot.sel { border: 2px solid var(--sun); background: rgba(245,197,66,.22); }
 .tcbase { height: 14px; margin: 0 -14px -10px; background: #4e301a; }
-#room .rpiece .cimg { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
-#room .rcard .cimg { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+:is(#room, #village) .rpiece .cimg { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+:is(#room, #village) .rcard .cimg { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
 .rcasei { display: inline-block; flex: none; width: 22px; height: 30px; box-sizing: border-box; background: linear-gradient(#bfe3f6 0 30%, #c99a1e 30% 36%, #bfe3f6 36% 64%, #c99a1e 64% 70%, #bfe3f6 70%); border: 3px solid #6e4628; border-top-width: 4px; }
 @media (max-width: 700px) { .tspot { width: 58px; height: 64px; } .tspot .cimg, .tspot .ico { width: 48px; height: 48px; } .tshelf { min-height: 72px; gap: 6px; } }
 </style>
@@ -931,6 +947,10 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   <div id="room" hidden role="dialog" aria-label="Inside your house">
     <div class="rhead"><div><h2 id="rtitle">Inside your house</h2><p class="sub" id="rsub"></p></div><button class="close" data-room-close aria-label="Leave the house">×</button></div>
     <div class="rbody"><div class="rstage"><div id="rcasev" hidden></div><canvas id="roomcv" aria-label="Your room. Pick a piece, then tap a lit spot to place it."></canvas></div><div class="rtray" id="rtray"></div></div>
+  </div>
+  <div id="village" hidden role="dialog" aria-label="Your village">
+    <div class="rhead"><div><h2 id="vtitle">Your village</h2><p class="sub" id="vsub"></p></div><button class="close" data-vil-close aria-label="Go back to the farm">×</button></div>
+    <div class="rbody"><div class="rstage"><canvas id="vilcv" aria-label="Your village. Tap a lot, road or building."></canvas></div><div class="rtray" id="vtray"></div></div>
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>

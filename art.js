@@ -63,7 +63,10 @@ window.HW_ART = (function () {
       (g, r) => { for (let y = 1; y < 15; y++) { const hw = hwAt(y) - 1; for (let x = 16 - hw; x < 16 + hw; x++) if (Math.floor((x + 2 * y) / 6) % 2) r('#6fb440', x, y); } }),
     plaza: s => ground('#dccb9c', ['#e8daae', '#cdb985'], '#a8916a', '#8a7552', 161 + s,
       (g, r) => { for (let y = 1; y < 15; y++) { const hw = hwAt(y) - 1; for (let x = 16 - hw; x < 16 + hw; x++) { const u = x / 2 + y, v = x / 2 - y + 40;
-        if (Math.abs(u % 4) < .5 || Math.abs(v % 4) < .5) r('#c4ae7c', x, y); } } })
+        if (Math.abs(u % 4) < .5 || Math.abs(v % 4) < .5) r('#c4ae7c', x, y); } } }),
+    // the village: a packed dirt road with cobbles
+    vroad: s => ground('#c9ae7e', ['#b89a6a', '#d8c094', '#a88a5c', '#e0cc9e'], '#a8916a', '#8a7552', 171 + s,
+      (g, r) => { const R = rng(5 + s); for (let k = 0; k < 9; k++) { const y = 3 + (R() * 10 | 0), hw = hwAt(y) - 3, x = 16 - hw + (R() * hw * 2 | 0); r('#9a8462', x, y, 2, 1); r('#e6d4a8', x, y - 1, 2, 1); } })
   };
 
   /* ---------- structures: 32 wide, bottom row sits 4px below tile centre ---------- */
@@ -818,6 +821,53 @@ window.HW_ART = (function () {
   const MONUMENTS = { pyramid, pisa };
   function monument(kind, stage, mode) { return (MONUMENTS[kind] || pyramid)(Math.max(0, Math.min(4, stage | 0)), mode); }
   // the Monument Depot: an open wooden shed with an awning; crates pile up in front as you give
+  /* ---------- the village (v0.106) ---------- */
+  // the Village Gate on the farm: two posts, an arched sign and a road sign pointing to town
+  OBJ.vgate = () => mk(32, 36, (g, r) => {
+    shadow(r, 36, 12);
+    r('#6b4220', 6, 10, 3, 22); r('#8a5a2e', 6, 10, 1, 22); r('#6b4220', 23, 10, 3, 22); r('#8a5a2e', 23, 10, 1, 22);
+    for (let x = 5; x < 27; x++) { const y = 9 - Math.round(Math.sin((x - 5) / 21 * Math.PI) * 4); r('#7a4b28', x, y, 1, 3); r('#9a6a3c', x, y, 1, 1); }
+    r('#e8d6a8', 10, 8, 12, 4); r('#c9b07a', 10, 11, 12, 1); for (let x = 11; x < 21; x += 2) r('#5e3519', x, 9, 1, 1); // the sign
+    r('#5e3519', 6, 31, 3, 1); r('#5e3519', 23, 31, 3, 1);
+    r('#7a4b28', 27, 18, 1, 13); r('#d8b070', 25, 17, 6, 3); r('#9a6a3c', 30, 18, 2, 1); r('#5e3519', 26, 18, 3, 1); // arrow sign
+    r('#e86aa8', 4, 29); r('#f6e27a', 28, 30); r('#5aa83f', 3, 30, 2, 1);
+  });
+  // a cottage: whitewashed walls with timber framing, a red tiled roof and a chimney
+  OBJ.cottage = () => mk(32, 38, (g, r) => {
+    shadow(r, 38, 13);
+    r('#efe6cf', 4, 20, 12, 14); r('#d6caa8', 16, 20, 12, 14);
+    [4, 9, 15].forEach(x => r('#7a4b28', x, 20, 1, 14)); [16, 22, 27].forEach(x => r('#6b4220', x, 20, 1, 14)); r('#7a4b28', 4, 26, 24, 1); r('#5e3519', 4, 33, 24, 1);
+    for (let i = 0; i < 14; i++) { const hw = 3 + i; r('#b5523b', 16 - hw, 7 + i, hw, 1); r('#97412e', 16, 7 + i, hw, 1); if (i % 3 === 2) { r('#8a3626', 16 - hw, 7 + i, hw, 1); r('#7a2e20', 16, 7 + i, hw, 1); } }
+    r('#7e3426', 2, 20, 28, 1);
+    r('#8a8a94', 21, 3, 3, 8); r('#6e6e78', 23, 3, 1, 8); r('#b0b0b8', 21, 3, 3, 1); // chimney
+    r('#9fd8f0', 6, 22, 4, 3); r('#5e3519', 6, 25, 4, 1); r('#e8f6fc', 6, 22, 1, 1); r('#e86aa8', 6, 26, 1, 1); r('#f6e27a', 8, 26, 1, 1); // window and flower box
+    r('#7a4b28', 19, 25, 5, 8); r('#5e3519', 19, 25, 5, 1); r('#f6d24a', 23, 29, 1, 1); // door
+  });
+  // the General Store: a false front with a sign, a striped awning and goods in the window
+  OBJ.gstore = () => mk(32, 40, (g, r) => {
+    shadow(r, 40, 14);
+    r('#c99b5a', 3, 20, 13, 16); r('#a8743e', 16, 20, 13, 16); for (let y = 22; y < 36; y += 3) { r('#b4874c', 3, y, 13, 1); r('#93652f', 16, y, 13, 1); }
+    r('#8a5a2e', 3, 8, 26, 12); r('#6b4220', 3, 8, 26, 1); r('#a8743e', 4, 9, 24, 1); // false front
+    r('#efe0b4', 6, 11, 20, 6); r('#c9b07a', 6, 16, 20, 1); // sign board
+    [[8, 'S'], [12, 'T'], [16, 'O'], [20, 'R'], [24, 'E']].forEach(([x]) => { r('#5e3519', x, 12, 2, 4); });
+    for (let x = 16; x < 30; x++) r(Math.floor((x - 16) / 2) % 2 ? '#f2ece0' : '#c8483a', x, 21, 1, 3); r('#9a2e24', 16, 24, 14, 1); // awning
+    r('#9fd8f0', 18, 26, 9, 5); r('#5e3519', 18, 31, 9, 1); r('#e86a3a', 19, 29, 2, 2); r('#f6e27a', 22, 29, 2, 2); r('#5aa83f', 25, 29, 1, 2); // shop window
+    r('#7a4b28', 7, 27, 5, 9); r('#5e3519', 7, 27, 5, 1); r('#f6d24a', 11, 31, 1, 1); // door
+    r('#c99b5a', 0, 31, 3, 3); r('#a8743e', 0, 31, 3, 1); r('#e8d6a8', 29, 33, 3, 2); // a crate and a sack by the door
+  });
+  // the Village Well: a stone ring with a little roof and a bucket
+  OBJ.well = () => mk(32, 34, (g, r) => {
+    shadow(r, 34, 10);
+    ell(r, '#7a7a84', 16, 27, 8, 3); r('#9aa0aa', 8, 21, 16, 6); ell(r, '#b0b4bc', 16, 21, 8, 3); ell(r, '#2f6f9a', 16, 21, 6, 2); ell(r, '#4aa3d8', 16, 21, 4, 1);
+    for (let x = 9; x < 24; x += 3) r('#6e6e78', x, 23, 1, 4);
+    r('#7a4b28', 8, 8, 2, 14); r('#7a4b28', 22, 8, 2, 14);
+    for (let i = 0; i < 6; i++) { const hw = 4 + i * 2; r('#b5523b', 16 - hw, 3 + i, hw, 1); r('#97412e', 16, 3 + i, hw, 1); }
+    r('#5e3519', 10, 12, 12, 1); r('#9aa0aa', 15, 13, 1, 4); r('#8a5a2e', 13, 16, 5, 3); r('#6b4220', 13, 16, 5, 1);
+  });
+  // an empty lot for sale in the village
+  OBJ.vlot = () => mk(32, 24, (g, r) => {
+    r('#7a4b28', 15, 6, 1, 12); r('#e8d6a8', 11, 5, 9, 5); r('#c9b07a', 11, 9, 9, 1); r('#5e3519', 13, 7, 5, 1);
+  });
   OBJ.depot = n => mk(32, 34, (g, r) => {
     shadow(r, 34, 12);
     r('#9a6a3c', 6, 14, 10, 16); r('#7a4b28', 16, 14, 10, 16); r('#3a2414', 8, 18, 7, 12); r('#5e3519', 6, 29, 20, 1);
@@ -884,7 +934,7 @@ window.HW_ART = (function () {
      every tile and tree keeps its shape: lush deep greens in summer, gold and russet in autumn, frosted muted greens
      in winter, and white ground with snow on every roof and treetop on a snow day. Spring trees get blossom. */
   let scene = 'spring';
-  const GROUND = new Set(['grass', 'forest', 'water', 'boulder', 'flowers', 'clay', 'reeds', 'ore', 'farm_raw', 'lawn', 'plaza']);
+  const GROUND = new Set(['grass', 'forest', 'water', 'boulder', 'flowers', 'clay', 'reeds', 'ore', 'farm_raw', 'lawn', 'plaza', 'vroad']);
   const PLANT = new Set(['tree', 'stump', 'sapling', 'blooms', 'reedbed', 'pondreeds']);
   const SCENES = {
     summer: {

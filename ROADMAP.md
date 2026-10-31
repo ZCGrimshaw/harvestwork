@@ -47,7 +47,7 @@ Not built yet; picked up when we choose to.
   weekly_board, my_medals. Pairs well with the player key below.
 - ~~Player key~~ (done in v0.36). Original pin: one no-signup code per player (like the backup code) that carries the locked
   name, medals and every farm's cloud backup to a new device. Optional; no email or password.
-- **The Village (designed with Aaron 2026-10-31, NOT approved to build yet; supersedes the first phase of City growth below; suggest Opus 5.5 for the save format and balance):**
+- **The Village (designed with Aaron 2026-10-31; first release BUILT as v0.106 on branch `village`, waiting for Aaron's go to deploy; supersedes the first phase of City growth below; suggest Opus 5.5 for the save format and balance):**
   - **Place:** its own small map you travel to (a Village Gate on the farm, like "Go inside" for the house), with its own save data (`S.village`), so the 36×36 farm map stays fast. Gold, discovery tokens and storage are shared. Not available in weekly challenges or friend races.
   - **Pause prompt:** heading to town asks "Pause your farm?" with Yes / No / Always pause / Never pause. The saved choice lives in Settings → Pausing, and a small toggle plus a "farm running / paused" label inside the village lets players change their mind.
   - **Start small:** one residential building first (brings a few town folk), then a general store second (the first thing that needs stocking). Every building costs gold and materials. More buildings unlock as town folk grow. Later, once the village is big enough, a second area can be surveyed to build more.
