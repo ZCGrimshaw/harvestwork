@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.105.2 — 2026-11-01 (branch `logpanel-fix`, not deployed)
+- `#logpanel` max-height is now `calc(100% - 164px)` (was `- 150px`) with `box-sizing: border-box`, so on a computer its top edge stops at the goal card's top and no longer overlaps the market ticker.
+
 ## v0.105.1 — 2026-11-01 (built on branch `notice-history`, not deployed)
 - Toasts on a computer sit at `left: 326px` (just right of the goal card) instead of centred; phone and landscape layouts are unchanged.
 - Notice history: `toast()` calls `histAdd()`, which keeps the last 80 notices as plain text (`S.hist`, newest first: day, clock, kind, text; tags stripped so an imported save can't inject markup; consecutive repeats on the same day are skipped, nothing is recorded during catch-up). A History button joins Activity and Updates in `#logbar` and the phone Info panel, with a Clear link. `HW.say(html, kind)` is a test hook for toasts.
