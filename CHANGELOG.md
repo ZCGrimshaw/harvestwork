@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.106.1 — 2026-11-01 (branch `village-orders`, not deployed)
+- Village orders: `vCostHTML` has a Send to farm orders toggle (`data-vorder`, `S.vord` = building kinds, migrated to `[]`). `vOrdersHTML()` draws them in `#goals` under the goal/contract with have/need for gold and each good and a Ready to build tag; `data-vord-x` removes one. A minimized goal card still shows when orders exist. `vBuild` clears that kind's order.
+
 ## v0.106 — 2026-10-31 (built on branch `village`, not deployed)
 - The Village: a separate map reached through a new farm building, the Village Gate (`vgate`, kind `gate`, `max: 1`; kit `vgate_kit`, 150g, needs the new `village` discovery "Village Charter", req surveying + kiln; `capFor` honours `B.max`; gates are movable). `gatePanel(i)` on the farm, a Village button in Menu → Your farm.
 - Save: `S.village = { n, roads: ['x,y'], b: [{ k, x, y }], folk, h, sh, till, used, arr, lv, auto, lvl, warn, peak, fed, autoT }`, made lazily by `vil()`. Content in `D.village` (data.js): groups pantry / household / treats with goods lists and per-folk daily rates, buildings cottage / store / well, road and second-area costs.

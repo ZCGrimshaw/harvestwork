@@ -118,6 +118,7 @@
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
     if (!Array.isArray(S.hist)) S.hist = [];
+    if (!Array.isArray(S.vord)) S.vord = [];
     if (!S.adv) S.adv = [];
     if (S.advRefill == null) S.advRefill = 0;
     if (S.advAt == null) S.advAt = Date.now() + Math.max(0, S.advRefill) * 1000; // Grand orders arrive by the real clock
@@ -2305,13 +2306,19 @@
   function goalBtn() { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
     return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; }
   // The goal / contract card: full, title only, or minimized into a button in the top bar.
+  // Village orders: buildings sent from the village's build menu, shown under the goal / contract with what each still needs
+  const vOrders = () => (S.vord || []).filter(k => VD().buildings[k]);
+  function vOrdersHTML() { const L = vOrders(); if (!L.length || S.race) return '';
+    return `<div class="vord"><span class="eyebrow">Village orders</span>${L.map(k => { const B = VD().buildings[k], ents = Object.entries(B.cost), ready = ents.every(([id, n]) => (id === 'gold' ? S.gold : count(id)) >= n);
+      return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
+        return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}</div>`; }
   function renderGoals() {
-    const g = D.goals[S.goal], m = curMs();
+    const g = D.goals[S.goal], m = curMs(), vo = vOrdersHTML();
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
     const title = g ? g.title : m ? m.name : 'All contracts complete';
-    const el = $('#goals'); el.hidden = !!S.goalMin;
+    const el = $('#goals'); el.hidden = !!S.goalMin && !vo;
     setHTML('#goalchip', S.goalMin ? goalBtn() : '');
-    if (S.goalMin) { UI.html['#goals'] = ''; renderTutBtn(); return; }
+    if (S.goalMin) { if (vo) setHTML('#goals', vo); else UI.html['#goals'] = ''; renderTutBtn(); return; }
     const ctl = `<span class="gctl"><button class="gbtn" data-toggle-goals aria-label="${UI.goalsOpen ? 'Show title only' : 'Show details'}" title="${UI.goalsOpen ? 'Show title only' : 'Show details'}">${UI.goalsOpen ? '–' : '+'}</button><button class="gbtn" data-goal-min aria-label="Minimize" title="Minimize">×</button></span>`;
     let body = '';
     if (UI.goalsOpen) body = g ? `<p>${esc(g.hint)}</p><div class="steps">${D.goals.map((_, k) => `<i class="${k < S.goal ? 'on' : k === S.goal ? 'now' : ''}"></i>`).join('')}</div>`
@@ -2319,7 +2326,7 @@
             return `<div class="gneed ${ok ? 'ok' : ''}">${ico(id)}<span>${esc(D.items[id].name)}${q ? ` <em>${QN[q]}+</em>` : ''}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>
           <p>${esc(m.hint)} Deliver at the Order Board.</p>${isComplex(m.need) ? `<button class="gtree" data-tree="ms">See everything it takes ▸</button>` : ''}`
         : `<p>Chase a higher score with Excellent goods and tuned stations.</p>`;
-    setHTML('#goals', `<div class="goalhead"><span class="eyebrow">${eyebrow}</span>${ctl}</div><div class="goaltitle">${esc(title)}</div>${body}`);
+    setHTML('#goals', `<div class="goalhead"><span class="eyebrow">${eyebrow}</span>${ctl}</div><div class="goaltitle">${esc(title)}</div>${body}${vo}`);
     renderTutBtn();
   }
   // After skipping the tutorial: a big button under the goal card (or the minimised goal chip) that turns it back on.
@@ -3053,7 +3060,7 @@
     return canPay(B.cost); }
   function vBuild(k) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, B = VD().buildings[k];
     if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vBuildWhy(V, k); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
-    pay(B.cost); const first = k === 'cottage' && !vCount(V, 'cottage'); V.b.push({ k, x, y });
+    pay(B.cost); const first = k === 'cottage' && !vCount(V, 'cottage'); V.b.push({ k, x, y }); if (S.vord) S.vord = S.vord.filter(o => o !== k);
     if (first) { V.folk = Math.max(V.folk, 2); V.h = 70; V.peak = Math.max(V.peak || 0, V.folk); vAwardTitles(V); }
     SND.play('contract'); logAct(`Built a ${B.name} in your village.`, 'you');
     toast(`<b>${esc(B.name)} built.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : ''}${vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
@@ -3084,7 +3091,7 @@
     h += on.length ? `<div class="rlist">${on.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>keep in storage</small></span><input type="number" class="qty" data-vkeep="${id}" min="0" step="1" value="${V.auto[id].keep | 0}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to keep in storage"><button class="autog on" data-vauto="${id}" aria-pressed="true">Auto ✓</button></div>`).join('')}</div>` : `<p class="hint small">No goods on Auto yet. Tap <b>Auto</b> next to a good above.</p>`;
     return h; }
   function vCostHTML(V, k) { const B = VD().buildings[k], why = vBuildWhy(V, k), lock = why;
-    return `<div class="vbuild"><div class="row">${`<img class="cimg" src="${ART.get(k === 'store' ? 'gstore' : k).toDataURL()}" alt="">`}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)}</small></div></div>${costList(B.cost)}<button class="btn ${why ? '' : 'pri'}" data-vbuild="${k}" ${why ? 'disabled' : ''}>Build the ${esc(B.name)}${why ? `<small>${esc(lock)}</small>` : ''}</button></div>`; }
+    return `<div class="vbuild"><div class="row">${`<img class="cimg" src="${ART.get(k === 'store' ? 'gstore' : k).toDataURL()}" alt="">`}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)}</small></div></div>${costList(B.cost)}<button class="btn ${why ? '' : 'pri'}" data-vbuild="${k}" ${why ? 'disabled' : ''}>Build the ${esc(B.name)}${why ? `<small>${esc(lock)}</small>` : ''}</button>${(S.vord || []).includes(k) ? `<button class="btn sm ghost" data-vorder="${k}">On your farm orders ✓ · tap to remove</button>` : `<button class="btn sm" data-vorder="${k}">Send to farm orders<small>Shows what it needs under your contract on the farm</small></button>`}</div>`; }
   function renderVillage() { if (!UI.vil) return; const V = vil(), ui = UI.vil, m = vMood(V), room = vHouses(V), sc = vScore(V);
     setHTML('#vsub', `${V.folk ? `<button class="linkish bigfolk" data-drawer="folk"><b>${V.folk}</b> town folk${vTitleFor(V.peak || 0) ? ' · ' + esc(vTitleFor(V.peak || 0).name) : ''}</button>${room ? ` (homes for ${room})` : ''} · ${vMoodName(V.h)} ${Math.round(V.h)}%` : 'No town folk yet'} · village score ${sc.toLocaleString()} · <button class="linkish" data-vil-farm>${ui.pause ? 'Farm paused: let it run' : 'Farm running: pause it'}</button>`);
     let t = '';
@@ -3122,6 +3129,7 @@
     else if ('vilFarm' in ds) ui.pause = !ui.pause;
     else if ('vdesel' in ds) ui.sel = null;
     else if (ds.vbuild) vBuild(ds.vbuild);
+    else if (ds.vorder) { const k = ds.vorder, L = S.vord || (S.vord = []), i = L.indexOf(k); if (i >= 0) { L.splice(i, 1); vMsg('Removed from your farm orders.'); } else { L.push(k); vMsg(`Sent to your farm orders: see it under your contract on the farm.`); } save(); }
     else if ('vroad' in ds) vRoad(true);
     else if ('vunroad' in ds) vRoad(false);
     else if ('vgrow' in ds) vGrow();
@@ -3136,6 +3144,7 @@
   $('#village').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (vilButton(el.dataset)) e.stopPropagation(); });
   $('#vilcv').addEventListener('click', e => { if (!UI.vil) return; const c = e.currentTarget, rc = c.getBoundingClientRect();
     vilTap((e.clientX - rc.left) * c.width / rc.width, (e.clientY - rc.top) * c.height / rc.height); });
+  document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
   document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
     else if (d.vkeep && S.village) { const a = S.village.auto[d.vkeep]; if (a) { a.keep = Math.max(0, parseInt(e.target.value, 10) || 0); save(); } } });
