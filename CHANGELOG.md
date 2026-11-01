@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.108 — 2026-11-01
+- Road limit: `D.village.roadShare` (.3): `vRoadMax(V)` = floor(lots × .3) counting the three starter roads (19 on 8×8); `vRoadWhy(V)` blocks `vRoad(true)` and disables the Lay a road button with the reason and the count. Existing villages over the limit keep their roads (can only remove). The overview and expansion text show roads used.
+- Expansion needs town folk: `D.village.expand.folk` = [20, 40, 70, 100] for the 1st to 4th expansion (checked first in `vExWhy`, before the lots-filled check). Older 12×12 villages count as one expansion done, so their next needs 40.
+
 ## v0.107.4 — 2026-11-01
 - General Store advice: `vTipsHTML(V)` (what the village is missing: empty pantry, household goods from 6 folk, no treats, no well) above the shelves, and `vWants(g)` + `vSource(id)` list up to 4 goods per shelf with none in storage (ones you've discovered first, dearest first; then the cheapest undiscovered) with where they come from (recipe station, Farm Plot, market or gathered). Not saved; no server change.
 

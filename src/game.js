@@ -3040,6 +3040,8 @@
     return { w: (mx - mn) * 16 + 32 + VPAD * 2, h: VTOP + VPAD * 2 + (W + H) * 8 + 8, ox, oy, W, H, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
       at(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2; return u >= 0 && v >= 0 && u < W && v < H ? vUnmap(V, Math.floor(u), Math.floor(v), rot) : null; } }; }
   const vLots = V => (V.x1 - V.x0) * (V.y1 - V.y0);
+  const vRoadMax = V => Math.floor(vLots(V) * VD().roadShare);
+  const vRoadWhy = V => V.roads.length >= vRoadMax(V) ? `That’s all the road a village this size can have (${V.roads.length} of ${vRoadMax(V)}). Remove one you don’t need, or expand for more room.` : '';
   const vFilled = V => { let n = 0; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) if (vBAt(V, x, y) || vRoadAt(V, x, y)) n++; return n; };
   const VH = { cottage: 34, store: 36, well: 28, bed: 10, tree: 30, bench: 14, fountain: 24 };
   function vPick(px, py) { const V = S.village, G = vGeom(V);
@@ -3081,7 +3083,7 @@
     toast(`<b>${esc(B.name)} ${B.deco ? 'placed' : 'built'}.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : ''}${B.deco || vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
     UI.html['#vtray'] = null; save(); dirty(); }
   function vRoad(on) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, k = vKey(x, y), [ex, ey] = vEntrance();
-    if (on) { if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = canPay(VD().road); if (why) { vMsg(esc(why)); SND.play('warn'); return; } pay(VD().road); V.roads.push(k); SND.play('tap'); }
+    if (on) { if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vRoadWhy(V) || canPay(VD().road); if (why) { vMsg(esc(why)); SND.play('warn'); return; } pay(VD().road); V.roads.push(k); SND.play('tap'); }
     else { if (x === ex && y === ey) return; V.roads = V.roads.filter(r => r !== k); }
     UI.html['#vtray'] = null; save(); dirty(); }
   // expanding: every lot filled, then a strip of lots on a side away from the entrance, dearer each time
@@ -3089,6 +3091,7 @@
   const vExSides = { x1: ['Lower right', 'x'], y1: ['Lower left', 'y'], y0: ['Upper right', 'y'] };
   function vExWhy(V, side) { const E = VD().expand, ax = vExSides[side][1];
     if ((ax === 'x' ? V.x1 - V.x0 : V.y1 - V.y0) + E.strip > E.max) return `That side is already as big as it gets (${E.max} lots across).`;
+    const need = E.folk[Math.min(V.ex || 0, E.folk.length - 1)]; if (V.folk < need) return `Needs ${need} town folk to open more land (you have ${V.folk}).`;
     const f = vFilled(V), n = vLots(V); if (f < n) return `Fill every lot first (${f} of ${n} have a building, road or decoration).`;
     return canPay(vExCost(V)); }
   function vExpand(side) { const V = vil(), E = VD().expand, why = vExWhy(V, side); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
@@ -3152,7 +3155,7 @@
     else if (s && road) { const ent = s[0] === ex && s[1] === ey;
       t += `<div class="rcard"><div class="row"><div class="grow1"><b>${ent ? 'The road from your farm' : 'Road'}</b><small>${ent ? 'Every building needs a road back to here.' : vReach(V).has(vKey(s[0], s[1])) ? 'Connected to the road from your farm ✓' : '<b class="warnt">Not connected</b> to the road from your farm.'}</small></div><button class="btn sm ghost" data-vdesel>Done</button></div>${ent ? '' : '<div class="rbtns"><button class="btn sm ghost" data-vunroad>Remove this road</button></div>'}</div>`; }
     else if (s) { t += `<div class="rcard"><div class="row"><div class="grow1"><b>Empty lot</b><small>Build here, or lay a road.</small></div><button class="btn sm ghost" data-vdesel>Done</button></div></div>`;
-      t += `<div class="vbuild"><div class="row"><img class="cimg" src="${ART.get('vroad:0').toDataURL()}" alt=""><div class="grow1"><b>Road</b><small>Buildings open only when they touch a road that leads back to the road from your farm.</small></div></div>${costList(VD().road)}<button class="btn ${canPay(VD().road) ? '' : 'pri'}" data-vroad ${canPay(VD().road) ? 'disabled' : ''}>Lay a road here</button></div>`;
+      t += `<div class="vbuild"><div class="row"><img class="cimg" src="${ART.get('vroad:0').toDataURL()}" alt=""><div class="grow1"><b>Road</b><small>Buildings open only when they touch a road that leads back to the road from your farm. Roads used: ${V.roads.length} of ${vRoadMax(V)}.</small></div></div>${costList(VD().road)}<button class="btn ${vRoadWhy(V) || canPay(VD().road) ? '' : 'pri'}" data-vroad ${vRoadWhy(V) || canPay(VD().road) ? 'disabled' : ''}>Lay a road here${vRoadWhy(V) ? `<small>${esc(vRoadWhy(V))}</small>` : ''}</button></div>`;
       t += Object.keys(VD().buildings).filter(k => !VD().buildings[k].deco).map(k => vCostHTML(V, k)).join('');
       t += `<span class="eyebrow">Decorations</span><p class="hint small">They need no road. Each fills a lot, so you can fill the village and expand, and adds a little to your village score.</p>` + VD().decor.map(k => vCostHTML(V, k)).join('');
       t += `<span class="eyebrow">Coming in a later update</span><p class="hint small">${VD().soon.map(([n, f]) => `${esc(n)} (needs ${f} town folk)`).join(' · ')}</p>`; }
@@ -3163,7 +3166,7 @@
       else if (vCount(V, 'cottage')) t += `<p class="hint">${V.b.some(b => b.k === 'store') ? 'Connect the General Store to a road so folk can shop.' : 'Next: build a <b>General Store</b> on an empty lot by the road.'}</p>`;
       t += `<span class="eyebrow">Village score</span><p class="hint"><b>${sc.toLocaleString()}</b>, on its own leaderboard (Menu → Leaderboard → Village). It grows with goods sold, buildings and roads, and happy town folk.</p>`;
       { const E = VD().expand, f = vFilled(V), n = vLots(V), sides = Object.keys(vExSides).filter(sd => (vExSides[sd][1] === 'x' ? V.x1 - V.x0 : V.y1 - V.y0) + E.strip <= E.max), cost = vExCost(V);
-        t += `<span class="eyebrow">More land</span><p class="hint small">Lots filled: <b>${f}</b> of <b>${n}</b>. ${sides.length ? `Once every lot has a building, road or decoration you can open a strip of ${E.strip} lots on any side except the one by the entrance.` : 'Your village is as big as it can get.'}</p>`;
+        t += `<span class="eyebrow">More land</span><p class="hint small">Lots filled: <b>${f}</b> of <b>${n}</b>. ${sides.length ? `Open a strip of ${E.strip} more lots on any side except the one by the entrance once you have <b>${E.folk[Math.min(V.ex || 0, E.folk.length - 1)]}</b> town folk and every lot has a building, road or decoration. Roads can cover at most ${Math.round(VD().roadShare * 100)}% of the lots (${V.roads.length} of ${vRoadMax(V)} used).` : 'Your village is as big as it can get.'}</p>`;
         if (sides.length) { t += costList(cost) + sides.map(sd => { const why = vExWhy(V, sd); return `<button class="btn ${why ? '' : 'pri'}" data-vexpand="${sd}" ${why ? 'disabled' : ''}>Open the ${vExSides[sd][0].toLowerCase()} side${why ? `<small>${esc(why)}</small>` : ''}</button>`; }).join(''); } }
       t += `<p class="hint small">Tap a lot, road or building to see what you can do there.</p>`; }
     setHTML('#vtray', t); const sk = String(ui.sel || '') + ':' + (sb ? sb.k : road ? 'road' : ''); if (ui.lastSel !== sk) { ui.lastSel = sk; const tr = $('#vtray'); if (tr) tr.scrollTop = 0; } }

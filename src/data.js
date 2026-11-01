@@ -274,9 +274,10 @@ window.HW_DATA = {
     decor: ['bed', 'tree', 'bench', 'fountain'],
     soon: [['Saloon', 15], ['Post Office', 25]], // shown as coming in a later update
     road: { gold: 5, stone: 1 },
-    // Expanding: once every lot is filled (building, road or decoration) the three sides away from the entrance can each grow by a strip of `strip` lots, up to `max` lots across.
+    // Expanding: needs `folk[k]` town folk for the k-th expansion, and once every lot is filled (building, road or decoration) the three sides away from the entrance can each grow by a strip of `strip` lots, up to `max` lots across.
     // Each expansion costs more than the last: base + step × (expansions so far).
-    expand: { strip: 4, max: 16, base: { gold: 2500, plank: 40, brick: 40 }, step: { gold: 2500, plank: 20, brick: 20 } },
+    roadShare: .3,                            // at most this share of the lots can be road (the three starter roads count), so the village can't just be paved
+    expand: { strip: 4, max: 16, folk: [20, 40, 70, 100], base: { gold: 2500, plank: 40, brick: 40 }, step: { gold: 2500, plank: 20, brick: 20 } },
     autoEvery: 15                              // seconds of game time between auto-supply runs
   },
 
@@ -1066,6 +1067,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.108', at: '2026-11-01 13:00', notes: ['Roads in the village are now limited: at most 30% of the lots can be road (19 on the starting 8×8), so the village can’t just be paved over. Roads you already laid stay; remove one to free up room, or expand for more.','Opening more land now also needs town folk: 20 for the first expansion, then 40, 70 and 100. As before, every lot must also be filled with a building, road or decoration.'] },
   { v: '0.107.4', at: '2026-11-01 12:30', notes: ['The General Store now gives advice. A “To keep folk happy” list says what the village is missing right now (food, household goods, treats, a well), and each shelf lists goods it would like that you have none of in storage yet, with where to get or make them.'] },
   { v: '0.107.3', at: '2026-11-01 12:00', notes: ['The leaderboard’s Top score and Best pace tables now have a Folk column showing how many town folk each farmer’s village has.'] },
   { v: '0.107.2', at: '2026-11-01 11:30', notes: ['In the village you can now hold the right mouse button and drag sideways to turn the view, like on the farm. It turns a quarter turn for every bit you drag.'] },
