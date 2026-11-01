@@ -857,6 +857,9 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 :is(#room, #village) .rbody { flex: 1; min-height: 0; display: flex; }
 :is(#room, #village) .rstage { flex: 1; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 12px; background: radial-gradient(ellipse at 50% 40%, #3a2a1c 0%, #1a110a 75%); overflow: hidden; }
 #vilcv { image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; touch-action: manipulation; }
+#village .rstage { position: relative; touch-action: none; } #vilcv { touch-action: none; cursor: grab; transform-origin: 50% 50%; }
+#vzoom { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 2; } #vzoom .ibtn { width: 40px; height: 40px; padding: 0; font-size: 20px; }
+@media (max-width: 760px) { #vzoom { flex-direction: row; left: auto; right: 8px; } #vzoom .ibtn { width: 44px; height: 44px; } }
 #village .rstage { background: radial-gradient(ellipse at 50% 40%, #2e4a2a 0%, #13200f 80%); }
 #village .rhead .sub .linkish { font-size: 13px; }
 /* village orders under the goal card */
@@ -964,12 +967,12 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   </div>
   <div id="village" hidden role="dialog" aria-label="Your village">
     <div class="rhead"><div><h2 id="vtitle">Your village</h2><p class="sub" id="vsub"></p></div><button class="close" data-vil-close aria-label="Go back to the farm">×</button></div>
-    <div class="rbody"><div class="rstage"><canvas id="vilcv" aria-label="Your village. Tap a lot, road or building."></canvas></div><div class="rtray" id="vtray"></div></div>
+    <div class="rbody"><div class="rstage"><canvas id="vilcv" aria-label="Your village. Tap a lot, road or building."></canvas><div id="vzoom"><button class="ibtn" data-vcam="in" aria-label="Zoom in">+</button><button class="ibtn" data-vcam="out" aria-label="Zoom out">−</button><button class="ibtn" data-vcam="rotl" aria-label="Rotate left" title="Rotate left (Q)">⟲</button><button class="ibtn" data-vcam="rotr" aria-label="Rotate right" title="Rotate right (E)">⟳</button><button class="ibtn" data-vcam="home" aria-label="Centre the village">⌂</button></div></div><div class="rtray" id="vtray"></div></div>
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261101-172900"></script>
-<script src="art.js?v=20261101-172900"></script>
-<script src="sound.js?v=20261101-172900"></script>
-<script src="game.js?v=20261101-172900"></script>
+<script src="data.js?v=20261101-181215"></script>
+<script src="art.js?v=20261101-181215"></script>
+<script src="sound.js?v=20261101-181215"></script>
+<script src="game.js?v=20261101-181215"></script>
 </body></html>

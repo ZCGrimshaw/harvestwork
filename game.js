@@ -3023,20 +3023,28 @@
   const vLow = V => V && vStore(V) && V.folk > 0 ? vGroups().filter(g => vNeeded(V, g) && vDaysLeft(V, g) < VD().lowDays) : [];
   /* ---------- going there: the pause question, the view and the tray ---------- */
   function vilGo() { if (!vilOn() || gateIdx() < 0) return; vil(); UI.sel = -1; UI.drawer = null; const mode = S.vilPause || 'ask';
-    UI.vil = { sel: null, msg: '', ask: mode === 'ask', pause: mode !== 'never', all: {} };
+    UI.vil = { sel: null, msg: '', ask: mode === 'ask', pause: mode !== 'never', all: {}, cam: { z: 1, px: 0, py: 0, rot: 0 } };
     $('#village').hidden = false; $('#app').classList.add('inroom'); UI.html['#vtray'] = null; SND.play('tap'); dirty(); }
   function vilClose() { if (!UI.vil) return; UI.vil = null; $('#village').hidden = true; $('#app').classList.remove('inroom'); save(); dirty(); }
   const vMsg = t => { if (UI.vil) { UI.vil.msg = t; dirty(); } };
   const VPAD = 10, VTOP = 40;
   // the village is a rectangle of lots: x from x0 to x1, y from y0 to y1 (the entrance side, x = 0, never moves)
-  function vGeom(V) { const { x0, x1, y0, y1 } = V, mn = x0 - (y1 - 1), mx = (x1 - 1) - y0, ox = VPAD + 16 - mn * 16, oy = VTOP + VPAD - (x0 + y0) * 8;
-    return { w: (mx - mn) * 16 + 32 + VPAD * 2, h: VTOP + VPAD * 2 + (x1 + y1 - x0 - y0) * 8 + 8, ox, oy, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
-      at(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2; return u >= x0 && v >= y0 && u < x1 && v < y1 ? [Math.floor(u), Math.floor(v)] : null; } }; }
+  // the camera turns the rectangle in quarter turns: vMap puts a lot where it appears on screen, vUnmap undoes it (view coordinates start at 0)
+  const vRot = () => (UI.vil && UI.vil.cam ? UI.vil.cam.rot : 0) | 0;
+  function vMap(V, x, y, rot = vRot()) { const lx = x - V.x0, ly = y - V.y0, W = V.x1 - V.x0, H = V.y1 - V.y0;
+    return rot === 1 ? [H - 1 - ly, lx] : rot === 2 ? [W - 1 - lx, H - 1 - ly] : rot === 3 ? [ly, W - 1 - lx] : [lx, ly]; }
+  function vUnmap(V, vx, vy, rot = vRot()) { const W = V.x1 - V.x0, H = V.y1 - V.y0; let lx, ly;
+    if (rot === 1) { ly = H - 1 - vx; lx = vy; } else if (rot === 2) { lx = W - 1 - vx; ly = H - 1 - vy; } else if (rot === 3) { ly = vx; lx = W - 1 - vy; } else { lx = vx; ly = vy; }
+    return [lx + V.x0, ly + V.y0]; }
+  function vGeom(V) { const rot = vRot(), W = rot & 1 ? V.y1 - V.y0 : V.x1 - V.x0, H = rot & 1 ? V.x1 - V.x0 : V.y1 - V.y0, mn = -(H - 1), mx = W - 1, ox = VPAD + 16 - mn * 16, oy = VTOP + VPAD;
+    return { w: (mx - mn) * 16 + 32 + VPAD * 2, h: VTOP + VPAD * 2 + (W + H) * 8 + 8, ox, oy, W, H, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
+      at(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2; return u >= 0 && v >= 0 && u < W && v < H ? vUnmap(V, Math.floor(u), Math.floor(v), rot) : null; } }; }
   const vLots = V => (V.x1 - V.x0) * (V.y1 - V.y0);
   const vFilled = V => { let n = 0; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) if (vBAt(V, x, y) || vRoadAt(V, x, y)) n++; return n; };
   const VH = { cottage: 34, store: 36, well: 28, bed: 10, tree: 30, bench: 14, fountain: 24 };
   function vPick(px, py) { const V = S.village, G = vGeom(V);
-    for (const b of V.b.slice().sort((a, c) => (c.x + c.y) - (a.x + a.y))) { const [cx, cy] = G.cell(b.x, b.y); if (px >= cx - 14 && px <= cx + 14 && py <= cy + 7 && py >= cy - (VH[b.k] || 24)) return [b.x, b.y]; }
+    const vs = b => { const m = vMap(V, b.x, b.y); return m[0] + m[1]; };
+    for (const b of V.b.slice().sort((a, c) => vs(c) - vs(a))) { const [cx, cy] = G.cell(...vMap(V, b.x, b.y)); if (px >= cx - 14 && px <= cx + 14 && py <= cy + 7 && py >= cy - (VH[b.k] || 24)) return [b.x, b.y]; }
     return G.at(px, py); }
   function vilTap(px, py) { if (!UI.vil || UI.vil.ask) return; const c = vPick(px, py); if (!c) { UI.vil.sel = null; dirty(); return; }
     const s = UI.vil.sel; UI.vil.sel = s && s[0] === c[0] && s[1] === c[1] ? null : c; UI.vil.msg = ''; UI.html['#vtray'] = null; dirty(); }
@@ -3044,16 +3052,18 @@
     const G = vGeom(V); if (cv2.width !== G.w || cv2.height !== G.h) { cv2.width = G.w; cv2.height = G.h; }
     let s = Math.min(st.clientWidth / G.w, st.clientHeight / G.h); s = s >= 2 ? Math.floor(s) : Math.max(.5, s);
     const cw = Math.round(G.w * s) + 'px'; if (cv2.style.width !== cw) { cv2.style.width = cw; cv2.style.height = Math.round(G.h * s) + 'px'; }
+    const cm = UI.vil && UI.vil.cam, tf = cm ? `translate(${Math.round(cm.px)}px, ${Math.round(cm.py)}px) scale(${cm.z.toFixed(3)})` : ''; if (cv2.style.transform !== tf) cv2.style.transform = tf;
     const g = cv2.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, G.w, G.h);
     const R = vReach(V), sel = UI.vil && UI.vil.sel, [ex, ey] = vEntrance(), now = performance.now() / 1000;
-    const cells = []; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) cells.push([x, y]); cells.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[0] - b[0]);
-    cells.forEach(([x, y]) => { const [cx, cy] = G.cell(x, y), road = vRoadAt(V, x, y);
+    const cells = []; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) { const m = vMap(V, x, y); cells.push([x, y, m[0], m[1]]); } cells.sort((a, b) => (a[2] + a[3]) - (b[2] + b[3]) || a[2] - b[2]);
+    cells.forEach(([x, y, vx, vy]) => { const [cx, cy] = G.cell(vx, vy), road = vRoadAt(V, x, y);
       g.drawImage(ART.get(road ? 'vroad:' + ((x * 7 + y * 3) % 4) : 'grass:' + ((x * 5 + y * 3) % 4)), cx - 16, cy - 8);
       if (road && !R.has(vKey(x, y))) { g.fillStyle = 'rgba(200,72,58,.35)'; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.fill(); } });
-    if (sel) { const [cx, cy] = G.cell(sel[0], sel[1]); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.stroke(); }
+    if (sel) { const [cx, cy] = G.cell(...vMap(V, sel[0], sel[1])); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.stroke(); }
     const objs = V.b.map(b => ({ x: b.x, y: b.y, img: ART.get(b.k === 'store' ? 'gstore' : b.k), off: !VD().buildings[b.k].deco && !vOnRoad(V, b, R) }));
     objs.push({ x: ex, y: ey, img: ART.get('vgate'), gate: true });
-    objs.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(o => { const [cx, cy] = G.cell(o.x, o.y); g.drawImage(o.img, cx - 16, cy - (o.img.height - 4));
+    objs.forEach(o => { o.m = vMap(V, o.x, o.y); });
+    objs.sort((a, b) => (a.m[0] + a.m[1]) - (b.m[0] + b.m[1])).forEach(o => { const [cx, cy] = G.cell(o.m[0], o.m[1]); g.drawImage(o.img, cx - 16, cy - (o.img.height - 4));
       if (o.off) { const by = cy - o.img.height - 2 + Math.sin(now * 4) * 1.5; g.fillStyle = '#c8483a'; g.beginPath(); g.arc(cx, by, 5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(cx - .5, by - 3, 1.5, 4); g.fillRect(cx - .5, by + 2, 1.5, 1.2); } }); }
   // the build list for an empty lot, with why each one can't be built yet
   function vBuildWhy(V, k) { const B = VD().buildings[k];
@@ -3146,6 +3156,7 @@
     if ('vilClose' in ds) vilClose();
     else if (ds.vilAsk) { const a = ds.vilAsk; if (a === 'always') S.vilPause = 'always'; if (a === 'never') S.vilPause = 'never'; ui.pause = a === 'pause' || a === 'always'; ui.ask = false; save(); }
     else if ('vilFarm' in ds) ui.pause = !ui.pause;
+    else if (ds.vcam) vCamAct(ds.vcam);
     else if ('vdesel' in ds) ui.sel = null;
     else if (ds.vbuild) vBuild(ds.vbuild);
     else if (ds.vorder) { const k = ds.vorder, L = S.vord || (S.vord = []), i = L.indexOf(k); if (i >= 0) { L.splice(i, 1); vMsg('Removed from your farm orders.'); } else { L.push(k); vMsg(`Sent to your farm orders: see it under your contract on the farm.`); } save(); }
@@ -3162,13 +3173,36 @@
     else return false;
     UI.html['#vtray'] = null; dirty(); return true; }
   $('#village').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (vilButton(el.dataset)) e.stopPropagation(); });
-  $('#vilcv').addEventListener('click', e => { if (!UI.vil) return; const c = e.currentTarget, rc = c.getBoundingClientRect();
-    vilTap((e.clientX - rc.left) * c.width / rc.width, (e.clientY - rc.top) * c.height / rc.height); });
+  // village camera: the same controls as the farm: drag to pan, wheel or pinch to zoom, + / − buttons, Q and E (or the turn buttons) to rotate, ⌂ to centre
+  const vCam = () => UI.vil && UI.vil.cam;
+  function vCamClamp(c) { const st = $('#village .rstage'), cv2 = $('#vilcv'); c.z = Math.max(.5, Math.min(4, c.z)); if (!st || !cv2) return;
+    const lx = (cv2.offsetWidth * c.z + st.clientWidth) / 2 - 40, ly = (cv2.offsetHeight * c.z + st.clientHeight) / 2 - 40; c.px = Math.max(-lx, Math.min(lx, c.px)); c.py = Math.max(-ly, Math.min(ly, c.py)); }
+  function vZoomAt(f, mx, my) { const c = vCam(), st = $('#village .rstage'); if (!c || !st) return; const r = st.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, z0 = c.z;
+    c.z = Math.max(.5, Math.min(4, c.z * f)); const k = c.z / z0; c.px = (mx - cx) - ((mx - cx) - c.px) * k; c.py = (my - cy) - ((my - cy) - c.py) * k; vCamClamp(c); }
+  function vCamAct(a) { const c = vCam(); if (!c) return; const st = $('#village .rstage'), r = st ? st.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+    if (a === 'in') vZoomAt(1.25, r.left + r.width / 2, r.top + r.height / 2); else if (a === 'out') vZoomAt(.8, r.left + r.width / 2, r.top + r.height / 2);
+    else if (a === 'home') { c.z = 1; c.px = 0; c.py = 0; } else if (a === 'rotl') c.rot = (c.rot + 3) % 4; else if (a === 'rotr') c.rot = (c.rot + 1) % 4; vCamClamp(c); UI.html['#vtray'] = null; dirty(); }
+  const vcv = $('#vilcv'), vPtrs = new Map(); let vDrag = null, vPinch = null;
+  vcv.addEventListener('pointerdown', e => { if (!UI.vil || UI.vil.ask) return; vcv.setPointerCapture(e.pointerId); vPtrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (vPtrs.size === 1) vDrag = { moved: 0 }; if (vPtrs.size === 2) { const [a, b] = [...vPtrs.values()]; vPinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; vDrag = { moved: 99 }; } });
+  vcv.addEventListener('pointermove', e => { const c = vCam(); if (!c || !vPtrs.has(e.pointerId)) return; const old = vPtrs.get(e.pointerId); vPtrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (vPinch && vPtrs.size === 2) { const [a, b] = [...vPtrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); vZoomAt(d / vPinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); vPinch.d = d; dirty(); }
+    else if (vDrag) { const dx = e.clientX - old[0], dy = e.clientY - old[1]; vDrag.moved += Math.abs(dx) + Math.abs(dy); if (vDrag.moved > 8) { c.px += dx; c.py += dy; vCamClamp(c); dirty(); } } });
+  const vEnd = e => { const was = vPtrs.has(e.pointerId); vPtrs.delete(e.pointerId); if (!was) return;
+    if (vDrag && vDrag.moved <= 8 && !vPinch && e.type === 'pointerup' && UI.vil && !UI.vil.ask) { const rc = vcv.getBoundingClientRect(); vilTap((e.clientX - rc.left) * vcv.width / rc.width, (e.clientY - rc.top) * vcv.height / rc.height); }
+    if (vPtrs.size < 2) vPinch = null; if (!vPtrs.size) vDrag = null; };
+  vcv.addEventListener('pointerup', vEnd); vcv.addEventListener('pointercancel', vEnd);
+  vcv.addEventListener('wheel', e => { if (!UI.vil) return; e.preventDefault(); vZoomAt(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); dirty(); }, { passive: false });
+  vcv.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
   document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
     else if (d.vkeep && S.village) { const a = S.village.auto[d.vkeep]; if (a) { a.keep = Math.max(0, parseInt(e.target.value, 10) || 0); save(); } } });
-  function vilKey(e) { if (!UI.vil) return; if (e.key === 'Escape') { if (UI.vil.ask) return; if (UI.vil.sel) UI.vil.sel = null; else vilClose(); dirty(); e.preventDefault(); } }
+  function vilKey(e) { if (!UI.vil) return; const k = e.key, c = vCam(), s = 40;
+    if (c && !UI.vil.ask) { if (k === 'ArrowLeft' || k === 'a') c.px += s; else if (k === 'ArrowRight' || k === 'd') c.px -= s; else if (k === 'ArrowUp' || k === 'w') c.py += s; else if (k === 'ArrowDown' || k === 's') c.py -= s;
+      else if (k === '+' || k === '=') { vCamAct('in'); e.preventDefault(); return; } else if (k === '-') { vCamAct('out'); e.preventDefault(); return; } else if (k === 'q' || k === 'Q') { vCamAct('rotl'); return; } else if (k === 'e' || k === 'E') { vCamAct('rotr'); return; }
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(k)) { vCamClamp(c); dirty(); e.preventDefault(); return; } }
+    if (e.key === 'Escape') { if (UI.vil.ask) return; if (UI.vil.sel) UI.vil.sel = null; else vilClose(); dirty(); e.preventDefault(); } }
   // the gate on the farm
   function gatePanel(i) { const V = S.village, low = vLow(V);
     let h = head('Village Gate', 'The road from your farm to your village.');
@@ -4046,7 +4080,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-172900';
+  const BUILD = '20261101-181215';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
@@ -4439,7 +4473,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil().n), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
