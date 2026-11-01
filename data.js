@@ -240,7 +240,7 @@ window.HW_DATA = {
      folk. Stocked shelves keep folk happy; happy folk bring more folk while there is room in the cottages. A short
      shortage only slows growth; folk leave only after a long one, and buildings are never lost. */
   village: {
-    n0: 8, n1: 12, entrance: [0, 3],          // lots across (8, then 12 with the second area); the road in from the farm starts at the entrance lot
+    n0: 8, entrance: [0, 3],                  // lots across at the start; the road in from the farm starts at the entrance lot on the x = 0 side
     bufferDays: 5, minShelf: 240,             // each shelf holds this many days of what the town uses (never less than minShelf points)
     takings: .6,                              // the store pays this share of each good's value into its till as it sells
     lowDays: 1,                               // warn when a shelf has less than this many days left
@@ -255,6 +255,10 @@ window.HW_DATA = {
     buildings: {
       cottage: { name: 'Cottage', cost: { gold: 250, plank: 16, brick: 8 }, houses: 4, desc: 'A home for 4 town folk. Your first one brings a couple of folk straight away.' },
       store:   { name: 'General Store', cost: { gold: 500, plank: 30, brick: 20 }, max: 1, after: 'cottage', desc: 'Where town folk shop. Keep its shelves stocked with your goods and the village grows. It pays a share of what it sells into its till.' },
+      bed:      { name: 'Flower Bed', deco: true, cost: { gold: 60, flowers: 8 }, desc: 'A bright bed of wildflowers. Fills a lot and adds a little to your village score.' },
+      tree:     { name: 'Shade Tree', deco: true, cost: { gold: 120, log: 4 }, desc: 'A leafy tree to shade the lane. Fills a lot and adds a little to your village score.' },
+      bench:    { name: 'Park Bench', deco: true, cost: { gold: 90, plank: 4 }, desc: 'A place to sit and watch the village. Fills a lot and adds a little to your village score.' },
+      fountain: { name: 'Fountain', deco: true, cost: { gold: 600, stone: 30, brick: 6 }, desc: 'A stone fountain for the village square. Fills a lot and adds a little to your village score.' },
       well:    { name: 'Village Well', cost: { gold: 300, stone: 20, plank: 4 }, max: 1, folk: 8, happy: 10, desc: 'Fresh water for everyone: town folk are happier, so the village grows a little faster.' }
     },
     // titles for the most town folk you have ever had (kept once earned); each pays a few Discovery tokens, smallest to largest
@@ -266,9 +270,13 @@ window.HW_DATA = {
       { id: 'township', name: 'Township', folk: 100, dp: 4, blurb: 'A hundred folk: a place on the map.' },
       { id: 'borough', name: 'Borough', folk: 200, dp: 6, blurb: 'Two hundred folk, the biggest a valley village gets.' }
     ],
+    // decorations: no road needed and no folk, but they fill a lot (so you can expand) and add a little score
+    decor: ['bed', 'tree', 'bench', 'fountain'],
     soon: [['Saloon', 15], ['Post Office', 25]], // shown as coming in a later update
     road: { gold: 5, stone: 1 },
-    grow: { folk: 20, cost: { gold: 2500, plank: 40, brick: 40 } }, // open the second area (8×8 → 12×12)
+    // Expanding: once every lot is filled (building, road or decoration) the three sides away from the entrance can each grow by a strip of `strip` lots, up to `max` lots across.
+    // Each expansion costs more than the last: base + step × (expansions so far).
+    expand: { strip: 4, max: 16, base: { gold: 2500, plank: 40, brick: 40 }, step: { gold: 2500, plank: 20, brick: 20 } },
     autoEvery: 15                              // seconds of game time between auto-supply runs
   },
 
@@ -1058,6 +1066,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.107', at: '2026-11-01 10:30', notes: ['Your village can grow! Once every lot has a building, road or decoration, you can open a new strip of 4 lots on any side except the one by the entrance (lower right, lower left or upper right). Each expansion costs more than the last (gold, planks and bricks), and a village can reach 16 lots across each way. This replaces the old “20 town folk” land upgrade; villages that already opened it keep their land.','New village decorations: Flower Bed, Shade Tree, Park Bench and Fountain. They need no road, fill a lot so you can expand, and add a little to your village score. Clear a decoration from its lot any time (no refund).'] },
   { v: '0.106.2', at: '2026-11-01 09:45', notes: ['Notices like “Farmhand is off to the market” now appear just below the market ticker instead of covering it.'] },
   { v: '0.106.1', at: '2026-11-01 09:30', notes: ['In the village’s build menu, each building now has a “Send to farm orders” button. It adds the building to a Village orders list under your contract on the farm, showing the gold and goods it needs and how many you have. It clears itself when you build it, or tap × to remove it.'] },
   { v: '0.106', at: '2026-10-31 14:30', notes: ['New: your own Village! Unlock the Village Charter in Discovery (after Land Surveying and the Brick Kiln), buy a Village Gate Kit at the market, place it on your farm and step through. The village is a place of its own, so it never crowds your farm.', 'It starts small: build a Cottage and a couple of town folk move in. Then build a General Store and keep its Pantry, Household and Treats shelves stocked with goods from your farm. Happy town folk bring more folk while there are homes for them, and the store pays a share of what it sells into its till. Shelves hold a few days of goods, you get a warning before they run out, and the store suggests what to bring. Folk only leave after a long shortage, and buildings are never lost.', 'Buildings need a road back to the road from your farm. More town folk unlock more: more cottages, the Village Well, Store Deliveries in Discovery (auto-supply, with how full to keep each shelf and how many to keep in storage) and, at 20 folk, more land. Saloon and Post Office are coming later.', 'When you head to town you choose whether your farm pauses (or set Always or Never in Settings → Pausing). Your village has its own score and its own Village tab on the leaderboard.','Your town folk now have a counter next to your Score on the farm (you can hide it in Settings → Look and layout) and at the top of the village. Tap it to see their mood and why, how many days of goods are on each shelf, and your titles.','Your village earns titles as more town folk move in: Outpost (2), Settlement (10), Hamlet (24), Village (50), Township (100) and Borough (200). Each is kept once earned and pays a few Discovery tokens. The Village leaderboard shows town folk and title.'] },

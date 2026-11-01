@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.107 — 2026-11-01 (branch `village-expand`, not deployed)
+- The village is a rectangle: `V.x0/x1/y0/y1` (half-open lot ranges; the entrance side x = 0 never moves), `V.ex` = expansions bought. `vGeom(V)` sizes the canvas and picks lots for any rectangle (negative y is fine). Older saves (`V.n` square) are migrated in `vil()`: x1 = y1 = n, ex = (n − 8) / 4.
+- Expanding (`D.village.expand`: strip 4, max 16, cost base + step × expansions: 2,500g/40 plank/40 brick, +2,500/+20/+20 each time): `vExpand(side)` for the lower right (x1), lower left (y1) or upper right (y0) side, only when `vFilled(V) === vLots(V)` (every lot has a building, road or decoration) and the axis stays ≤ 16 lots; replaces `vGrow` and the 20-folk gate. Overview tray shows lots filled and one button per available side.
+- Decorations (`deco: true` buildings: bed, tree, bench, fountain; `D.village.decor`): need no road, folk or order, fill a lot, score 10 each (buildings 50), can be cleared (`vRemove`, no refund). Art: `OBJ.bed/tree/bench/fountain`.
+
 ## v0.106.2 — 2026-11-01 (branch `toast-fix`, not deployed)
 - `#toasts` top is 108px (was 66px), and `toast()` moves it to just under the market ticker when the ticker wraps to a second row (mid-width windows; not on phones), so notices no longer cover the ticker.
 
