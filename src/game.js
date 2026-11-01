@@ -117,6 +117,7 @@
     S.tools = Object.assign(Object.fromEntries(Object.keys(D.tools).map(k => [k, 0])), S.tools || {});
     if (S.helper === undefined) S.helper = null;
     if (!S.log) S.log = [];
+    if (!Array.isArray(S.hist)) S.hist = [];
     if (!S.adv) S.adv = [];
     if (S.advRefill == null) S.advRefill = 0;
     if (S.advAt == null) S.advAt = Date.now() + Math.max(0, S.advRefill) * 1000; // Grand orders arrive by the real clock
@@ -391,6 +392,7 @@
     if (!noSeasons()) b += `<button class="btn" data-drawer="season">Weather and season<small>${esc(season().name)}, day ${seasonDay()} · today ${esc(wxName(wxNow()))}, tomorrow ${esc(wxName(weatherOn(S.day + 1)))}</small></button>`;
     b += `<button class="btn" data-vinfo="upd">Updates${unseen() ? ' <span class="new">new</span>' : ''}<small>What changed in the game · v${up.v}</small></button>`;
     b += `<button class="btn" data-vinfo="act">Activity<small>Everything you and your farmhand finished lately</small></button>`;
+    b += `<button class="btn" data-vinfo="hist">History<small>The notices you’ve been shown, to read again</small></button>`;
     if (P) b += `<button class="btn" data-vinfo="dq">Daily Puzzle${!P.done && P.at === 0 ? ' <span class="new">new</span>' : ''}<small>${P.done ? 'Solved today' : `Step ${P.at + 1} of ${P.steps.length}`}</small></button>`;
     const v = [NET.visitors ? `${NET.visitors.toLocaleString()} unique visitors so far` : '', NET.open ? `${NET.open} open right now` : ''].filter(Boolean).join(' · ');
     return `<div class="phead"><div><h2>Valley info</h2><p class="sub">The extras, out of the way of the farm.</p></div>${close}</div><div class="menu vinfo">${b}</div>${v ? `<p class="hint small vplayers">${v}</p>` : ''}`; }
@@ -2180,9 +2182,15 @@
 
   /* ================= UI ================= */
   function dirty() { UI.dirty = true; }
+  /* History: every notice you are shown is kept (as plain text, newest first, the last 80) so you can read it again later. */
+  const HIST_MAX = 80;
+  function histAdd(html, kind) { if (!S || UI.catchup) return; const t = String(html).replace(/<\/?(b|span|em|i)[^>]*>/g, '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, '’').replace(/\s+/g, ' ').trim();
+    if (!t) return; const h = S.hist || (S.hist = []); if (h[0] && h[0].t === t && h[0].d === S.day) return;
+    h.unshift({ d: S.day, c: clock(), k: kind, t: t.slice(0, 400) }); if (h.length > HIST_MAX) h.length = HIST_MAX; UI.histDirty = true; }
   function toast(html, kind = 'info') {
     if (kind === 'warn') SND.play('warn');
     const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = html;
+    histAdd(html, kind);
     const box = $('#toasts'); box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 3200 : 5200);
   }
@@ -3623,7 +3631,7 @@
   function renderLogs() {
     const P = dqFresh(), infoDot = unseen() || (P && !P.done && P.at === 0);
     setHTML('#logbar', `<button class="ibtn lg desk ${UI.logOpen === 'act' ? 'on' : ''}" data-log="act" aria-expanded="${UI.logOpen === 'act'}">Activity ▾</button>
-      <button class="ibtn lg desk ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button>${dqBarBtn()}
+      <button class="ibtn lg desk ${UI.logOpen === 'upd' ? 'on' : ''}" data-log="upd" aria-expanded="${UI.logOpen === 'upd'}">Updates ▾${unseen() ? '<i class="dot"></i>' : ''}</button><button class="ibtn lg desk ${UI.logOpen === 'hist' ? 'on' : ''}" data-log="hist" aria-expanded="${UI.logOpen === 'hist'}" title="The notices you have been shown">History ▾</button>${dqBarBtn()}
       <button class="ibtn infobtn ${UI.drawer === 'vinfo' || UI.logOpen ? 'on' : ''}" data-drawer="vinfo" aria-label="Valley info: weather, updates, activity" title="Valley info">Info ▾${infoDot ? '<i class="dot"></i>' : ''}</button>`);
     const el = $('#logpanel');
     if (!UI.logOpen) { el.hidden = true; UI.html['#logpanel'] = ''; return; }
@@ -3633,6 +3641,11 @@
       h = `<div class="lphead"><b>Activity</b><span class="muted">Newest first · last ${S.log.length}</span><button class="close" data-log="act" aria-label="Close">×</button></div>`;
       h += S.log.length ? `<ol class="loglist">${S.log.map(e => `<li><span class="when">Day ${e.d} ${e.c}</span><span class="what">${e.who === 'hand' ? '<em>Farmhand</em> ' : e.who === 'auto' ? '<em>Auto</em> ' : ''}${esc(e.text)}</span></li>`).join('')}</ol>`
         : `<p class="hint">Nothing yet. Everything you and your farmhand finish will be listed here.</p>`;
+    } else if (UI.logOpen === 'hist') {
+      const H = S.hist || [];
+      h = `<div class="lphead"><b>History</b><span class="muted">Notices you’ve been shown · newest first</span><button class="close" data-log="hist" aria-label="Close">×</button></div>`;
+      h += H.length ? `<ol class="loglist hist">${H.map(e => `<li class="${esc(e.k || 'info')}"><span class="when">Day ${e.d} ${esc(e.c)}</span><span class="what">${esc(e.t)}</span></li>`).join('')}</ol><button class="linkish small" data-hist-clear>Clear the history</button>`
+        : `<p class="hint">Nothing yet. Notices like monument gifts, contracts and warnings are kept here after they fade.</p>`;
     } else if (UI.logOpen === 'dq') {
       h = dqDrop();
     } else {
@@ -3713,6 +3726,7 @@
     else if ('tutReplay' in ds) { UI.drawer = null; resumeTut(); }
     else if ('tutNext' in ds) { tutAdvance(); }
     else if ('tutSkip' in ds) { endTut(true); }
+    else if ('histClear' in ds) { S.hist = []; save(); }
     else if (ds.vinfo) { UI.drawer = null; UI.logOpen = ds.vinfo; } // from the phone Info panel: close it and open that list
     else if (ds.drawer) { UI.drawer = UI.drawer === ds.drawer ? null : ds.drawer; UI.confirmReset = false;
       if (ds.where && UI.drawer === 'inv') UI.cat.invwhere = Object.keys(holdCaps()).length ? ds.where : 'all';   // the Storage counter opens on what is filling main storage
@@ -4366,7 +4380,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil().n), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil().n), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
