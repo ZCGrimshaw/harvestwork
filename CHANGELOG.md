@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.107.2 — 2026-11-01
+- Village right-drag: holding the right mouse button on `#vilcv` and dragging sideways turns the view one quarter turn per 70 px (`vDrag.rot` accumulates `acc`, calls `vCamAct('rotr'/'rotl')`), with an `ew-resize` cursor while turning; no tap is registered. The village is a flat picture, so the turn snaps in quarter turns instead of the farm's smooth turn, and there is no tilt.
+
 ## v0.107.1 — 2026-11-01 (branch `village-camera`, not deployed)
 - Village camera (`UI.vil.cam = { z, px, py, rot }`, not saved): drag pans, wheel and two-finger pinch zoom (`vZoomAt`), `#vzoom` buttons (`data-vcam`: in, out, rotl, rotr, home), keys + / − / Q / E / arrows / WASD in `vilKey`. Zoom and pan are a CSS transform on `#vilcv` (0.5×–4×, panning clamped); a tap is a pointer-up under 8 px of movement (replaces the canvas click handler).
 - Rotation turns the lot rectangle in quarter turns (`vMap` / `vUnmap`; sprites keep facing the same way). `vGeom(V)` now sizes the canvas for the rotated view; drawing, picking and the selection box go through `vMap`. The `HW.vil.geom` test hook passes the village.

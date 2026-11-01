@@ -3184,16 +3184,17 @@
     else if (a === 'home') { c.z = 1; c.px = 0; c.py = 0; } else if (a === 'rotl') c.rot = (c.rot + 3) % 4; else if (a === 'rotr') c.rot = (c.rot + 1) % 4; vCamClamp(c); UI.html['#vtray'] = null; dirty(); }
   const vcv = $('#vilcv'), vPtrs = new Map(); let vDrag = null, vPinch = null;
   vcv.addEventListener('pointerdown', e => { if (!UI.vil || UI.vil.ask) return; vcv.setPointerCapture(e.pointerId); vPtrs.set(e.pointerId, [e.clientX, e.clientY]);
-    if (vPtrs.size === 1) vDrag = { moved: 0 }; if (vPtrs.size === 2) { const [a, b] = [...vPtrs.values()]; vPinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; vDrag = { moved: 99 }; } });
+    if (vPtrs.size === 1) vDrag = { moved: 0, rot: e.pointerType === 'mouse' && e.button === 2, acc: 0 }; if (vDrag && vDrag.rot) { e.preventDefault(); vcv.classList.add('rotating'); } if (vPtrs.size === 2) { const [a, b] = [...vPtrs.values()]; vPinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; vDrag = { moved: 99 }; } });
   vcv.addEventListener('pointermove', e => { const c = vCam(); if (!c || !vPtrs.has(e.pointerId)) return; const old = vPtrs.get(e.pointerId); vPtrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (vPinch && vPtrs.size === 2) { const [a, b] = [...vPtrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); vZoomAt(d / vPinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); vPinch.d = d; dirty(); }
+    else if (vDrag && vDrag.rot) { vDrag.acc += e.clientX - old[0]; vDrag.moved += 99; const STEP = 70; while (Math.abs(vDrag.acc) >= STEP) { const d = Math.sign(vDrag.acc); vDrag.acc -= d * STEP; vCamAct(d > 0 ? 'rotr' : 'rotl'); } } /* right-drag turns the village a quarter turn for every 70 px, like the farm's right-drag */
     else if (vDrag) { const dx = e.clientX - old[0], dy = e.clientY - old[1]; vDrag.moved += Math.abs(dx) + Math.abs(dy); if (vDrag.moved > 8) { c.px += dx; c.py += dy; vCamClamp(c); dirty(); } } });
   const vEnd = e => { const was = vPtrs.has(e.pointerId); vPtrs.delete(e.pointerId); if (!was) return;
     if (vDrag && vDrag.moved <= 8 && !vPinch && e.type === 'pointerup' && UI.vil && !UI.vil.ask) { const rc = vcv.getBoundingClientRect(); vilTap((e.clientX - rc.left) * vcv.width / rc.width, (e.clientY - rc.top) * vcv.height / rc.height); }
-    if (vPtrs.size < 2) vPinch = null; if (!vPtrs.size) vDrag = null; };
+    if (vPtrs.size < 2) vPinch = null; if (!vPtrs.size) { vDrag = null; vcv.classList.remove('rotating'); } };
   vcv.addEventListener('pointerup', vEnd); vcv.addEventListener('pointercancel', vEnd);
   vcv.addEventListener('wheel', e => { if (!UI.vil) return; e.preventDefault(); vZoomAt(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); dirty(); }, { passive: false });
-  vcv.addEventListener('contextmenu', e => e.preventDefault());
+  vcv.addEventListener('contextmenu', e => e.preventDefault()); vcv.addEventListener('auxclick', e => e.preventDefault());
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
   document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
@@ -4080,7 +4081,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-181637';
+  const BUILD = '20261101-181911';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
