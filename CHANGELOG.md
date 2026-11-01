@@ -12,6 +12,9 @@ Each release lists the commit that holds it. To see an old version on GitHub, op
 - Pause prompt: going to town asks (Pause / Keep running / Always / Never), saved as `S.vilPause` and set in Settings → Pausing; the village header toggles it per visit (`UI.vil.pause`, checked in `paused()`).
 - Village score `vScore()` (goods sold / 10 + 50 per building + 2 per extra road + folk × happiness × 25) is kept out of the farm score. Leaderboard gets a Village tab; the client sends `submit_village` with the farm score. Server SQL to apply at deploy (tested in a rolled-back transaction): `farm_scores.village` and `village_at` columns, `submit_village(farm, player, score)` (rate limited, capped growth), and `get_leaderboard` returning `village`, `vme`, `villages`. Until it is applied the tab shows "No village scores yet".
 
+## v0.105.2 — 2026-11-01 (branch `logpanel-fix`, not deployed)
+- `#logpanel` max-height is now `calc(100% - 164px)` (was `- 150px`) with `box-sizing: border-box`, so on a computer its top edge stops at the goal card's top and no longer overlaps the market ticker.
+
 ## v0.105.1 — 2026-11-01 (built on branch `notice-history`, not deployed)
 - Toasts on a computer sit at `left: 326px` (just right of the goal card) instead of centred; phone and landscape layouts are unchanged.
 - Notice history: `toast()` calls `histAdd()`, which keeps the last 80 notices as plain text (`S.hist`, newest first: day, clock, kind, text; tags stripped so an imported save can't inject markup; consecutive repeats on the same day are skipped, nothing is recorded during catch-up). A History button joins Activity and Updates in `#logbar` and the phone Info panel, with a Clear link. `HW.say(html, kind)` is a test hook for toasts.
