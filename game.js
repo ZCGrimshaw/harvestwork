@@ -386,6 +386,20 @@
     return `<button class="ibtn lg desk ${UI.logOpen === 'dq' ? 'on' : ''}" data-log="dq" aria-expanded="${UI.logOpen === 'dq'}">Puzzle ${P.done ? '✓' : `${P.at + 1}/${P.steps.length}`} ▾${fresh ? '<i class="dot"></i>' : ''}</button>`; }
   // Phones: the Activity / Updates / Puzzle row collapses into one Info button; this is its panel
   function dqFresh() { if (!S || S.race || S.goal < D.goals.length) return null; const P = dqToday(); return P ? P : null; }
+  // the town folk panel: the big number, their mood and why, the shelves, the score and the titles
+  function folkDrawer() { const V = S.village, close = `<button class="close" data-close-drawer aria-label="Close">×</button>`;
+    if (!V || !V.b.length) return `<div class="phead"><div><h2>Town folk</h2><p class="sub">Build a Cottage in your village and families will move in.</p></div>${close}</div>`;
+    const m = vMood(V), room = vHouses(V), t = vTitleFor(V.peak || 0), nx = vNextTitle(V), mood = Math.round(V.h), st = vStore(V);
+    let h = `<div class="phead"><div><h2>Town folk</h2><p class="sub">${t ? `Your village is a <b>${esc(t.name)}</b>.` : 'Your village is just starting out.'}</p></div>${close}</div>`;
+    h += `<div class="wgrid folkgrid">${[[V.folk, 'Town folk now'], [V.peak || 0, 'Most ever'], [room, 'Homes'], [vScore(V).toLocaleString(), 'Village score']].map(([a, b]) => `<div class="wstat"><b>${a}</b><span>${b}</span></div>`).join('')}</div>`;
+    h += `<p class="hint"><b>${vMoodName(V.h)}, ${mood}%</b> · ${esc(m.why)}${V.folk ? '' : ''}</p><div class="vbar"><i style="width:${mood}%"></i></div>`;
+    if (nx) h += `<p class="hint small">Next title: <b>${esc(nx.name)}</b> at ${nx.folk} town folk (${Math.max(0, nx.folk - (V.peak || 0))} to go) · +${nx.dp} Discovery.</p>`;
+    if (V.folk && st) h += `<span class="eyebrow">Shelves</span><div class="fshelves">${vGroups().filter(g => vNeeded(V, g)).map(g => { const d = vDaysLeft(V, g); const days = d === Infinity ? '' : d < .1 ? 'empty' : d < 1 ? 'under a day' : Math.floor(d) + ' day' + (Math.floor(d) === 1 ? '' : 's');
+      return `<div class="fshelf"><b>${esc(g.name)}</b><span class="${d < VD().lowDays ? 'warnt' : ''}">${days} left</span></div>`; }).join('')}</div>`;
+    else if (V.folk) h += `<p class="hint warnt">No General Store on a road, so nobody can shop.</p>`;
+    h += `<span class="eyebrow">Titles</span><div class="vtitles">${vTitleList().map((x, k) => { const own = k < (V.ti || 0); return `<div class="vtitle ${own ? 'own' : ''}"><b>${own ? '✓ ' : ''}${esc(x.name)}</b><span>${x.folk} town folk · +${x.dp} Discovery</span><small>${own ? esc(x.blurb) : 'Not yet earned.'}</small></div>`; }).join('')}</div>`;
+    h += `<div class="menu">${unlocked('village') && gateIdx() >= 0 && !UI.vil ? '<button class="btn pri" data-vil-go>Go to the village</button>' : ''}<button class="btn ghost" data-close-drawer>Close</button></div>`;
+    return h; }
   function vinfoDrawer() {
     const close = `<button class="close" data-close-drawer aria-label="Close">×</button>`, P = dqFresh(), up = latest();
     let b = '';
@@ -506,7 +520,7 @@
   const LB_MIN_DAYS = 7;
   function sendScore() { if (!NET.ok || !S.fid || !online() || !UI.hadSave) return; // not for the placeholder farm shown before someone starts one
     rpc('submit_score', { p_farm: S.fid, p_player: PLAYER, p_name: S.name || 'Farmer', p_show: S.lbShow !== false, p_score: Math.floor(S.score), p_days: S.day }).catch(() => {});
-    if (S.village && S.village.b.length && !S.race) rpc('submit_village', { p_farm: S.fid, p_player: PLAYER, p_score: vScore() }).catch(() => {}); }
+    if (S.village && S.village.b.length && !S.race) rpc('submit_village', { p_farm: S.fid, p_player: PLAYER, p_score: vScore(), p_folk: S.village.folk | 0, p_peak: S.village.peak | 0 }).catch(() => {}); }
   // A locked-in name belongs to this device's player and is unique across the valley.
   NET.myName = (() => { try { return localStorage.getItem('harvestworks.lbname') || null; } catch (e) { return null; } })();
   const setMyName = n => { NET.myName = n; try { n ? localStorage.setItem('harvestworks.lbname', n) : localStorage.removeItem('harvestworks.lbname'); } catch (e) { } };
@@ -2279,6 +2293,7 @@
       <div class="stat" title="Gold"><span class="coin"></span><b>${S.gold}</b></div>
       ${S.loan ? `<button class="stat loan" data-repay title="Loan from the valley bank. Paid back automatically at ${LOAN.auto}g, or tap to repay now"><span class="lbl">Loan</span><b>${S.loan.owed}g</b></button>` : ''}
       <div class="stat score" title="Score"><span class="lbl">Score</span><b>${S.score}</b></div>
+      ${S.folkChip !== false && vFolkChip() ? folkBtn() : ''}
       <button class="stat disc ${canUnlock ? 'ping' : ''}" data-drawer="disc" title="Spend Discovery"><span class="lbl"><span class="lg">Discovery</span><span class="sm">DP</span></span><b>${S.dp}</b></button>
       <button class="stat store" data-drawer="inv" data-where="main" title="Storage: tap to see what is in main storage"><span class="lbl"><span class="lg">Storage</span><span class="sm">Store</span></span><b>${used()}/${cap()}</b></button>
       ${noSeasons() ? `<div class="stat time"><span class="lbl"><span class="lg">Day ${S.day}</span><span class="sm">D${S.day}</span></span><b>${clock()}</b></div>`
@@ -2919,7 +2934,7 @@
   const vilOn = () => !!S && !S.race && unlocked('village');
   const gateIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'vgate');
   const vFolk = () => (S && S.village ? S.village.folk | 0 : 0);
-  function vil() { if (!S.village) S.village = { n: VD().n0, roads: [0, 1, 2].map(k => vKey(VD().entrance[0] + k, VD().entrance[1])), b: [], folk: 0, h: 70, sh: {}, till: 0, used: 0, arr: 0, lv: 0, auto: {}, lvl: {}, warn: {}, peak: 0, autoT: 0 };
+  function vil() { if (!S.village) S.village = { n: VD().n0, roads: [0, 1, 2].map(k => vKey(VD().entrance[0] + k, VD().entrance[1])), b: [], folk: 0, h: 70, sh: {}, till: 0, used: 0, arr: 0, lv: 0, auto: {}, lvl: {}, warn: {}, peak: 0, ti: 0, autoT: 0 };
     const V = S.village; ['sh', 'auto', 'lvl', 'warn'].forEach(k => { if (!V[k] || typeof V[k] !== 'object') V[k] = {}; }); if (!Array.isArray(V.roads)) V.roads = [VD().entrance.join(',')]; if (!Array.isArray(V.b)) V.b = []; return V; }
   const vGroups = () => VD().groups;
   let VGOF = null; const vGroupOf = id => { if (!VGOF) { VGOF = {}; vGroups().forEach(g => g.goods.forEach(k => { VGOF[k] = g.id; })); } return VGOF[id]; };
@@ -2950,6 +2965,17 @@
     if (V.sh.treats > 0) { t += 20; why.push('treats'); }
     if (well) { t += VD().buildings.well.happy; why.push('fresh water from the well'); }
     return { t: Math.max(0, Math.min(100, t)), why: 'Happiness comes from ' + why.join(', ').replace(', but', ' but') + '.' }; }
+  // titles: the best one you have earned (by the most folk you ever had), and the next one to aim for
+  const vTitleList = () => VD().titles || [];
+  const vTitleFor = n => { let t = null; vTitleList().forEach(x => { if (n >= x.folk) t = x; }); return t; };
+  const vNextTitle = V => vTitleList().find(x => (V.peak || 0) < x.folk);
+  function vAwardTitles(V) { const L = vTitleList(); let got = 0;
+    while ((V.ti || 0) < L.length && (V.peak || 0) >= L[V.ti || 0].folk) { const t = L[V.ti || 0]; V.ti = (V.ti || 0) + 1; got++; S.dp += t.dp;
+      toast(`<b>Your village is now a ${esc(t.name)}</b> · ${V.peak} town folk · +${t.dp} Discovery<br>${esc(t.blurb)}`, 'disc'); logAct(`Village title earned: ${t.name} (${t.dp} Discovery).`, 'auto'); }
+    return got; }
+  const vFolkChip = () => { const V = S.village; return !!(V && V.b.length && !S.race && unlocked('village')); };
+  const folkBtn = () => { const V = S.village, t = vTitleFor(V.peak || 0);
+    return `<button class="stat folk" data-drawer="folk" title="Your town folk: tap for their mood, shelves and titles"><span class="lbl"><span class="lg">${t ? esc(t.name) : 'Town folk'}</span><span class="sm">Folk</span></span><b>${V.folk}</b></button>`; };
   const vMoodName = h => h >= 80 ? 'Cheerful' : h >= 60 ? 'Content' : h >= 35 ? 'Grumbling' : h >= 20 ? 'Unhappy' : 'Miserable';
   // the village score: goods sold (a point per 10), buildings and roads, and how many folk live here, weighted by how happy they are
   function vScore(V) { V = V || S.village; if (!V) return 0; return Math.floor((V.used || 0) / 10 + V.b.length * 50 + Math.max(0, V.roads.length - 3) * 2 + V.folk * (V.h / 100) * 25); }
@@ -2977,7 +3003,7 @@
       V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * VD().takings; });
     const m = vMood(V); V.h += Math.sign(m.t - V.h) * Math.min(Math.abs(m.t - V.h), 15 * dd);
     const room = vHouses(V);
-    if (st && V.h >= 60 && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + V.h / 100); if (V.arr >= 1) { V.arr = 0; V.folk++; V.peak = Math.max(V.peak || 0, V.folk); logAct(`A new family moved into your village (${V.folk} town folk).`, 'auto'); UI.vDirty = true; } }
+    if (st && V.h >= 60 && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + V.h / 100); if (V.arr >= 1) { V.arr = 0; V.folk++; V.peak = Math.max(V.peak || 0, V.folk); logAct(`A new family moved into your village (${V.folk} town folk).`, 'auto'); vAwardTitles(V); UI.vDirty = true; } }
     if ((V.h < 20 || V.folk > room) && V.folk > 0) { V.lv = (V.lv || 0) + dd; if (V.lv >= 2) { V.lv = 0; V.folk--; toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
     else V.lv = 0;
     if (st && V.folk > 0 && V.fed) vGroups().forEach(g => { if (!vNeeded(V, g)) return; const d = vDaysLeft(V, g);
@@ -3028,7 +3054,7 @@
   function vBuild(k) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, B = VD().buildings[k];
     if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vBuildWhy(V, k); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
     pay(B.cost); const first = k === 'cottage' && !vCount(V, 'cottage'); V.b.push({ k, x, y });
-    if (first) { V.folk = Math.max(V.folk, 2); V.h = 70; V.peak = Math.max(V.peak || 0, V.folk); }
+    if (first) { V.folk = Math.max(V.folk, 2); V.h = 70; V.peak = Math.max(V.peak || 0, V.folk); vAwardTitles(V); }
     SND.play('contract'); logAct(`Built a ${B.name} in your village.`, 'you');
     toast(`<b>${esc(B.name)} built.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : ''}${vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
     UI.html['#vtray'] = null; save(); dirty(); }
@@ -3060,7 +3086,7 @@
   function vCostHTML(V, k) { const B = VD().buildings[k], why = vBuildWhy(V, k), lock = why;
     return `<div class="vbuild"><div class="row">${`<img class="cimg" src="${ART.get(k === 'store' ? 'gstore' : k).toDataURL()}" alt="">`}<div class="grow1"><b>${esc(B.name)}</b><small>${esc(B.desc)}</small></div></div>${costList(B.cost)}<button class="btn ${why ? '' : 'pri'}" data-vbuild="${k}" ${why ? 'disabled' : ''}>Build the ${esc(B.name)}${why ? `<small>${esc(lock)}</small>` : ''}</button></div>`; }
   function renderVillage() { if (!UI.vil) return; const V = vil(), ui = UI.vil, m = vMood(V), room = vHouses(V), sc = vScore(V);
-    setHTML('#vsub', `${V.folk ? `${V.folk} town folk${room ? ` (homes for ${room})` : ''} · ${vMoodName(V.h)} ${Math.round(V.h)}%` : 'No town folk yet'} · village score ${sc.toLocaleString()} · <button class="linkish" data-vil-farm>${ui.pause ? 'Farm paused: let it run' : 'Farm running: pause it'}</button>`);
+    setHTML('#vsub', `${V.folk ? `<button class="linkish bigfolk" data-drawer="folk"><b>${V.folk}</b> town folk${vTitleFor(V.peak || 0) ? ' · ' + esc(vTitleFor(V.peak || 0).name) : ''}</button>${room ? ` (homes for ${room})` : ''} · ${vMoodName(V.h)} ${Math.round(V.h)}%` : 'No town folk yet'} · village score ${sc.toLocaleString()} · <button class="linkish" data-vil-farm>${ui.pause ? 'Farm paused: let it run' : 'Farm running: pause it'}</button>`);
     let t = '';
     if (ui.ask) { t = `<div class="rcard"><b>Pause your farm while you’re in town?</b><p class="hint small">Paused, nothing on the farm (or in the village) moves on until you go back. Running, your farm keeps working, but finished goods wait for you to collect them.</p>
       <div class="rbtns"><button class="btn sm pri" data-vil-ask="pause">Pause it</button><button class="btn sm" data-vil-ask="run">Keep it running</button></div>
@@ -3369,6 +3395,8 @@
       h = `<div class="phead"><div><h2>Valley Monument</h2><p class="sub">Built together by every online farm in the valley.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>` + monHTML('drawer');
     } else if (UI.drawer === 'season') {
       h = seasonDrawer();
+    } else if (UI.drawer === 'folk') {
+      h = folkDrawer();
     } else if (UI.drawer === 'vinfo') {
       h = vinfoDrawer();
     } else if (UI.drawer === 'manual') {
@@ -3434,7 +3462,7 @@
         h += `<p class="hint">${me ? `You’re <b>#${me.rank}</b> of ${L.farms} by score${me.pace_rank ? ` and <b>#${me.pace_rank}</b> of ${L.paced} by pace` : `; you join the pace board on day ${LB_MIN_DAYS}`}.` : 'Your farm will appear after its next day starts.'}</p>`;
         h += `<div class="tabs">${[['top', 'Top score'], ['pace', 'Best pace'], ['village', 'Village']].map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-lbtab="${k}">${n}</button>`).join('')}</div>`;
         const rows = (L[tab] || []);
-        if (tab === 'village') h += `<p class="hint small">Village scores have their own board: goods your General Store sold, buildings and roads, and happy town folk.${S.village && S.village.b.length ? ` Yours is <b>${fmt(vScore())}</b>${L.vme && L.vme.rank ? `, <b>#${L.vme.rank}</b> of ${L.villages}` : ''}.` : ' Found a village (Village Charter in Discovery) to join it.'}</p>` + (rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Village score</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.village)}</td></tr>`).join('')}</tbody></table>` : `<p class="hint">No village scores yet.</p>`);
+        if (tab === 'village') h += `<p class="hint small">Village scores have their own board: goods your General Store sold, buildings and roads, and happy town folk.${S.village && S.village.b.length ? ` Yours is <b>${fmt(vScore())}</b>${L.vme && L.vme.rank ? `, <b>#${L.vme.rank}</b> of ${L.villages}` : ''}.` : ' Found a village (Village Charter in Discovery) to join it.'}</p>` + (rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Town folk</th><th>Village score</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${r.village_folk ? fmt(r.village_folk) : ''}${vTitleFor(r.village_peak || 0) ? ' <span class="muted">' + esc(vTitleFor(r.village_peak).name) + '</span>' : ''}</td><td>${fmt(r.village)}</td></tr>`).join('')}</tbody></table>` : `<p class="hint">No village scores yet.</p>`);
         else
         h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
           : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
@@ -3466,6 +3494,7 @@
         tgl('snaprot', S.snapRot !== false, 'Snap rotation to straight views', 'farm', 'snap rotate turn map straight view graphics', S.snapRot !== false ? 'The map glides to the nearest straight view when you stop turning.' : 'The map stays wherever you leave it.', 'Big buildings like your house and the monuments only line up with the grid in the four straight views, so snapping keeps them tidy.', 'snap') +
         tgl('labelsset', UI.labels, `Show building names ${isTouch() ? '' : '<span class="muted">(X)</span>'}`, 'session', 'labels names buildings text graphics', '', '', '') +
         tgl('counts', countsOn(), 'Show players online and unique visitors', 'device', 'counters players online visitors', 'The two counters by the Menu button.', 'Always shown on computers; off by default on phones to save room. They’re also in the Info panel.', 'counts') +
+        (unlocked('village') ? tgl('folkchip', S.folkChip !== false, 'Show my town folk count next to Score', 'farm', 'town folk count village counter score top bar', 'The big town folk number in the top bar. It always shows inside the village.', '', '') : '') +
         (online() ? tgl('tick-toggle', S.tick && S.tick.open, 'Show the valley market ticker at the top', 'farm', 'ticker market trades scrolling top bar', 'The scrolling list of recent trades.', 'Hiding it gives the map more room, especially on a phone.', 'tick') : ''));
       const alerts = sec('set-alerts', 'Alerts and reports', `#1 alert ${onoff(S.wkAlert !== false)} · weekly report ${onoff(S.weekly !== false)}`, 'farm',
         tgl('wkalert', S.wkAlert !== false, 'Tell me when someone takes #1 from me in the weekly challenge', '', 'notification alert weekly challenge first place leaderboard', 'One notice each time you lose first place.', 'If you win #1 back and lose it again, you get one more.', 'wk') +
@@ -3789,6 +3818,7 @@
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
+    else if ('folkchip' in ds) { S.folkChip = S.folkChip === false; save(); }
     else if ('housepause' in ds) { S.housePause = S.housePause === false; save(); }
     else if (ds.vilpause) { S.vilPause = ds.vilpause; save(); }
     else if ('snaprot' in ds) { S.snapRot = S.snapRot === false; if (S.snapRot !== false) UI.rotAt = performance.now(); save(); }
@@ -3987,7 +4017,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-165141';
+  const BUILD = '20261101-165802';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
