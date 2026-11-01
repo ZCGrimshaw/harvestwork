@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.107.4 — 2026-11-01
+- General Store advice: `vTipsHTML(V)` (what the village is missing: empty pantry, household goods from 6 folk, no treats, no well) above the shelves, and `vWants(g)` + `vSource(id)` list up to 4 goods per shelf with none in storage (ones you've discovered first, dearest first; then the cheapest undiscovered) with where they come from (recipe station, Farm Plot, market or gathered). Not saved; no server change.
+
 ## v0.107.3 — 2026-11-01
 - Leaderboard: Top score and Best pace rows show `village_folk` in a Folk column (– if none). Server: `get_leaderboard` returns `village_folk` on the `top` and `pace` lists (migration `leaderboard_folk_on_all_boards`; additive, older clients ignore it). The Village tab already showed town folk and title.
 

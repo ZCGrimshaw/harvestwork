@@ -3102,11 +3102,26 @@
   function vShelfHTML(V, g) { const have = V.sh[g.id] || 0, cap = vCap(V, g), d = vDaysLeft(V, g), need = vNeeded(V, g), low = need && d < VD().lowDays;
     const state = g.need == null ? (have > 0 ? `Stocked · ${vDaysTxt(d)}` : 'Optional: stocked treats make folk happier') : !need ? `Needed from ${g.need} town folk` : have > 0 ? vDaysTxt(d) : 'Empty!';
     return `<div class="vshelf ${low ? 'low' : ''}"><div class="vsh"><b>${esc(g.name)}</b><small>${esc(g.what)}</small><span>${low ? '⚠ ' : ''}${esc(state)}</span></div>${vBar(have / cap, low)}</div>`; }
+  // where a good comes from, so the store can suggest things you don't have handy yet
+  function vSource(id) { const rid = Object.keys(D.recipes).find(r => D.recipes[r].out && D.recipes[r].out[id] && D.buildings[D.recipes[r].station]);
+    if (rid) return `made at the ${D.buildings[D.recipes[rid].station].name}`;
+    if (Object.values(D.crops).some(c => c.item === id)) return 'grown on a Farm Plot';
+    return D.items[id].buy ? 'sold at the market' : 'gathered or fished'; }
+  // goods this shelf takes that aren't in storage right now: ones you can already make first (dearest first), then the cheapest ones you haven't discovered
+  const vWants = g => g.goods.filter(id => D.items[id] && count(id) === 0).sort((a, b) => (S.disc.includes(b) - S.disc.includes(a)) || (S.disc.includes(a) ? (D.items[b].value || 0) - (D.items[a].value || 0) : (D.items[a].value || 0) - (D.items[b].value || 0)));
+  // plain advice for keeping the town happy, from what the village is missing right now
+  function vTipsHTML(V) { const [pantry, house, treats] = vGroups(), tips = [];
+    if (!(V.sh.pantry > 0)) tips.push(`<b>Food first.</b> An empty Pantry makes folk miserable and they leave. Bread, cheese and vegetables all work.`);
+    if (V.folk >= house.need - 1 && !(V.sh.household > 0)) tips.push(`<b>Household goods.</b> From ${house.need} town folk they want baskets, pots and cloth, or they grow unhappy (−30%).`);
+    if (!(V.sh.treats > 0)) tips.push(`<b>Treats.</b> A few jars of jam, honey or cider keep folk happier (+20%) and make the village grow faster.`);
+    if (!V.b.some(b => b.k === 'well') && V.folk >= (VD().buildings.well.folk || 0) - 2) tips.push(`<b>A Village Well</b> makes everyone happier (+${VD().buildings.well.happy}%).`);
+    return tips.length ? `<span class="eyebrow">To keep folk happy</span><ul class="vtips">${tips.map(t => `<li>${t}</li>`).join('')}</ul>` : `<p class="hint small">Everyone is well supplied. Keep the shelves topped up.</p>`; }
   function vGiveHTML(V, g) { const ui = UI.vil, all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
     let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}`;
     if (list.length) h += `<p class="hint small">${all ? 'Everything you have for this shelf:' : 'Suggested: what you have most of.'}</p><div class="rlist">` + list.map(id => { const mx = vMax(V, g, id), on = V.auto[id] && V.auto[id].on;
       return `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPts(id, 0)} each · have ${count(id)}${mx ? '' : ' · shelf full'}</small></span>${mx ? `<input type="number" class="qty" data-vq="${id}" min="1" max="${mx}" value="${Math.max(1, Math.min(mx, (UI.vq || {})[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)}"><button class="btn sm pri" data-vgive="${id}">Give</button>` : ''}${auto ? `<button class="autog ${on ? 'on' : ''}" data-vauto="${id}" aria-pressed="${!!on}">${on ? 'Auto ✓' : 'Auto'}</button>` : ''}</div>`; }).join('') + `</div>`;
     else { const k = vKnown(g).slice(0, 6).map(id => D.items[id].name); h += `<p class="hint small">You have nothing for this shelf in storage. ${k.length ? `It takes goods like ${esc(k.join(', '))}.` : `It takes ${esc(g.what)}.`}</p>`; }
+    { const w = vWants(g).slice(0, all ? 12 : 4); if (w.length && vNeeded(V, g) || w.length && g.need == null) h += `<span class="optlabel">Not in storage yet</span><div class="rlist vwant">${w.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPts(id, 0)} each · ${esc(vSource(id))}${S.disc.includes(id) ? '' : ' · not discovered yet'}</small></span></div>`).join('')}</div>`; }
     if (more > 0 || all) h += `<button class="linkish small" data-vall="${g.id}">${all ? 'Show fewer' : `Show all ${list.length + more}`}</button>`;
     return h + `</div>`; }
   function vAutoHTML(V) { if (!unlocked('villageauto')) return `<span class="eyebrow">Auto-supply</span><p class="hint small">Unlock <b>Store Deliveries</b> in Discovery (needs ${(D.discoveries.find(d => d.id === 'villageauto') || {}).folk || 12} town folk) and goods go to the store by themselves.</p>`;
@@ -3133,7 +3148,7 @@
       else if (sb.k === 'well') t += `<p class="hint">${esc(B.desc)}</p>`;
       else if (sb.k === 'store') { t += `<div class="vtill"><span>Takings in the till: <b>${Math.floor(V.till || 0).toLocaleString()}g</b></span><button class="btn sm ${V.till >= 1 ? 'pri' : ''}" data-vcollect ${V.till >= 1 ? '' : 'disabled'}>Collect</button></div>`;
         if (!V.folk) t += `<p class="hint small">No town folk yet: a cottage on the road brings them.</p>`;
-        t += vGroups().map(g => vGiveHTML(V, g)).join('') + vAutoHTML(V); } }
+        t += vTipsHTML(V) + vGroups().map(g => vGiveHTML(V, g)).join('') + vAutoHTML(V); } }
     else if (s && road) { const ent = s[0] === ex && s[1] === ey;
       t += `<div class="rcard"><div class="row"><div class="grow1"><b>${ent ? 'The road from your farm' : 'Road'}</b><small>${ent ? 'Every building needs a road back to here.' : vReach(V).has(vKey(s[0], s[1])) ? 'Connected to the road from your farm ✓' : '<b class="warnt">Not connected</b> to the road from your farm.'}</small></div><button class="btn sm ghost" data-vdesel>Done</button></div>${ent ? '' : '<div class="rbtns"><button class="btn sm ghost" data-vunroad>Remove this road</button></div>'}</div>`; }
     else if (s) { t += `<div class="rcard"><div class="row"><div class="grow1"><b>Empty lot</b><small>Build here, or lay a road.</small></div><button class="btn sm ghost" data-vdesel>Done</button></div></div>`;
@@ -4081,7 +4096,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-182459';
+  const BUILD = '20261101-182636';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

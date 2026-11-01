@@ -1066,6 +1066,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.107.4', at: '2026-11-01 12:30', notes: ['The General Store now gives advice. A “To keep folk happy” list says what the village is missing right now (food, household goods, treats, a well), and each shelf lists goods it would like that you have none of in storage yet, with where to get or make them.'] },
   { v: '0.107.3', at: '2026-11-01 12:00', notes: ['The leaderboard’s Top score and Best pace tables now have a Folk column showing how many town folk each farmer’s village has.'] },
   { v: '0.107.2', at: '2026-11-01 11:30', notes: ['In the village you can now hold the right mouse button and drag sideways to turn the view, like on the farm. It turns a quarter turn for every bit you drag.'] },
   { v: '0.107.1', at: '2026-11-01 11:00', notes: ['The village now has the same camera controls as the farm: drag to move around, scroll wheel or pinch to zoom, + and − buttons, turn the village left or right (buttons, or Q and E), and ⌂ to centre it. Arrow keys or WASD also move the view.'] },
