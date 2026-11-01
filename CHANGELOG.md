@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.107.3 — 2026-11-01
+- Leaderboard: Top score and Best pace rows show `village_folk` in a Folk column (– if none). Server: `get_leaderboard` returns `village_folk` on the `top` and `pace` lists (migration `leaderboard_folk_on_all_boards`; additive, older clients ignore it). The Village tab already showed town folk and title.
+
 ## v0.107.2 — 2026-11-01
 - Village right-drag: holding the right mouse button on `#vilcv` and dragging sideways turns the view one quarter turn per 70 px (`vDrag.rot` accumulates `acc`, calls `vCamAct('rotr'/'rotl')`), with an `ew-resize` cursor while turning; no tap is registered. The village is a flat picture, so the turn snaps in quarter turns instead of the farm's smooth turn, and there is no tilt.
 

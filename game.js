@@ -3528,7 +3528,7 @@
         const rows = (L[tab] || []);
         if (tab === 'village') h += `<p class="hint small">Village scores have their own board: goods your General Store sold, buildings and roads, and happy town folk.${S.village && S.village.b.length ? ` Yours is <b>${fmt(vScore())}</b>${L.vme && L.vme.rank ? `, <b>#${L.vme.rank}</b> of ${L.villages}` : ''}.` : ' Found a village (Village Charter in Discovery) to join it.'}</p>` + (rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Town folk</th><th>Village score</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${r.village_folk ? fmt(r.village_folk) : ''}${vTitleFor(r.village_peak || 0) ? ' <span class="muted">' + esc(vTitleFor(r.village_peak).name) + '</span>' : ''}</td><td>${fmt(r.village)}</td></tr>`).join('')}</tbody></table>` : `<p class="hint">No village scores yet.</p>`);
         else
-        h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td></tr>`).join('')}</tbody></table>`
+        h += rows.length ? `<table class="lbt"><thead><tr><th>#</th><th>Farmer</th><th>Score</th><th>Days</th><th>Pace</th><th title="Town folk in their village">Folk</th></tr></thead><tbody>${rows.map((r, k) => `<tr class="${r.me ? 'me' : ''}"><td>${k + 1}</td><td>${esc(r.name)}${r.locked ? ' <span class="lock" title="Locked-in name">✓</span>' : ''}${r.me ? ' <span class="you">you</span>' : ''}</td><td>${fmt(r.score)}</td><td>${r.days}</td><td>${r.pace}</td><td>${r.village_folk ? fmt(r.village_folk) : '–'}</td></tr>`).join('')}</tbody></table>`
           : `<p class="hint">${tab === 'pace' ? `No farms are ${LB_MIN_DAYS} days old yet.` : 'No scores yet.'}</p>`;
         const tmp = me && me.temp && me.name ? me.name : null;
         h += `<p class="hint small">${S.lbShow !== false ? (NET.myName ? `Shown as <b>${esc(NET.myName)}</b> ✓ (locked in).` : tmp ? `You’re showing as <b>${esc(tmp)}</b>, a temporary name made for you. Pick your own below.` : `Shown as <b>${esc(S.name)}</b>. Lock in a name that’s yours alone below.`) : `You’re hidden: others see a made-up name${tmp ? ` (<b>${esc(tmp)}</b>)` : ''}. Change this in Settings.`}</p>`;
@@ -4081,7 +4081,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-181911';
+  const BUILD = '20261101-182341';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

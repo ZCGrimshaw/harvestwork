@@ -1066,6 +1066,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.107.3', at: '2026-11-01 12:00', notes: ['The leaderboard’s Top score and Best pace tables now have a Folk column showing how many town folk each farmer’s village has.'] },
   { v: '0.107.2', at: '2026-11-01 11:30', notes: ['In the village you can now hold the right mouse button and drag sideways to turn the view, like on the farm. It turns a quarter turn for every bit you drag.'] },
   { v: '0.107.1', at: '2026-11-01 11:00', notes: ['The village now has the same camera controls as the farm: drag to move around, scroll wheel or pinch to zoom, + and − buttons, turn the village left or right (buttons, or Q and E), and ⌂ to centre it. Arrow keys or WASD also move the view.'] },
   { v: '0.107', at: '2026-11-01 10:30', notes: ['Your village can grow! Once every lot has a building, road or decoration, you can open a new strip of 4 lots on any side except the one by the entrance (lower right, lower left or upper right). Each expansion costs more than the last (gold, planks and bricks), and a village can reach 16 lots across each way. This replaces the old “20 town folk” land upgrade; villages that already opened it keep their land.','New village decorations: Flower Bed, Shade Tree, Park Bench and Fountain. They need no road, fill a lot so you can expand, and add a little to your village score. Clear a decoration from its lot any time (no refund).'] },
