@@ -2206,7 +2206,8 @@
     if (kind === 'warn') SND.play('warn');
     const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = html;
     histAdd(html, kind);
-    const box = $('#toasts'); box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
+    const box = $('#toasts'); box.style.top = ''; if (!isPhone() && !mq('(max-height: 500px)')) { const tk = $('#ticker'), r = tk && !tk.hidden && tk.offsetHeight ? tk.getBoundingClientRect() : null; if (r) box.style.top = Math.max(108, Math.round(r.bottom) + 6) + 'px'; } /* sit below the market ticker, wherever it wraps to */
+    box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 3200 : 5200);
   }
   const ico = (id, cls = '') => `<img class="ico ${cls}" src="${ART.icon(id, D.items)}" alt="" data-info="${id}">`;

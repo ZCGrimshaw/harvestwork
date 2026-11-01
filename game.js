@@ -2206,7 +2206,8 @@
     if (kind === 'warn') SND.play('warn');
     const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = html;
     histAdd(html, kind);
-    const box = $('#toasts'); box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
+    const box = $('#toasts'); box.style.top = ''; if (!isPhone() && !mq('(max-height: 500px)')) { const tk = $('#ticker'), r = tk && !tk.hidden && tk.offsetHeight ? tk.getBoundingClientRect() : null; if (r) box.style.top = Math.max(108, Math.round(r.bottom) + 6) + 'px'; } /* sit below the market ticker, wherever it wraps to */
+    box.prepend(el); while (box.children.length > 4) box.lastChild.remove();
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 3200 : 5200);
   }
   const ico = (id, cls = '') => `<img class="ico ${cls}" src="${ART.icon(id, D.items)}" alt="" data-info="${id}">`;
@@ -4026,7 +4027,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-171007';
+  const BUILD = '20261101-171741';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

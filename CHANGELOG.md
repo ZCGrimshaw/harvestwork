@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.106.2 — 2026-11-01 (branch `toast-fix`, not deployed)
+- `#toasts` top is 108px (was 66px), and `toast()` moves it to just under the market ticker when the ticker wraps to a second row (mid-width windows; not on phones), so notices no longer cover the ticker.
+
 ## v0.106.1 — 2026-11-01 (branch `village-orders`, not deployed)
 - Village orders: `vCostHTML` has a Send to farm orders toggle (`data-vorder`, `S.vord` = building kinds, migrated to `[]`). `vOrdersHTML()` draws them in `#goals` under the goal/contract with have/need for gold and each good and a Ready to build tag; `data-vord-x` removes one. A minimized goal card still shows when orders exist. `vBuild` clears that kind's order.
 
