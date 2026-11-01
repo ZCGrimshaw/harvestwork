@@ -222,7 +222,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 #zoom .ibtn { width: 40px; height: 40px; padding: 0; font-size: 20px; }
 
 /* toasts */
-#toasts { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 20px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+#toasts { position: absolute; top: 66px; left: 326px; width: min(420px, calc(100% - 336px)); display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .toast { padding: 9px 14px; background: rgba(36,22,13,.94); border-left: 4px solid var(--sky); border-radius: var(--r); font-size: 13px; line-height: 1.4; box-shadow: 0 3px 0 rgba(0,0,0,.35); animation: tin .25s ease-out; }
 .toast b { color: var(--paper); }
 .toast.disc { border-left-color: var(--plum); }
@@ -233,6 +233,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 @media (max-width: 760px) { #wkwarn { font-size: 20px; padding: 10px 18px; } }
 .toast .where { display: block; color: var(--sun); margin-top: 3px; }
 .toast.out { opacity: 0; transform: translateY(-6px); transition: .4s; }
+.loglist.hist li { border-left: 3px solid var(--sky); padding-left: 8px; } .loglist.hist li.disc { border-left-color: var(--plum); } .loglist.hist li.goal { border-left-color: var(--leaf); } .loglist.hist li.warn { border-left-color: var(--berry); }
 @keyframes tin { from { opacity: 0; transform: translateY(-8px); } }
 
 /* drawer */
@@ -422,7 +423,7 @@ button, .chipf, input, select { touch-action: manipulation; }
   .chip { flex: none; font-size: 12px; } .chip.idle { display: none; }
   .chip.cur { min-width: 130px; }
 
-  #toasts { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 16px); flex-direction: column-reverse; }
+  #toasts { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); left: 8px; width: calc(100% - 16px); flex-direction: column-reverse; }
   body.sheet-open #toasts { top: 50px; bottom: auto; flex-direction: column; }
   .toast { font-size: 12.5px; padding: 8px 12px; }
   .toast:nth-child(n+3) { display: none; }
