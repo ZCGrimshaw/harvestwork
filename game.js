@@ -2310,11 +2310,47 @@
   // Village orders: buildings sent from the village's build menu, shown under the goal / contract with what each still needs
   const vOrders = () => (S.vord || []).filter(k => VD().buildings[k]);
   function vOrdersHTML() { const L = vOrders(); if (!L.length || S.race) return '';
-    return `<div class="vord"><span class="eyebrow">Village orders</span>${L.map(k => { const B = VD().buildings[k], ents = Object.entries(B.cost), ready = ents.every(([id, n]) => (id === 'gold' ? S.gold : count(id)) >= n);
+    return `<div class="goalhead"><span class="eyebrow">Village orders</span></div>${L.map(k => { const B = VD().buildings[k], ents = Object.entries(B.cost), ready = ents.every(([id, n]) => (id === 'gold' ? S.gold : count(id)) >= n);
       return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
-        return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}</div>`; }
+        return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}`; }
+  // the store's shopping list on the farm: each shelf's state and, for shelves running low, goods you have none of in storage yet
+  const vWantsOn = () => { const V = S.village; return !!(S.vwants !== false && !S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
+  function vWantsHTML() { if (!vWantsOn()) return ''; const V = S.village;
+    let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
+    let shown = 0; vGroups().forEach(g => { if (g.need != null && !vNeeded(V, g)) return; const d = vDaysLeft(V, g), low = d < 3 && (g.need != null || V.sh[g.id] > 0), txt = g.need == null && !(V.sh[g.id] > 0) ? 'optional' : V.sh[g.id] > 0 ? vDaysTxt(d) : 'empty';
+      h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="${low || (g.need != null && !(V.sh[g.id] > 0)) ? 'low' : ''}">${esc(txt)}</span></div>`;
+      if (low && g.need != null && shown < 1 && (shown = 1)) vWants(g).slice(0, 3).forEach(id => { h += `<div class="vwgood">${ico(id)}<span>${esc(D.items[id].name)} <small>${esc(vSource(id))}</small></span></div>`; }); });
+    return h; }
+  /* The goal, village orders and village wants cards are windows on computers: drag a card's title to move it, double-click the title to put it back. Positions are saved in this browser. */
+  const HUDPOS_KEY = 'harvestworks.hudpos', HUDCARDS = ['goals', 'vorders', 'vwants'];
+  UI.hudPos = (() => { try { return JSON.parse(localStorage.getItem(HUDPOS_KEY)) || {}; } catch (e) { return {}; } })();
+  const saveHudPos = () => { try { localStorage.setItem(HUDPOS_KEY, JSON.stringify(UI.hudPos)); } catch (e) { } };
+  function placeHud() { const mv = !isPhone() && !mq('(max-height: 500px)'); document.body.classList.toggle('hudmv', mv);
+    HUDCARDS.forEach(id => { const el = $('#' + id); if (!el) return; if (!mv) { if (el.style.top || el.style.left) { el.style.top = el.style.left = ''; } return; } });
+    if (!mv) return;
+    let y = null, col = 10, anchor = 0; // y = the bottom of the last card stacked in its default place; col = its left edge
+    HUDCARDS.forEach(id => { const el = $('#' + id); if (!el || el.hidden) return; const P = UI.hudPos[id], r = el.getBoundingClientRect();
+      if (P) { const L = Math.max(0, Math.min(innerWidth - 60, P.x)), T = Math.max(0, Math.min(innerHeight - 40, P.y)); if (el.style.left !== L + 'px') el.style.left = L + 'px'; if (el.style.top !== T + 'px') el.style.top = T + 'px'; return; }
+      if (id === 'goals') { if (el.style.top || el.style.left) el.style.top = el.style.left = ''; y = el.getBoundingClientRect().bottom; const tb = $('#tutbtn'); if (tb && !tb.hidden) y = Math.max(y, tb.getBoundingClientRect().bottom); return; }
+      if (y == null) { const tk = $('#ticker'); y = (tk && !tk.hidden && tk.offsetHeight ? tk.getBoundingClientRect().bottom : $('#top').getBoundingClientRect().bottom + 8) - 8; }
+      if (!anchor) anchor = y + 8;
+      { const tb = $('#tutbtn'); if (tb && !tb.hidden && !UI.hudPos.goals) y = Math.max(y, tb.getBoundingClientRect().bottom - 8); }
+      const zm = $('#zoom'), limit = zm && zm.offsetHeight ? zm.getBoundingClientRect().top - 8 : innerHeight - 70, hh = el.offsetHeight;
+      if (col === 10 && y + 8 + hh > limit) { col = 290; y = anchor - 8; } // no room left above the camera buttons: start a second column
+      const T = Math.round(y + 8) + 'px', L = col + 'px'; if (el.style.top !== T) el.style.top = T; if (col !== 10) { if (el.style.left !== L) el.style.left = L; } else if (el.style.left) el.style.left = ''; y = el.getBoundingClientRect().bottom; }); }
+  (() => { let drag = null;
+    document.addEventListener('pointerdown', e => { if (e.button !== 0 || !document.body.classList.contains('hudmv')) return; const head = e.target.closest('.goalhead, .vordhead'); if (!head || e.target.closest('button, a, input')) return;
+      const el = head.closest('#goals, #vorders, #vwants'); if (!el) return; const r = el.getBoundingClientRect(); drag = { id: el.id, x: e.clientX, y: e.clientY, r0: [r.left, r.top], el }; document.body.classList.add('hdrag'); e.preventDefault(); });
+    document.addEventListener('pointermove', e => { if (!drag) return; UI.hudPos[drag.id] = { x: Math.round(drag.r0[0] + e.clientX - drag.x), y: Math.round(drag.r0[1] + e.clientY - drag.y) }; placeHud(); });
+    const end = () => { if (!drag) return; drag = null; document.body.classList.remove('hdrag'); saveHudPos(); };
+    document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+    document.addEventListener('dblclick', e => { const head = e.target.closest('.goalhead, .vordhead'); if (!head || e.target.closest('button') || !document.body.classList.contains('hudmv')) return; const el = head.closest('#goals, #vorders, #vwants'); if (!el || !UI.hudPos[el.id]) return;
+      delete UI.hudPos[el.id]; el.style.left = el.style.top = ''; saveHudPos(); placeHud(); toast('The card went back to its place under the contract.', 'info'); });
+  })();
+  function renderVCards() { const o = vOrdersHTML(), w = vWantsHTML(); const eo = $('#vorders'), ew = $('#vwants');
+    eo.hidden = !o; ew.hidden = !w; setHTML('#vorders', o); setHTML('#vwants', w); placeHud(); }
   function renderGoals() {
-    const g = D.goals[S.goal], m = curMs(), vo = vOrdersHTML();
+    const g = D.goals[S.goal], m = curMs(), vo = '';
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
     const title = g ? g.title : m ? m.name : 'All contracts complete';
     const el = $('#goals'); el.hidden = !!S.goalMin && !vo;
@@ -3257,6 +3293,7 @@
   vcv.addEventListener('pointerup', vEnd); vcv.addEventListener('pointercancel', vEnd);
   vcv.addEventListener('wheel', e => { if (!UI.vil) return; e.preventDefault(); vZoomAt(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); dirty(); }, { passive: false });
   vcv.addEventListener('contextmenu', e => e.preventDefault()); vcv.addEventListener('auxclick', e => e.preventDefault());
+  document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-x]')) return; S.vwants = false; save(); dirty(); toast('The village wants list is hidden. Turn it back on in Settings → Look and layout.', 'info'); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
   document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
@@ -3620,6 +3657,7 @@
         tgl('snaprot', S.snapRot !== false, 'Snap rotation to straight views', 'farm', 'snap rotate turn map straight view graphics', S.snapRot !== false ? 'The map glides to the nearest straight view when you stop turning.' : 'The map stays wherever you leave it.', 'Big buildings like your house and the monuments only line up with the grid in the four straight views, so snapping keeps them tidy.', 'snap') +
         tgl('labelsset', UI.labels, `Show building names ${isTouch() ? '' : '<span class="muted">(X)</span>'}`, 'session', 'labels names buildings text graphics', '', '', '') +
         tgl('counts', countsOn(), 'Show players online and unique visitors', 'device', 'counters players online visitors', 'The two counters by the Menu button.', 'Always shown on computers; off by default on phones to save room. They’re also in the Info panel.', 'counts') +
+        (unlocked('village') ? tgl('vwantsset', S.vwants !== false, 'Show the village wants list on the farm', 'farm', 'village wants store shopping list goods needed', 'What the General Store is short of, under your contract card. Drag its title to move it.', '', '') : '') +
         (unlocked('village') ? tgl('folkchip', S.folkChip !== false, 'Show my town folk count next to Score', 'farm', 'town folk count village counter score top bar', 'The big town folk number in the top bar. It always shows inside the village.', '', '') : '') +
         (online() ? tgl('tick-toggle', S.tick && S.tick.open, 'Show the valley market ticker at the top', 'farm', 'ticker market trades scrolling top bar', 'The scrolling list of recent trades.', 'Hiding it gives the map more room, especially on a phone.', 'tick') : ''));
       const alerts = sec('set-alerts', 'Alerts and reports', `#1 alert ${onoff(S.wkAlert !== false)} · weekly report ${onoff(S.weekly !== false)}`, 'farm',
@@ -3847,7 +3885,7 @@
     UI.noticeK = S.race ? '' : noticeKey();
     { const b = $('#zoom [data-mon-show]'); if (b) b.hidden = !S.green || !!S.race; }
     renderLogs(); renderTicker();
-    renderTop(); renderGoals(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom(); renderVillage();
+    renderTop(); renderGoals(); renderVCards(); renderQueue(); renderPanel(); renderDrawer(); renderCoach(); renderMoveBar(); renderRaceBar(); renderRoom(); renderVillage();
     if (!S.race && ((UI.caseChk = (UI.caseChk || 0) + 1) % 6 === 0)) caseAward();   // about every 3 s
   }
   function progress(key) {
@@ -3944,6 +3982,7 @@
     else if (ds.keep) { cycleKeep(ds.keep); }
     else if ('fullpause' in ds) { S.fullPause = !S.fullPause; save(); }
     else if ('wkalert' in ds) { S.wkAlert = S.wkAlert === false; save(); }
+    else if ('vwantsset' in ds) { S.vwants = S.vwants === false; save(); }
     else if ('folkchip' in ds) { S.folkChip = S.folkChip === false; save(); }
     else if ('housepause' in ds) { S.housePause = S.housePause === false; save(); }
     else if (ds.vilpause) { S.vilPause = ds.vilpause; save(); }
@@ -4143,7 +4182,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-013641';
+  const BUILD = '20261102-015502';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

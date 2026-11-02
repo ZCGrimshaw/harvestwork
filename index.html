@@ -102,18 +102,18 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .ibtn:hover { box-shadow: inset 0 0 0 2px var(--sun), 0 3px 0 rgba(0,0,0,.35); }
 
 /* goal card */
-#goals { position: absolute; left: 10px; top: 66px; width: 270px; padding: 10px 14px 12px; background: #f6e7c1; color: #3a2416; border: 2px solid #24160d; box-shadow: inset 0 0 0 2px #e2cc98, 0 4px 0 rgba(0,0,0,.35); border-radius: var(--r); }
-#goals .goalhead { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 8px; }
-#goals .gctl { display: flex; gap: 4px; margin-right: -6px; }
-#goals .gbtn { cursor: pointer; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: #8a6236; font-family: var(--f-display); font-size: 17px; line-height: 1; }
-#goals .gbtn:hover { background: #e2cc98; color: #3a2416; }
+:is(#goals, #vorders, #vwants) { position: absolute; left: 10px; top: 66px; width: 270px; padding: 10px 14px 12px; background: #f6e7c1; color: #3a2416; border: 2px solid #24160d; box-shadow: inset 0 0 0 2px #e2cc98, 0 4px 0 rgba(0,0,0,.35); border-radius: var(--r); }
+:is(#goals, #vorders, #vwants) .goalhead { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 8px; }
+:is(#goals, #vorders, #vwants) .gctl { display: flex; gap: 4px; margin-right: -6px; }
+:is(#goals, #vorders, #vwants) .gbtn { cursor: pointer; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: #8a6236; font-family: var(--f-display); font-size: 17px; line-height: 1; }
+:is(#goals, #vorders, #vwants) .gbtn:hover { background: #e2cc98; color: #3a2416; }
 .stat.goalbtn { cursor: pointer; max-width: 230px; background: #f6e7c1; border-color: #24160d; box-shadow: inset 0 0 0 2px #e2cc98, 0 3px 0 rgba(0,0,0,.35); }
 .stat.goalbtn .lbl { color: #8a6236; } .stat.goalbtn b { color: #3a2416; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .stat.goalbtn:hover { box-shadow: inset 0 0 0 2px #8a6236, 0 3px 0 rgba(0,0,0,.35); }
-#goals .eyebrow { color: #8a6236; margin: 0; }
-#goals .chev { font-family: var(--f-display); font-size: 18px; color: #8a6236; }
+:is(#goals, #vorders, #vwants) .eyebrow { color: #8a6236; margin: 0; }
+:is(#goals, #vorders, #vwants) .chev { font-family: var(--f-display); font-size: 18px; color: #8a6236; }
 .goaltitle { font-family: var(--f-display); font-size: 20px; font-weight: 600; margin-top: 2px; text-wrap: balance; }
-#goals p { margin: 6px 0 8px; line-height: 1.45; font-size: 13px; color: #5a3a22; }
+:is(#goals, #vorders, #vwants) p { margin: 6px 0 8px; line-height: 1.45; font-size: 13px; color: #5a3a22; }
 .steps { display: flex; gap: 3px; }
 .steps i { flex: 1; height: 5px; background: #e2cc98; }
 .steps i.on { background: #6fa83a; }
@@ -415,12 +415,12 @@ button, .chipf, input, select { touch-action: manipulation; }
   .tkb { height: 24px; } .tkopen { height: 28px; font-size: 12px; padding: 0 10px; }
   #hud { position: absolute; top: 84px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
   #hud > * { pointer-events: auto; }
-  #goals { position: static; width: auto; padding: 7px 12px; }
-  #goals .gbtn { width: 34px; height: 30px; }
+  :is(#goals, #vorders, #vwants) { position: static; width: auto; padding: 7px 12px; }
+  :is(#goals, #vorders, #vwants) .gbtn { width: 34px; height: 30px; }
   .stat.store .lbl { display: none; }
   .stat.goalbtn { max-width: 96px; } .stat.goalbtn b { display: none; } .stat.goalbtn .lbl::after { content: " ▸"; }
-  #goals .goaltitle { font-size: 15px; }
-  #goals p { font-size: 13px; margin: 4px 0 6px; }
+  :is(#goals, #vorders, #vwants) .goaltitle { font-size: 15px; }
+  :is(#goals, #vorders, #vwants) p { font-size: 13px; margin: 4px 0 6px; }
   #queue { position: static; transform: none; max-width: none; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   #queue::-webkit-scrollbar { display: none; }
   .chip { flex: none; font-size: 12px; } .chip.idle { display: none; }
@@ -493,7 +493,7 @@ button, .chipf, input, select { touch-action: manipulation; }
   #top .ibtn { padding: 0; width: 36px; height: 34px; font-size: 17px; }
   #ticker { margin: 0 10px; height: 32px; } .tklabel { display: none; }
   #hud { position: absolute; top: 48px; left: 8px; width: 260px; display: flex; flex-direction: column; gap: 6px; }
-  #goals { position: static; width: auto; padding: 6px 10px; } #goals .goaltitle { font-size: 14px; } #goals p { font-size: 12px; }
+  :is(#goals, #vorders, #vwants) { position: static; width: auto; padding: 6px 10px; } :is(#goals, #vorders, #vwants) .goaltitle { font-size: 14px; } :is(#goals, #vorders, #vwants) p { font-size: 12px; }
   #queue { position: static; transform: none; max-width: none; justify-content: flex-start; } .chip.idle { display: none; }
   #zoom { left: auto; right: 8px; bottom: 8px; flex-direction: row; } #zoom .zin { display: none; }
   #zoom .ibtn { width: 40px; height: 40px; }
@@ -584,7 +584,7 @@ img.qr.big { width: min(280px, 72vw); height: auto; aspect-ratio: 1; padding: 8p
   #top::after { content: ''; order: 3; flex-basis: 100%; height: 0; } /* always start the ticker on a new row */
   #ticker { order: 4; flex: 1 1 100%; width: 100%; margin: 0; align-self: flex-start; }
   #ticker.closed { width: auto; }
-  #goals { top: 104px; }
+  :is(#goals, #vorders, #vwants) { top: 104px; }
   .updatebar.movebar, #coach { top: 104px; }
 }
 .stat.loan { cursor: pointer; border-color: var(--berry); } .stat.loan b { color: #ffb3a0; }
@@ -830,8 +830,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 @media (pointer: coarse) {
   .stat { min-height: 40px; align-items: center; }
   #top .ibtn { height: 40px; }
-  #goals .gbtn { width: 44px; height: 40px; }
-  #goals .gctl { margin-right: -10px; }
+  :is(#goals, #vorders, #vwants) .gbtn { width: 44px; height: 40px; }
+  :is(#goals, #vorders, #vwants) .gctl { margin-right: -10px; }
   .close { width: 44px; height: 44px; }
   .tkb { height: 34px; min-width: 44px; }
   .tkopen { height: 40px; }
@@ -862,9 +862,12 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 @media (max-width: 760px) { #vzoom { flex-direction: row; left: auto; right: 8px; } #vzoom .ibtn { width: 44px; height: 44px; } }
 #village .rstage { background: radial-gradient(ellipse at 50% 40%, #2e4a2a 0%, #13200f 80%); }
 #village .rhead .sub .linkish { font-size: 13px; }
+/* the goal, village orders and village wants cards are windows on computers: drag the title to move them, double-click it to put them back */
+body.hudmv :is(#goals, #vorders, #vwants) .goalhead, body.hudmv :is(#goals, #vorders, #vwants) .vordhead { cursor: move; touch-action: none; }
+body.hdrag { user-select: none; } .vwrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-weight: 700; font-size: 13.5px; } .vwrow .low { color: #b23a2a; } .vwgood { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 0 4px; color: #5a3a22; } .vwgood small { color: #8a6236; }
 /* village orders under the goal card */
-#goals .gneed .coin { flex: 0 0 18px; width: 18px; height: 18px; }
-#goals .vord { margin-top: 10px; padding-top: 6px; border-top: 1px dashed #c9a96a; } #goals .vordhead { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; } #goals .vordhead b { flex: 1; font-family: var(--f-display); } #goals .vready { font-size: 11px; font-weight: 700; color: #2f6b2a; text-transform: uppercase; letter-spacing: .04em; }
+:is(#goals, #vorders, #vwants) .gneed .coin { flex: 0 0 18px; width: 18px; height: 18px; }
+:is(#goals, #vorders, #vwants) .vord { margin-top: 10px; padding-top: 6px; border-top: 1px dashed #c9a96a; } :is(#goals, #vorders, #vwants) .vordhead { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; } :is(#goals, #vorders, #vwants) .vordhead b { flex: 1; font-family: var(--f-display); } :is(#goals, #vorders, #vwants) .vready { font-size: 11px; font-weight: 700; color: #2f6b2a; text-transform: uppercase; letter-spacing: .04em; }
 .vtips { margin: 4px 0 8px; padding-left: 18px; font-size: 13.5px; line-height: 1.45; } .vtips li { margin: 3px 0; } .vwant .rpiece { opacity: .8; }
 /* town folk counter, panel and titles */
 .stat.folk { cursor: pointer; color: inherit; } .stat.folk b { color: #9fe0a0; }
@@ -939,7 +942,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
   </div>
-  <div id="hud"><div id="goalchip"></div><div id="goals"></div><button id="tutbtn" hidden data-tut-resume><b>Tutorial is off</b><small>Tap to turn it back on. It picks up where you left off.</small></button><div id="queue"></div></div>
+  <div id="hud"><div id="goalchip"></div><div id="goals"></div><div id="vorders" hidden></div><div id="vwants" hidden></div><button id="tutbtn" hidden data-tut-resume><b>Tutorial is off</b><small>Tap to turn it back on. It picks up where you left off.</small></button><div id="queue"></div></div>
   <aside id="panel" class="wood" hidden></aside>
   <div id="info" hidden role="tooltip"></div>
   <div id="pframe" hidden><i data-rs="n" class="rs-n"></i><i data-rs="s" class="rs-s"></i><i data-rs="e" class="rs-e"></i><i data-rs="w" class="rs-w"></i><i data-rs="ne" class="rs-ne"></i><i data-rs="nw" class="rs-nw"></i><i data-rs="se" class="rs-se"></i><i data-rs="sw" class="rs-sw"></i></div>
@@ -972,8 +975,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261102-013641"></script>
-<script src="art.js?v=20261102-013641"></script>
-<script src="sound.js?v=20261102-013641"></script>
-<script src="game.js?v=20261102-013641"></script>
+<script src="data.js?v=20261102-015502"></script>
+<script src="art.js?v=20261102-015502"></script>
+<script src="sound.js?v=20261102-015502"></script>
+<script src="game.js?v=20261102-015502"></script>
 </body></html>

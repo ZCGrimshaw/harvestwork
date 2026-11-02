@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.110 — 2026-11-01
+- Village wants card (`#vwants`, `vWantsHTML`/`vWantsOn`) on the farm under the goal card, mirroring the General Store list (shelf status, goods for the first low shelf via `vWants`/`vSource`); `S.vwants` toggle in Settings and a × button. Village orders moved out of `#goals` into its own card `#vorders`.
+- Movable HUD windows (desktop only): `#goals`, `#vorders`, `#vwants` drag by title (`HUDPOS_KEY` harvestworks.hudpos), double-click resets; unmoved cards stack from the ticker/tutorial button and wrap to a second column above `#zoom` (`placeHud`). Phones stay static. No server change.
+
 ## v0.109.1 — 2026-11-01
 - Buildable land is marked in `drawVillage`: a 2 px cream border round the lot rectangle and a faint 1 px outline on every empty lot (both from continuous corner points via `pt()`); the overview hint explains the border and the staked plots.
 
