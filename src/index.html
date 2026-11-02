@@ -50,7 +50,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 
 /* top bar */
 #top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 8px; align-items: flex-start; pointer-events: none; }
-#stats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 0 1 auto; min-width: 0; }
+#stats { display: block; align-items: center; flex: 0 1 auto; min-width: 0; }
 #stats > *, #topbtns > * { pointer-events: auto; }
 .stat { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; background: var(--wood); border: 2px solid var(--wood-lo); box-shadow: inset 0 0 0 2px var(--wood-hi), 0 3px 0 rgba(0,0,0,.35); border-radius: var(--r); font-variant-numeric: tabular-nums; }
 .stat b { font-family: var(--f-display); font-size: 19px; font-weight: 600; line-height: 1; }
@@ -73,7 +73,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 .wxcard { background: var(--wood-lo); border: 1px solid var(--wood-hi); border-left: 4px solid #f6e7c1; border-radius: var(--r); padding: 4px 10px 8px; }
 .wxcard .eyebrow { margin: 4px 0 2px; } .wxcard b { font-family: var(--f-display); font-size: 18px; } .wxcard p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; color: var(--paper-dim); }
 .wxcard.wx-rain { border-left-color: #8fc4ea; } .wxcard.wx-sun { border-left-color: #f5d25a; } .wxcard.wx-heat { border-left-color: #f29a5a; } .wxcard.wx-snow, .wxcard.wx-frost { border-left-color: #e4eef6; } .wxcard.wx-mist, .wxcard.wx-fog { border-left-color: #a8b0b6; }
-.sitems { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.sitems { display: block; margin: 4px 0 6px; }
 .sitem { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: 99px; font-size: 13px; }
 .sitem.unk { color: var(--paper-dim); }
 .yearbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
@@ -100,6 +100,10 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 22px; margin: 0
 
 /* goal card */
 :is(#goals, #vorders, #vwants) { position: absolute; left: 10px; top: 66px; width: 270px; padding: 10px 14px 12px; background: #f6e7c1; color: #3a2416; border: 2px solid #24160d; box-shadow: inset 0 0 0 2px #e2cc98, 0 4px 0 rgba(0,0,0,.35); border-radius: var(--r); }
+#vchips { position: absolute; left: 10px; top: 66px; display: flex; gap: 6px; flex-wrap: wrap; max-width: 280px; }
+#vchips[hidden] { display: none; }
+#vchips .stat.goalbtn { display: flex; max-width: none; }
+#vchips .stat.goalbtn b { display: block; }
 :is(#goals, #vorders, #vwants) .goalhead { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 8px; }
 :is(#goals, #vorders, #vwants) .gctl { display: flex; gap: 4px; margin-right: -6px; }
 :is(#goals, #vorders, #vwants) .gbtn { cursor: pointer; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: #8a6236; font-family: var(--f-display); font-size: 17px; line-height: 1; }
@@ -275,7 +279,7 @@ small.use { display: block; color: var(--sun); font-size: 11.5px; margin-top: 2p
 
 /* sell by amount */
 .trade.sell { flex-wrap: wrap; }
-.sellctl { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 32px; }
+.sellctl { flex-basis: 100%; display: block; align-items: center; padding-left: 32px; }
 .qtybox { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
 .sellctl .btn { flex-direction: row; white-space: nowrap; }
 .trade.sell { padding: 9px 0; row-gap: 6px; }
@@ -305,7 +309,7 @@ small.use { display: block; color: var(--sun); font-size: 11.5px; margin-top: 2p
 .fhb:hover { background: #6b4628; } .fhb.clr { font-family: var(--f-body); font-weight: 700; } .fhb.clr.arm { background: var(--berry); color: #fff; } .fhb.spd { color: var(--leaf); font-variant-numeric: tabular-nums; }
 .chip.helper.off .fhb:first-of-type { background: var(--leaf); color: #24160d; }
 /* category chips and groups */
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.chips { display: block; margin: 12px 0 4px; }
 .chipf { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 700; color: var(--paper-dim); background: var(--wood-lo); border: 1px solid var(--wood-hi); border-radius: 99px; }
 .sortbar { margin-top: 0; align-items: center; }
 .sortlbl { flex: none; white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-dim); margin-right: 2px; }
@@ -412,6 +416,7 @@ button, .chipf, input, select { touch-action: manipulation; }
   .tkb { height: 24px; } .tkopen { height: 28px; font-size: 12px; padding: 0 10px; }
   #hud { position: absolute; top: 84px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
   #hud > * { pointer-events: auto; }
+  #vchips { position: static; max-width: none; margin-top: 6px; }
   :is(#goals, #vorders, #vwants) { position: static; width: auto; padding: 7px 12px; }
   :is(#goals, #vorders, #vwants) .gbtn { width: 34px; height: 30px; }
   .stat.store .lbl { display: none; }
@@ -490,6 +495,7 @@ button, .chipf, input, select { touch-action: manipulation; }
   #top .ibtn { padding: 0; width: 36px; height: 34px; font-size: 17px; }
   #ticker { margin: 0 10px; height: 32px; } .tklabel { display: none; }
   #hud { position: absolute; top: 48px; left: 8px; width: 260px; display: flex; flex-direction: column; gap: 6px; }
+  #vchips { position: static; max-width: none; }
   :is(#goals, #vorders, #vwants) { position: static; width: auto; padding: 6px 10px; } :is(#goals, #vorders, #vwants) .goaltitle { font-size: 14px; } :is(#goals, #vorders, #vwants) p { font-size: 12px; }
   #queue { position: static; transform: none; max-width: none; justify-content: flex-start; } .chip.idle { display: none; }
   #zoom { left: auto; right: 8px; bottom: 8px; flex-direction: row; } #zoom .zin { display: none; }
@@ -752,7 +758,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 .dqans { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; } .dqans .ico { width: 22px; height: 22px; }
 .dqhint { margin: 6px 0 0; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,.25); font-size: 13px; color: var(--sun); }
 .dqbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; } .dqbtns .btn { flex: 1 1 140px; margin: 0; }
-.dqpick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .dqpick .chipf { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; }
+.dqpick { display: block; margin-top: 8px; } .dqpick .chipf { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; }
 .dqpick .chipf .ico { width: 20px; height: 20px; } .dqpick .chipf small { color: var(--paper-dim); }
 .dqdone { margin-top: 10px; padding: 10px 12px; border-radius: var(--r); background: rgba(127,190,80,.16); box-shadow: inset 0 0 0 2px rgba(127,190,80,.5); }
 /* mastery */
@@ -861,7 +867,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 #village .rhead .sub .linkish { font-size: 13px; }
 /* the goal, village orders and village wants cards are windows on computers: drag the title to move them, double-click it to put them back */
 body.hudmv :is(#goals, #vorders, #vwants) .goalhead, body.hudmv :is(#goals, #vorders, #vwants) .vordhead { cursor: move; touch-action: none; }
-body.hdrag { user-select: none; } .vwshow { width: auto; padding: 5px 10px; font-size: 12px; }
+body.hdrag { user-select: none; }
+#vwants .vwshow { width: auto; padding: 5px 10px; font-size: 12px; }
   .vwrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-weight: 700; font-size: 13.5px; } .vwrow .low { color: #b23a2a; } .vwgood { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 0 4px; color: #5a3a22; } .vwgood small { color: #8a6236; }
 /* village orders under the goal card */
 :is(#goals, #vorders, #vwants) .gneed .coin { flex: 0 0 18px; width: 18px; height: 18px; }
@@ -898,7 +905,7 @@ body.hdrag { user-select: none; } .vwshow { width: auto; padding: 5px 10px; font
 :is(#room, #village) .rcard .row { display: flex; align-items: center; gap: 8px; }
 :is(#room, #village) .rcard small { display: block; color: var(--paper-dim); }
 :is(#room, #village) .rcard .ico { width: 36px; height: 36px; }
-:is(#room, #village) .rbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+:is(#room, #village) .rbtns { display: block; margin-top: 8px; }
 :is(#room, #village) .rmsg { margin: 8px 0 0; color: var(--sun); font-size: 13px; }
 :is(#room, #village) > .rbody .btn[data-rm-auto] { margin-top: 8px; }
 .rwin { display: inline-block; flex: none; width: 24px; height: 28px; box-sizing: border-box; background: linear-gradient(#6fb2e6 0 45%, #efe6cf 45% 52%, #bfe3f6 52%); border: 3px solid #efe6cf; outline: 2px solid #8a5a2e; outline-offset: -1px; }
@@ -940,7 +947,7 @@ body.hdrag { user-select: none; } .vwshow { width: auto; padding: 5px 10px; font
       <button class="ibtn" data-drawer="menu" aria-label="Menu"><span class="lg">Menu</span><span class="sm">☰</span></button>
     </div>
   </div>
-  <div id="hud"><div id="goalchip"></div><div id="goals"></div><div id="vorders" hidden></div><div id="vwants" hidden></div><button id="tutbtn" hidden data-tut-resume><b>Tutorial is off</b><small>Tap to turn it back on. It picks up where you left off.</small></button><div id="queue"></div></div>
+  <div id="hud"><div id="goalchip"></div><div id="goals"></div><div id="vchips" hidden></div><div id="vorders" hidden></div><div id="vwants" hidden></div><button id="tutbtn" hidden data-tut-resume><b>Tutorial is off</b><small>Tap to turn it back on. It picks up where you left off.</small></button><div id="queue"></div></div>
   <aside id="panel" class="wood" hidden></aside>
   <div id="info" hidden role="tooltip"></div>
   <div id="pframe" hidden><i data-rs="n" class="rs-n"></i><i data-rs="s" class="rs-s"></i><i data-rs="e" class="rs-e"></i><i data-rs="w" class="rs-w"></i><i data-rs="ne" class="rs-ne"></i><i data-rs="nw" class="rs-nw"></i><i data-rs="se" class="rs-se"></i><i data-rs="sw" class="rs-sw"></i></div>

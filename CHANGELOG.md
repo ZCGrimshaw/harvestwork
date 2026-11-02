@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.110.2 — 2026-11-01
+- Village orders / wants can be minimized (`S.vordMin`, `S.vwantMin`, `data-vmin` / `data-vrestore`) into small buttons in a `#vchips` row stacked under the goal card (`vChips`, `HUDCARDS` now includes `vchips`). The hidden wants pill and the base `#vchips`/`.vwshow` CSS were moved before the media queries so the phone overrides win. No server change.
+
 ## v0.110.1 — 2026-11-01
 - Second HUD column now starts to the right of the first column's widest card (`w1`) so it no longer covers Village orders' × buttons. Hiding the wants card leaves a `Village wants ▸` pill (`data-vwants-show`) while the store is available; no server change.
 

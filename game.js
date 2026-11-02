@@ -2303,27 +2303,30 @@
       ${S.goalMin ? goalBtn() : ''}
       <div class="status">${status}</div>`);
   }
+  // Minimized village orders / wants: small buttons in a row under the goal card (#vchips)
+  function vChips() { const n = S.race ? 0 : vOrders().length;
+    return (S.vordMin && n ? `<button class="stat goalbtn" data-vrestore="vordMin" title="Show your village orders" aria-label="Show village orders"><span class="lbl">Orders</span><b>${n} to build</b></button>` : '') + (S.vwantMin && vWantsOn() ? `<button class="stat goalbtn" data-vrestore="vwantMin" title="Show what the General Store is short of" aria-label="Show village wants"><span class="lbl">Wants</span><b>Village wants</b></button>` : ''); }
   // The minimized goal / contract button. On phones it is drawn under the gold counter (#goalchip) and hidden in the top bar; elsewhere it stays in the top bar.
   function goalBtn() { const g = D.goals[S.goal], m = curMs(), t = g ? g.title : m ? m.name : 'All done';
     return `<button class="stat goalbtn" data-goal-restore title="${g ? 'Goal' : 'Contract'}: ${esc(t)}" aria-label="Show ${g ? 'goal' : 'contract'}: ${esc(t)}"><span class="lbl">${g ? 'Goal' : 'Contract'}</span><b>${esc(t)}</b></button>`; }
   // The goal / contract card: full, title only, or minimized into a button in the top bar.
   // Village orders: buildings sent from the village's build menu, shown under the goal / contract with what each still needs
   const vOrders = () => (S.vord || []).filter(k => VD().buildings[k]);
-  function vOrdersHTML() { const L = vOrders(); if (!L.length || S.race) return '';
-    return `<div class="goalhead"><span class="eyebrow">Village orders</span></div>${L.map(k => { const B = VD().buildings[k], ents = Object.entries(B.cost), ready = ents.every(([id, n]) => (id === 'gold' ? S.gold : count(id)) >= n);
+  function vOrdersHTML() { const L = vOrders(); if (!L.length || S.race || S.vordMin) return '';
+    return `<div class="goalhead"><span class="eyebrow">Village orders</span><span class="gctl"><button class="gbtn" data-vmin="vordMin" title="Minimize to the top bar" aria-label="Minimize village orders">–</button></span></div>${L.map(k => { const B = VD().buildings[k], ents = Object.entries(B.cost), ready = ents.every(([id, n]) => (id === 'gold' ? S.gold : count(id)) >= n);
       return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
         return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}`; }
   // the store's shopping list on the farm: each shelf's state and, for shelves running low, goods you have none of in storage yet
   const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
   const vWantsOn = () => { const V = S.village; return !!(S.vwants !== false && !S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
-  function vWantsHTML() { if (!vWantsOn()) return vWantsAvail() ? `<button class="gbtn vwshow" data-vwants-show title="Show what the General Store is short of">Village wants ▸</button>` : ''; const V = S.village;
-    let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
+  function vWantsHTML() { if (S.vwantMin && vWantsOn()) return ''; if (!vWantsOn()) return vWantsAvail() ? `<button class="gbtn vwshow" data-vwants-show title="Show what the General Store is short of">Village wants ▸</button>` : ''; const V = S.village;
+    let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vmin="vwantMin" title="Minimize to the top bar" aria-label="Minimize village wants">–</button><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
     let shown = 0; vGroups().forEach(g => { if (g.need != null && !vNeeded(V, g)) return; const d = vDaysLeft(V, g), low = d < 3 && (g.need != null || V.sh[g.id] > 0), txt = g.need == null && !(V.sh[g.id] > 0) ? 'optional' : V.sh[g.id] > 0 ? vDaysTxt(d) : 'empty';
       h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="${low || (g.need != null && !(V.sh[g.id] > 0)) ? 'low' : ''}">${esc(txt)}</span></div>`;
       if (low && g.need != null && shown < 1 && (shown = 1)) vWants(g).slice(0, 3).forEach(id => { h += `<div class="vwgood">${ico(id)}<span>${esc(D.items[id].name)} <small>${esc(vSource(id))}</small></span></div>`; }); });
     return h; }
   /* The goal, village orders and village wants cards are windows on computers: drag a card's title to move it, double-click the title to put it back. Positions are saved in this browser. */
-  const HUDPOS_KEY = 'harvestworks.hudpos', HUDCARDS = ['goals', 'vorders', 'vwants'];
+  const HUDPOS_KEY = 'harvestworks.hudpos', HUDCARDS = ['goals', 'vchips', 'vorders', 'vwants'];
   UI.hudPos = (() => { try { return JSON.parse(localStorage.getItem(HUDPOS_KEY)) || {}; } catch (e) { return {}; } })();
   const saveHudPos = () => { try { localStorage.setItem(HUDPOS_KEY, JSON.stringify(UI.hudPos)); } catch (e) { } };
   function placeHud() { const mv = !isPhone() && !mq('(max-height: 500px)'); document.body.classList.toggle('hudmv', mv);
@@ -2348,8 +2351,8 @@
     document.addEventListener('dblclick', e => { const head = e.target.closest('.goalhead, .vordhead'); if (!head || e.target.closest('button') || !document.body.classList.contains('hudmv')) return; const el = head.closest('#goals, #vorders, #vwants'); if (!el || !UI.hudPos[el.id]) return;
       delete UI.hudPos[el.id]; el.style.left = el.style.top = ''; saveHudPos(); placeHud(); toast('The card went back to its place under the contract.', 'info'); });
   })();
-  function renderVCards() { const o = vOrdersHTML(), w = vWantsHTML(); const eo = $('#vorders'), ew = $('#vwants');
-    eo.hidden = !o; ew.hidden = !w; setHTML('#vorders', o); setHTML('#vwants', w); placeHud(); }
+  function renderVCards() { const o = vOrdersHTML(), w = vWantsHTML(), c = vChips(); const eo = $('#vorders'), ew = $('#vwants');
+    eo.hidden = !o; ew.hidden = !w; $('#vchips').hidden = !c; setHTML('#vchips', c); setHTML('#vorders', o); setHTML('#vwants', w); placeHud(); }
   function renderGoals() {
     const g = D.goals[S.goal], m = curMs(), vo = '';
     const eyebrow = g ? `Goal ${S.goal + 1} of ${D.goals.length}` : 'Next contract';
@@ -3294,6 +3297,7 @@
   vcv.addEventListener('pointerup', vEnd); vcv.addEventListener('pointercancel', vEnd);
   vcv.addEventListener('wheel', e => { if (!UI.vil) return; e.preventDefault(); vZoomAt(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); dirty(); }, { passive: false });
   vcv.addEventListener('contextmenu', e => e.preventDefault()); vcv.addEventListener('auxclick', e => e.preventDefault());
+  document.addEventListener('click', e => { const m = e.target.closest('[data-vmin]'), r = e.target.closest('[data-vrestore]'); if (!m && !r) return; S[(m || r).dataset[m ? 'vmin' : 'vrestore']] = !!m; save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-show]')) return; S.vwants = true; save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-x]')) return; S.vwants = false; save(); dirty(); toast('Village wants hidden. Tap “Village wants ▸” under your cards to bring it back.', 'info'); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
@@ -4184,7 +4188,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-021204';
+  const BUILD = '20261102-022007';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
