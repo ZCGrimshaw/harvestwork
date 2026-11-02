@@ -3097,7 +3097,10 @@
     // dashed outline round each staked plot (corners are continuous points, so they map a little differently from whole lots)
     { const W = V.x1 - V.x0, H = V.y1 - V.y0, rot = vRot(), pt = (u, v) => { const lx = u - V.x0, ly = v - V.y0, m = rot === 1 ? [H - ly, lx] : rot === 2 ? [W - lx, H - ly] : rot === 3 ? [ly, W - lx] : [lx, ly]; return [G.ox + (m[0] - m[1]) * 16, G.oy + (m[0] + m[1]) * 8]; };
       g.strokeStyle = 'rgba(245,197,66,.8)'; g.lineWidth = 1.2; g.setLineDash([4, 3]);
-      SC.plots.forEach(p => { g.beginPath(); [[p.x0, p.y0], [p.x1, p.y0], [p.x1, p.y1], [p.x0, p.y1]].forEach(([u, v], k) => { const q = pt(u, v); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.stroke(); }); g.setLineDash([]); }
+      SC.plots.forEach(p => { g.beginPath(); [[p.x0, p.y0], [p.x1, p.y0], [p.x1, p.y1], [p.x0, p.y1]].forEach(([u, v], k) => { const q = pt(u, v); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.stroke(); }); g.setLineDash([]);
+      // the land you can build on: a faint outline round each empty lot and a clear border round the whole village
+      g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) { if (vBAt(V, x, y) || vRoadAt(V, x, y)) continue; const q = [pt(x, y), pt(x + 1, y), pt(x + 1, y + 1), pt(x, y + 1)]; g.beginPath(); q.forEach((p, k) => k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.stroke(); }
+      g.strokeStyle = 'rgba(255,248,220,.85)'; g.lineWidth = 2; g.beginPath(); [[V.x0, V.y0], [V.x1, V.y0], [V.x1, V.y1], [V.x0, V.y1]].forEach(([u, v], k) => { const q = pt(u, v); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.stroke(); }
     if (sel) { const [cx, cy] = G.cell(...vMap(V, sel[0], sel[1])); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; diamond(cx, cy); g.stroke(); }
     const objs = V.b.map(b => ({ x: b.x, y: b.y, img: ART.get(b.k === 'store' ? 'gstore' : b.k), off: !VD().buildings[b.k].deco && !vOnRoad(V, b, R) }));
     objs.push({ x: ex, y: ey, img: ART.get('vgate'), gate: true });
@@ -3209,7 +3212,7 @@
       { const E = VD().expand, f = vFilled(V), n = vLots(V), sides = Object.keys(vExSides).filter(sd => (vExSides[sd][1] === 'x' ? V.x1 - V.x0 : V.y1 - V.y0) + E.strip <= E.max), cost = vExCost(V);
         t += `<span class="eyebrow">More land</span><p class="hint small">Lots filled: <b>${f}</b> of <b>${n}</b>. ${sides.length ? `Open a strip of ${E.strip} more lots on any side except the one by the entrance once you have <b>${E.folk[Math.min(V.ex || 0, E.folk.length - 1)]}</b> town folk and every lot has a building, road or decoration. Roads can cover at most ${Math.round(VD().roadShare * 100)}% of the lots (${V.roads.length} of ${vRoadMax(V)} used).` : 'Your village is as big as it can get.'}</p>`;
         if (sides.length) { t += costList(cost) + sides.map(sd => { const why = vExWhy(V, sd); return `<button class="btn ${why ? '' : 'pri'}" data-vexpand="${sd}" ${why ? 'disabled' : ''}>Open the ${vExSides[sd][0].toLowerCase()} side${why ? `<small>${esc(why)}</small>` : ''}</button>`; }).join(''); } }
-      t += `<p class="hint small">Tap a lot, road or building to see what you can do there.</p>`; }
+      t += `<p class="hint small">The white border marks the land you can build on, and each empty lot has a faint outline. The staked-out plots outside it are land you can buy later. Tap a lot, road or building to see what you can do there.</p>`; }
     setHTML('#vtray', t); const sk = String(ui.sel || '') + ':' + (sb ? sb.k : road ? 'road' : ''); if (ui.lastSel !== sk) { ui.lastSel = sk; const tr = $('#vtray'); if (tr) tr.scrollTop = 0; } }
   function vilButton(ds) { if (!UI.vil) return false; const V = vil(), ui = UI.vil;
     if ('vilClose' in ds) vilClose();
@@ -4140,7 +4143,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-001531';
+  const BUILD = '20261102-013641';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

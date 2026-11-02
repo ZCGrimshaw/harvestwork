@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.109.1 — 2026-11-01
+- Buildable land is marked in `drawVillage`: a 2 px cream border round the lot rectangle and a faint 1 px outline on every empty lot (both from continuous corner points via `pt()`); the overview hint explains the border and the staked plots.
+
 ## v0.109 — 2026-11-01
 - Countryside round the village: `vGeom` draws `VM` (6) lots of scenery on every side of the lot rectangle (canvas is bigger; the default fit uses `lotsW/lotsH`, and `#vilcv` is centred with `left/top: 50%` + `translate(-50%, -50%)` so the overflow is clipped evenly). `vSceneryFor(V)` (cached by bounds and rotation) lays out the ring from hashes of each cell's lot coordinates, so it stays put when you turn the view: grass, hedge bushes on the first layer, trees, a stream one column beyond the east plots, ploughed fields beyond the north plots, a farmhouse, the road from the entrance leading off the map (`vroad`), outer layers faded (`a`). Taps on scenery select nothing (`at()` only returns lots).
 - Staked plots: on each side that can still expand, the strip is `lawn` ground with a dashed outline, a `vstake` post at each corner and the For Sale sign (`vlot`) in the middle. They disappear/move out when you expand.
