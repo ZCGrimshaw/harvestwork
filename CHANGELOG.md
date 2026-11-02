@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.110.4 — 2026-11-01
+- Wants card with no folk (or an unconnected store) shows a checklist: store on a road (`vStore`), cottage on a road (`vHouses`). No server change.
+
 ## v0.110.3 — 2026-11-01
 - `vWantsAvail` = village unlocked and a store is built (no folk / road requirement); the card explains what is missing and lists goods for the first needed shelf even when it is not low. No server change.
 

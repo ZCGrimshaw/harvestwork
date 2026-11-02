@@ -1067,6 +1067,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.110.4', at: '2026-11-01 20:20', notes: ['With no town folk yet, the Village wants card now shows a short checklist of what brings families in: a General Store on a road and a Cottage on a road, ticked off as you do them.'] },
   { v: '0.110.3', at: '2026-11-01 20:00', notes: ['The Village wants card now shows as soon as you have built a General Store, even before folk arrive or the store is on a road, and tells you what is missing. It always lists goods the village would like (food first), not only when a shelf is running low. If you hid it, a “Village wants ▸” button brings it back, or use Settings.'] },
   { v: '0.110.2', at: '2026-11-01 19:40', notes: ['Village orders and Village wants now have a – button, like the goal card. Minimizing one tucks it into a small button (“Orders”, “Wants”) under your goal card; tap the button to open it again.'] },
   { v: '0.110.1', at: '2026-11-01 19:20', notes: ['The Village wants card no longer covers the Village orders card (its remove button was getting covered), and when you hide the wants list a small “Village wants ▸” button stays on the farm so you can bring it back any time.'] },
