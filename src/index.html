@@ -854,7 +854,7 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 :is(#room, #village) .rbody { flex: 1; min-height: 0; display: flex; }
 :is(#room, #village) .rstage { flex: 1; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 12px; background: radial-gradient(ellipse at 50% 40%, #3a2a1c 0%, #1a110a 75%); overflow: hidden; }
 #vilcv { image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; touch-action: manipulation; }
-#village .rstage { position: relative; touch-action: none; } #vilcv { touch-action: none; cursor: grab; transform-origin: 50% 50%; } #vilcv.rotating { cursor: ew-resize; }
+#village .rstage { position: relative; touch-action: none; } #vilcv { position: absolute; left: 50%; top: 50%; touch-action: none; cursor: grab; transform-origin: 50% 50%; max-width: none; } #vilcv.rotating { cursor: ew-resize; }
 #vzoom { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 2; } #vzoom .ibtn { width: 40px; height: 40px; padding: 0; font-size: 20px; }
 @media (max-width: 760px) { #vzoom { flex-direction: row; left: auto; right: 8px; } #vzoom .ibtn { width: 44px; height: 44px; } }
 #village .rstage { background: radial-gradient(ellipse at 50% 40%, #2e4a2a 0%, #13200f 80%); }

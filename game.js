@@ -3036,9 +3036,38 @@
   function vUnmap(V, vx, vy, rot = vRot()) { const W = V.x1 - V.x0, H = V.y1 - V.y0; let lx, ly;
     if (rot === 1) { ly = H - 1 - vx; lx = vy; } else if (rot === 2) { lx = W - 1 - vx; ly = H - 1 - vy; } else if (rot === 3) { ly = vx; lx = W - 1 - vy; } else { lx = vx; ly = vy; }
     return [lx + V.x0, ly + V.y0]; }
-  function vGeom(V) { const rot = vRot(), W = rot & 1 ? V.y1 - V.y0 : V.x1 - V.x0, H = rot & 1 ? V.x1 - V.x0 : V.y1 - V.y0, mn = -(H - 1), mx = W - 1, ox = VPAD + 16 - mn * 16, oy = VTOP + VPAD;
-    return { w: (mx - mn) * 16 + 32 + VPAD * 2, h: VTOP + VPAD * 2 + (W + H) * 8 + 8, ox, oy, W, H, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
+  const VM = 6; // lots of countryside drawn around the village (the same as an expansion strip plus a little)
+  function vGeom(V) { const rot = vRot(), W = rot & 1 ? V.y1 - V.y0 : V.x1 - V.x0, H = rot & 1 ? V.x1 - V.x0 : V.y1 - V.y0, mn = -(H - 1) - 2 * VM, mx = (W - 1) + 2 * VM, ox = VPAD + 16 - mn * 16, oy = VTOP + VPAD + 2 * VM * 8;
+    return { w: (mx - mn) * 16 + 32 + VPAD * 2, h: VTOP + VPAD * 2 + (W + H + 4 * VM) * 8 + 8, ox, oy, W, H, lotsW: (W + H - 2) * 16 + 32 + VPAD * 2, lotsH: VTOP + VPAD * 2 + (W + H) * 8 + 8, cell: (x, y) => [ox + (x - y) * 16, oy + (x + y) * 8 + 8],
       at(px, py) { const dx = px - ox, dy = py - oy, u = (dx / 16 + dy / 8) / 2, v = (dy / 8 - dx / 16) / 2; return u >= 0 && v >= 0 && u < W && v < H ? vUnmap(V, Math.floor(u), Math.floor(v), rot) : null; } }; }
+  // the land around the village: countryside you can't build on, a road leading back to the farm, and staked-out plots on the sides that can still grow
+  let vScenery = null;
+  function vSceneryFor(V) { const E = VD().expand, key = [V.x0, V.x1, V.y0, V.y1, vRot()].join(); if (vScenery && vScenery.key === key) return vScenery;
+    const [, ey] = vEntrance(), W = V.x1 - V.x0, H = V.y1 - V.y0, can = ax => (ax === 'x' ? W : H) + E.strip <= E.max;
+    const plots = [], plotCell = (lx, ly) => { for (const p of plots) if (lx >= p.x0 && lx < p.x1 && ly >= p.y0 && ly < p.y1) return p; return null; };
+    if (can('x')) plots.push({ x0: V.x1, x1: V.x1 + E.strip, y0: V.y0, y1: V.y1 });
+    if (can('y')) { plots.push({ x0: V.x0, x1: V.x1, y0: V.y1, y1: V.y1 + E.strip }); plots.push({ x0: V.x0, x1: V.x1, y0: V.y0 - E.strip, y1: V.y0 }); }
+    const cells = [], objs = [], hs = (a, b) => Math.abs(((a * 73856093) ^ (b * 19349663)) % 1000);
+    const Wv = vRot() & 1 ? H : W, Hv = vRot() & 1 ? W : H;
+    for (let vy = -VM; vy < Hv + VM; vy++) for (let vx = -VM; vx < Wv + VM; vx++) { if (vx >= 0 && vy >= 0 && vx < Wv && vy < Hv) continue;
+      const [lx, ly] = vUnmap(V, vx, vy), dx = lx < V.x0 ? V.x0 - lx : lx >= V.x1 ? lx - V.x1 + 1 : 0, dy = ly < V.y0 ? V.y0 - ly : ly >= V.y1 ? ly - V.y1 + 1 : 0, layer = Math.max(dx, dy), h = hs(lx, ly), pl = plotCell(lx, ly);
+      const c = { vx, vy, lx, ly, ground: 'grass:' + (h % 4), a: layer >= VM - 1 ? (layer === VM ? .4 : .7) : 1 };
+      if (ly === ey && lx < V.x0) c.ground = 'vroad:' + (h % 4);                                  // the road back to the farm
+      else if (pl) c.ground = 'lawn:' + (h % 3);                                                  // cleared, staked-out plots
+      else if (lx === V.x1 + E.strip) c.ground = 'water:' + (h % 3);                              // a stream beyond the plots
+      else if (ly < V.y0 - E.strip && h % 5 < 3) c.ground = 'farm_raw';                           // fields on the far side
+      if (c.ground.startsWith('grass') && !pl && layer >= 1) { const r = h % 100;
+        if (layer === 1 && r < 30 && !(ly === ey - 1 || ly === ey + 1)) objs.push({ vx, vy, lx, ly, k: 'bush' });
+        else if (layer >= 2 && r < 20) objs.push({ vx, vy, lx, ly, k: 'tree' });
+        else if (layer >= 3 && r >= 96) objs.push({ vx, vy, lx, ly, k: 'bush' }); }
+      cells.push(c); }
+    // stakes at the corners of each plot and a For Sale sign in the middle (in view coordinates)
+    plots.forEach(p => { const mapp = (x, y) => vMap(V, x, y);
+      [[p.x0, p.y0], [p.x1 - 1, p.y0], [p.x0, p.y1 - 1], [p.x1 - 1, p.y1 - 1]].forEach(([x, y]) => { const m = mapp(x, y); objs.push({ vx: m[0], vy: m[1], lx: x, ly: y, k: 'vstake' }); });
+      const mx = Math.floor((p.x0 + p.x1 - 1) / 2), my = Math.floor((p.y0 + p.y1 - 1) / 2), m = mapp(mx, my); objs.push({ vx: m[0], vy: m[1], lx: mx, ly: my, k: 'vlot' }); });
+    // a distant farmhouse beyond one corner
+    const hm = vMap(V, V.x0 - 3, V.y1 + 2); objs.push({ vx: hm[0], vy: hm[1], lx: V.x0 - 3, ly: V.y1 + 2, k: 'homestead' });
+    vScenery = { key, cells, objs, plots }; return vScenery; }
   const vLots = V => (V.x1 - V.x0) * (V.y1 - V.y0);
   const vRoadMax = V => Math.floor(vLots(V) * VD().roadShare);
   const vRoadWhy = V => V.roads.length >= vRoadMax(V) ? `That’s all the road a village this size can have (${V.roads.length} of ${vRoadMax(V)}). Remove one you don’t need, or expand for more room.` : '';
@@ -3052,21 +3081,33 @@
     const s = UI.vil.sel; UI.vil.sel = s && s[0] === c[0] && s[1] === c[1] ? null : c; UI.vil.msg = ''; UI.html['#vtray'] = null; dirty(); }
   function drawVillage() { const V = S.village, cv2 = $('#vilcv'), st = $('#village .rstage'); if (!V || !cv2 || !st) return;
     const G = vGeom(V); if (cv2.width !== G.w || cv2.height !== G.h) { cv2.width = G.w; cv2.height = G.h; }
-    let s = Math.min(st.clientWidth / G.w, st.clientHeight / G.h); s = s >= 2 ? Math.floor(s) : Math.max(.5, s);
+    let s = Math.min(st.clientWidth / G.lotsW, st.clientHeight / G.lotsH); s = s >= 2 ? Math.floor(s) : Math.max(.5, s);
     const cw = Math.round(G.w * s) + 'px'; if (cv2.style.width !== cw) { cv2.style.width = cw; cv2.style.height = Math.round(G.h * s) + 'px'; }
-    const cm = UI.vil && UI.vil.cam, tf = cm ? `translate(${Math.round(cm.px)}px, ${Math.round(cm.py)}px) scale(${cm.z.toFixed(3)})` : ''; if (cv2.style.transform !== tf) cv2.style.transform = tf;
+    const cm = UI.vil && UI.vil.cam, tf = cm ? `translate(-50%, -50%) translate(${Math.round(cm.px)}px, ${Math.round(cm.py)}px) scale(${cm.z.toFixed(3)})` : 'translate(-50%, -50%)'; if (cv2.style.transform !== tf) cv2.style.transform = tf;
     const g = cv2.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, G.w, G.h);
-    const R = vReach(V), sel = UI.vil && UI.vil.sel, [ex, ey] = vEntrance(), now = performance.now() / 1000;
-    const cells = []; for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) { const m = vMap(V, x, y); cells.push([x, y, m[0], m[1]]); } cells.sort((a, b) => (a[2] + a[3]) - (b[2] + b[3]) || a[2] - b[2]);
-    cells.forEach(([x, y, vx, vy]) => { const [cx, cy] = G.cell(vx, vy), road = vRoadAt(V, x, y);
-      g.drawImage(ART.get(road ? 'vroad:' + ((x * 7 + y * 3) % 4) : 'grass:' + ((x * 5 + y * 3) % 4)), cx - 16, cy - 8);
-      if (road && !R.has(vKey(x, y))) { g.fillStyle = 'rgba(200,72,58,.35)'; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.fill(); } });
-    if (sel) { const [cx, cy] = G.cell(...vMap(V, sel[0], sel[1])); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); g.stroke(); }
+    const R = vReach(V), sel = UI.vil && UI.vil.sel, [ex, ey] = vEntrance(), now = performance.now() / 1000, SC = vSceneryFor(V);
+    const diamond = (cx, cy) => { g.beginPath(); g.moveTo(cx, cy - 8); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 8); g.lineTo(cx - 16, cy); g.closePath(); };
+    // all the ground in one depth-sorted pass (the countryside and the lots), so each tile's thick edge is covered by the tiles in front of it
+    const cells = SC.cells.map(c => ({ vx: c.vx, vy: c.vy, ring: c }));
+    for (let y = V.y0; y < V.y1; y++) for (let x = V.x0; x < V.x1; x++) { const m = vMap(V, x, y); cells.push({ vx: m[0], vy: m[1], x, y }); }
+    cells.sort((a, b) => (a.vx + a.vy) - (b.vx + b.vy) || a.vx - b.vx).forEach(c => { const [cx, cy] = G.cell(c.vx, c.vy);
+      if (c.ring) { g.globalAlpha = c.ring.a; g.drawImage(ART.get(c.ring.ground), cx - 16, cy - 8); g.globalAlpha = 1; return; }
+      const road = vRoadAt(V, c.x, c.y); g.drawImage(ART.get(road ? 'vroad:' + ((c.x * 7 + c.y * 3) % 4) : 'grass:' + ((c.x * 5 + c.y * 3) % 4)), cx - 16, cy - 8);
+      if (road && !R.has(vKey(c.x, c.y))) { g.fillStyle = 'rgba(200,72,58,.35)'; diamond(cx, cy); g.fill(); } });
+    // dashed outline round each staked plot (corners are continuous points, so they map a little differently from whole lots)
+    { const W = V.x1 - V.x0, H = V.y1 - V.y0, rot = vRot(), pt = (u, v) => { const lx = u - V.x0, ly = v - V.y0, m = rot === 1 ? [H - ly, lx] : rot === 2 ? [W - lx, H - ly] : rot === 3 ? [ly, W - lx] : [lx, ly]; return [G.ox + (m[0] - m[1]) * 16, G.oy + (m[0] + m[1]) * 8]; };
+      g.strokeStyle = 'rgba(245,197,66,.8)'; g.lineWidth = 1.2; g.setLineDash([4, 3]);
+      SC.plots.forEach(p => { g.beginPath(); [[p.x0, p.y0], [p.x1, p.y0], [p.x1, p.y1], [p.x0, p.y1]].forEach(([u, v], k) => { const q = pt(u, v); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.stroke(); }); g.setLineDash([]); }
+    if (sel) { const [cx, cy] = G.cell(...vMap(V, sel[0], sel[1])); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; diamond(cx, cy); g.stroke(); }
     const objs = V.b.map(b => ({ x: b.x, y: b.y, img: ART.get(b.k === 'store' ? 'gstore' : b.k), off: !VD().buildings[b.k].deco && !vOnRoad(V, b, R) }));
     objs.push({ x: ex, y: ey, img: ART.get('vgate'), gate: true });
     objs.forEach(o => { o.m = vMap(V, o.x, o.y); });
+    SC.objs.forEach(o => objs.push({ m: [o.vx, o.vy], img: ART.get(o.k), far: true }));
     objs.sort((a, b) => (a.m[0] + a.m[1]) - (b.m[0] + b.m[1])).forEach(o => { const [cx, cy] = G.cell(o.m[0], o.m[1]); g.drawImage(o.img, cx - 16, cy - (o.img.height - 4));
-      if (o.off) { const by = cy - o.img.height - 2 + Math.sin(now * 4) * 1.5; g.fillStyle = '#c8483a'; g.beginPath(); g.arc(cx, by, 5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(cx - .5, by - 3, 1.5, 4); g.fillRect(cx - .5, by + 2, 1.5, 1.2); } }); }
+      if (o.off) { const by = cy - o.img.height - 2 + Math.sin(now * 4) * 1.5; g.fillStyle = '#c8483a'; g.beginPath(); g.arc(cx, by, 5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(cx - .5, by - 3, 1.5, 4); g.fillRect(cx - .5, by + 2, 1.5, 1.2); } });
+    // a few birds drifting over the countryside
+    g.fillStyle = 'rgba(40,30,20,.7)'; for (let k = 0; k < 4; k++) { const t = now * (.05 + k * .013) + k * .27, bx = (t % 1) * (G.w + 60) - 30, by = G.h * (.18 + k * .06) + Math.sin(now * 2 + k * 2) * 3, f = Math.sin(now * 9 + k) > 0 ? 1 : -1;
+      g.fillRect(bx - 3, by + f, 3, 1); g.fillRect(bx, by, 1, 1); g.fillRect(bx + 1, by + f, 3, 1); } }
   // the build list for an empty lot, with why each one can't be built yet
   function vBuildWhy(V, k) { const B = VD().buildings[k];
     if (B.max && vCount(V, k) >= B.max) return `You already have ${B.max === 1 ? 'one' : B.max}.`;
@@ -3193,10 +3234,10 @@
   $('#village').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (vilButton(el.dataset)) e.stopPropagation(); });
   // village camera: the same controls as the farm: drag to pan, wheel or pinch to zoom, + / − buttons, Q and E (or the turn buttons) to rotate, ⌂ to centre
   const vCam = () => UI.vil && UI.vil.cam;
-  function vCamClamp(c) { const st = $('#village .rstage'), cv2 = $('#vilcv'); c.z = Math.max(.5, Math.min(4, c.z)); if (!st || !cv2) return;
+  function vCamClamp(c) { const st = $('#village .rstage'), cv2 = $('#vilcv'); c.z = Math.max(.4, Math.min(4, c.z)); if (!st || !cv2) return;
     const lx = (cv2.offsetWidth * c.z + st.clientWidth) / 2 - 40, ly = (cv2.offsetHeight * c.z + st.clientHeight) / 2 - 40; c.px = Math.max(-lx, Math.min(lx, c.px)); c.py = Math.max(-ly, Math.min(ly, c.py)); }
   function vZoomAt(f, mx, my) { const c = vCam(), st = $('#village .rstage'); if (!c || !st) return; const r = st.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, z0 = c.z;
-    c.z = Math.max(.5, Math.min(4, c.z * f)); const k = c.z / z0; c.px = (mx - cx) - ((mx - cx) - c.px) * k; c.py = (my - cy) - ((my - cy) - c.py) * k; vCamClamp(c); }
+    c.z = Math.max(.4, Math.min(4, c.z * f)); const k = c.z / z0; c.px = (mx - cx) - ((mx - cx) - c.px) * k; c.py = (my - cy) - ((my - cy) - c.py) * k; vCamClamp(c); }
   function vCamAct(a) { const c = vCam(); if (!c) return; const st = $('#village .rstage'), r = st ? st.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
     if (a === 'in') vZoomAt(1.25, r.left + r.width / 2, r.top + r.height / 2); else if (a === 'out') vZoomAt(.8, r.left + r.width / 2, r.top + r.height / 2);
     else if (a === 'home') { c.z = 1; c.px = 0; c.py = 0; } else if (a === 'rotl') c.rot = (c.rot + 3) % 4; else if (a === 'rotr') c.rot = (c.rot + 1) % 4; vCamClamp(c); UI.html['#vtray'] = null; dirty(); }
@@ -4099,7 +4140,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261101-183823';
+  const BUILD = '20261102-001531';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

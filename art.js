@@ -883,6 +883,14 @@ window.HW_ART = (function () {
     r('#9aa0aa', 14, 12, 4, 10); r('#b0b4bc', 14, 12, 1, 10); ell(r, '#b0b4bc', 16, 12, 6, 2); ell(r, '#4aa3d8', 16, 12, 4, 1);
     [[16, 4], [14, 6], [18, 6], [12, 9], [20, 9]].forEach(([x, y]) => r('#bfe8fa', x, y, 1, 2));
   });
+  // countryside round the village: a hedgerow bush and a stake with a bit of string and a flag
+  OBJ.bush = () => mk(32, 18, (g, r) => {
+    shadow(r, 20, 7); ell(r, '#3f7f2f', 16, 12, 8, 5); ell(r, '#4f9a3a', 14, 10, 6, 4); ell(r, '#6bbb4c', 12, 8, 3, 2); r('#e86aa8', 18, 11, 1, 1); r('#f6e27a', 11, 12, 1, 1);
+  });
+  OBJ.vstake = () => mk(32, 22, (g, r) => {
+    r('#6b4220', 15, 8, 2, 12); r('#8a5a2e', 15, 8, 1, 12); r('#e8d6a8', 11, 9, 4, 1); r('#e8d6a8', 17, 9, 4, 1); r('#e8d6a8', 17, 10, 3, 1); r('#e8d6a8', 12, 10, 3, 1);
+    r('#f5c542', 16, 4, 5, 3); r('#d9a21a', 16, 6, 5, 1); r('#6b4220', 15, 19, 2, 1);
+  });
   // an empty lot for sale in the village
   OBJ.vlot = () => mk(32, 24, (g, r) => {
     r('#7a4b28', 15, 6, 1, 12); r('#e8d6a8', 11, 5, 9, 5); r('#c9b07a', 11, 9, 9, 1); r('#5e3519', 13, 7, 5, 1);

@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.109 — 2026-11-01
+- Countryside round the village: `vGeom` draws `VM` (6) lots of scenery on every side of the lot rectangle (canvas is bigger; the default fit uses `lotsW/lotsH`, and `#vilcv` is centred with `left/top: 50%` + `translate(-50%, -50%)` so the overflow is clipped evenly). `vSceneryFor(V)` (cached by bounds and rotation) lays out the ring from hashes of each cell's lot coordinates, so it stays put when you turn the view: grass, hedge bushes on the first layer, trees, a stream one column beyond the east plots, ploughed fields beyond the north plots, a farmhouse, the road from the entrance leading off the map (`vroad`), outer layers faded (`a`). Taps on scenery select nothing (`at()` only returns lots).
+- Staked plots: on each side that can still expand, the strip is `lawn` ground with a dashed outline, a `vstake` post at each corner and the For Sale sign (`vlot`) in the middle. They disappear/move out when you expand.
+- Ground (scenery and lots) is drawn in one depth-sorted pass so tile edges aren't painted over the wrong neighbours. Birds are drawn from the clock (not saved). New art: `OBJ.bush`, `OBJ.vstake`. Camera zoom-out limit is now 0.4×. No save or server change.
+
 ## v0.108 — 2026-11-01
 - Road limit: `D.village.roadShare` (.3): `vRoadMax(V)` = floor(lots × .3) counting the three starter roads (19 on 8×8); `vRoadWhy(V)` blocks `vRoad(true)` and disables the Lay a road button with the reason and the count. Existing villages over the limit keep their roads (can only remove). The overview and expansion text show roads used.
 - Expansion needs town folk: `D.village.expand.folk` = [20, 40, 70, 100] for the 1st to 4th expansion (checked first in `vExWhy`, before the lots-filled check). Older 12×12 villages count as one expansion done, so their next needs 40.
