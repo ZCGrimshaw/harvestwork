@@ -927,6 +927,17 @@ window.HW_ART = (function () {
     r('#7a4b28', 19, 27, 5, 7); r('#5e3519', 19, 27, 5, 1); r('#f6d24a', 23, 30, 1, 1); // door
     r('#6b4220', 4, 32, 1, 2); r('#5aa83f', 2, 30, 4, 2); r('#b07ae0', 3, 29, 1, 1); r('#e86aa8', 5, 30, 1, 1); // herb pot
   });
+  // the Farm Stand: an open wooden stall with a green striped awning and crates of produce
+  OBJ.farmstand = () => mk(32, 32, (g, r) => {
+    shadow(r, 32, 13);
+    r('#6b4220', 4, 9, 2, 22); r('#6b4220', 26, 9, 2, 22); r('#8a5a2e', 4, 9, 1, 22);
+    for (let i = 0; i < 24; i++) r(Math.floor(i / 3) % 2 ? '#f2ece0' : '#4a9a3a', 4 + i, 6, 1, 5); r('#2f6f2f', 4, 11, 24, 1);
+    for (let i = 0; i < 6; i++) r('#4a9a3a', 4 + i * 4, 12, 2, 1);
+    r('#a8743e', 3, 22, 26, 7); r('#c99b5a', 3, 22, 26, 1); r('#8a5a2e', 3, 28, 26, 1);
+    [['#e86a3a', 6], ['#f6e27a', 11], ['#5aa83f', 16], ['#d8433a', 21]].forEach(([c, x]) => { r('#8a5a2e', x, 20, 4, 3); r(c, x, 17, 4, 3); r(c, x + 1, 16, 2, 1); });
+    r('#efe0b4', 12, 13, 8, 3); r('#5aa83f', 14, 14, 4, 1);
+    r('#c99b5a', 0, 26, 3, 4); r('#e8d6a8', 29, 26, 3, 4); r('#e86aa8', 1, 24, 1, 1); r('#f6e27a', 30, 24, 1, 1);
+  });
   // countryside round the village: a hedgerow bush and a stake with a bit of string and a flag
   OBJ.bush = () => mk(32, 18, (g, r) => {
     shadow(r, 20, 7); ell(r, '#3f7f2f', 16, 12, 8, 5); ell(r, '#4f9a3a', 14, 10, 6, 4); ell(r, '#6bbb4c', 12, 8, 3, 2); r('#e86aa8', 18, 11, 1, 1); r('#f6e27a', 11, 12, 1, 1);

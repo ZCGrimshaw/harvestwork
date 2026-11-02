@@ -264,10 +264,13 @@ window.HW_DATA = {
       bakery:  { name: 'Bakery', cost: { gold: 900, plank: 30, brick: 30, stone: 10 }, max: 1, folk: 10, shop: 'bakery', desc: 'Bakes your flour, eggs and butter into fresh bread. While its shelf is stocked, the Pantry lasts a quarter longer and folk are a little happier.' },
       market:  { name: 'Market Square', cost: { gold: 1200, plank: 40, stone: 30 }, max: 1, folk: 16, desc: 'Holds a Market Day every few days: the village posts a list of goods it wants by a deadline. Fill it for gold, a Discovery token and a happy village.' },
       tavern:  { name: 'Tavern', cost: { gold: 1800, plank: 50, brick: 40, roof_tile: 16 }, max: 1, folk: 24, shop: 'tavern', desc: 'Pours your ales, ciders and wines and serves your cheeses. While stocked, folk are much happier and it pays the full value of what it sells into the till.' },
+      farmstand: { name: 'Farm Stand', cost: { gold: 450, plank: 24, stone: 8 }, max: 1, folk: 6, shop: 'farmstand', desc: 'Sells produce straight from your farm. It only takes goods you GREW or COLLECTED yourself in the last 3 days: harvested crops, eggs, milk, honey, mushrooms and flowers. Goods bought from the market never count. While stocked, folk are much happier, count for more, and families move in faster.' },
       apothecary: { name: 'Apothecary', cost: { gold: 1500, plank: 30, brick: 30, roof_tile: 12 }, max: 1, folk: 32, shop: 'apothecary', desc: 'Makes remedies from mushrooms, flowers and honey. While stocked, folk are happier and much slower to give up and leave when times are hard.' }
     },
     // shop shelves: like the store's, but in their own building. rate = points used per town folk per day; happy = mood while stocked; sad = mood lost while it stands empty (mild)
     shops: [
+      { id: 'farmstand', b: 'farmstand', name: 'Farm Stand', what: 'goods you grew or collected on your own farm', rate: 5, need: 0, happy: 15, sad: 5, good: 'fresh produce from the farm stand', closed: 'the farm stand has nothing fresh', farm: true, arrive: 1.25,
+        goods: ['carrot', 'potato', 'wheat', 'berries', 'tomato', 'pumpkin', 'apple', 'pear', 'cherries', 'plum', 'corn', 'onion', 'pepper', 'cabbage', 'egg', 'milk', 'honey', 'mushrooms', 'flowers'] },
       { id: 'bakery', b: 'bakery', name: 'Bakery', what: 'flour, grain, eggs and dairy', rate: 4, need: 0, happy: 5, sad: 5, good: 'fresh bread', closed: 'the bakery’s ovens are cold', pantry: .75,
         goods: ['wheat', 'flour', 'corn', 'egg', 'milk', 'butter', 'honey', 'malt'] },
       { id: 'tavern', b: 'tavern', name: 'Tavern', what: 'ale, cider, wine and cheese', rate: 4, need: 0, happy: 15, sad: 5, good: 'an evening at the tavern', closed: 'the tavern is dry', takings: 1,
@@ -276,6 +279,8 @@ window.HW_DATA = {
         goods: ['mushrooms', 'flowers', 'honey', 'glass_jar', 'linen', 'reeds', 'clay_pot', 'berry_juice'] }
     ],
     // Market Day at the Market Square: a list of `goods` different goods, each worth about pts + perFolk × folk points, to fill within `days` game days; a new one every `every` days
+    // Farm Stand: goods count only if you grew or collected them yourself in the last `days` game days; they are worth `mult` times as many shelf points
+    farmStand: { days: 3, mult: 1.5 },
     marketDay: { every: 3, days: 1.5, goods: 4, pts: 40, perFolk: 4, pay: 1.5, dp: 1, happy: 10, score: 100 },
     // titles for the most town folk you have ever had (kept once earned); each pays a few Discovery tokens, smallest to largest
     titles: [
@@ -1083,6 +1088,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.113', at: '2026-11-02 11:00', notes: ['New village building: the Farm Stand, unlocked at 6 town folk. It only takes goods you grew or collected yourself in the last 3 days: harvested crops, eggs, milk, honey, mushrooms and flowers. Goods bought from the market do not count, and neither do older ones. Fresh farm goods are worth half as much again on its shelf, folk are much happier while it is stocked, and families move in faster.','The Farm Stand’s tray lists what is farm-fresh in your storage right now, and what to grow for it.'] },
   { v: '0.112.3', at: '2026-11-02 10:00', notes: ['The trophy case holds as many pieces as your house is big, as before: Cottage 3, House 5, Farmhouse 8, Manor 12. It is now much clearer: the case shows how many spots you have and how many are used, says when it is full, and tells you what the next house size gives and where to upgrade it (House Additions in Discovery, then select your house → Grow the house). Pieces that did not fit wait in a list until you have room.'] },
   { v: '0.112.2', at: '2026-11-02 09:45', notes: ['The trophy case holds a lot more: 12 spots even in a starter cottage (it was 3), 12 in a House, 15 in a Farmhouse and 18 in a Manor, laid out in shelves of four. Anything already on your shelves stays where it is.'] },
   { v: '0.112.1', at: '2026-11-01 23:00', notes: ['Village unlocks now stay unlocked: once you have had enough town folk for a building, more land or a Discovery, it stays available even if some folk leave.','An empty village always welcomes newcomers: if you have a General Store and a Cottage on a road, families move in even before the mood is back up.','The village keeps living while you are in town with the farm paused, so folk can arrive and shelves are used while you watch.','Monuments draw visitors: every gift you give to the valley monument brings a new family closer to settling in your village, and each finished monument stage brings up to two families at once (if you have homes free).'] },

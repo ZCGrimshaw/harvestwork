@@ -166,7 +166,7 @@
   function autoSellTick() { if (!S || !S.autoSell || S.race || !S.keep || paused()) return; let gold = 0; const sold = [];
     for (const id in S.keep) { if (!sellable(id) || !S.inv[id]) continue; let n = count(id) - S.keep[id]; if (n <= 0) continue; let k0 = 0;
       for (let q = 0; q < 3 && n > 0; q++) { const k = Math.min(S.inv[id][q], n); if (!k) continue; const g = sellPrice(id, q) * k; S.inv[id][q] -= k; n -= k; k0 += k; gold += g; reportTrade(id, k, 'sell'); }
-      if (k0) sold.push([id, k0]); }
+      if (k0) { sold.push([id, k0]); freshScale(id, count(id) + k0, count(id)); } }
     if (!gold) return; S.gold += gold; wk().sold += gold; gainScore(gold / C.score.sellPer, undefined, 'sell'); emit('sell');
     S.autoSold = (S.autoSold || 0) + gold; UI.autoLast = { at: Date.now(), gold, sold };
     const A = UI.autoAcc = UI.autoAcc || { gold: 0, n: {} }; A.gold += gold; sold.forEach(([id, k]) => A.n[id] = (A.n[id] || 0) + k);
@@ -192,9 +192,18 @@
     if (!silent && q === 1) first('q1', C.firsts.good, 'First Good-quality goods');
     if (!silent && q === 2) first('q2', C.firsts.excellent, 'First Excellent-quality goods');
   }
+  /* Farm-fresh goods: units you grew or collected yourself are remembered per good as [day, n] (S.fresh). Anything leaving storage takes
+     its share of them (so selling then re-buying a good can't turn market goods into farm goods), and entries expire after D.village.farmStand.days. */
+  const FRESH = () => D.village.farmStand;
+  let FARMSET = null; const farmGood = id => { if (!FARMSET) { const s = D.village.shops.find(x => x.farm); FARMSET = new Set(s ? s.goods : []); } return FARMSET.has(id); };
+  function freshAdd(id, n) { if (!(n > 0) || !farmGood(id) || !unlocked('village')) return; const F = S.fresh || (S.fresh = {}), L = F[id] || (F[id] = []), e = L[L.length - 1]; if (e && e[0] === S.day) e[1] += n; else L.push([S.day, n]); }
+  function freshCount(id) { const L = S.fresh && S.fresh[id]; if (!L) return 0; const min = S.day - FRESH().days + 1; let t = 0; for (let k = L.length - 1; k >= 0; k--) { if (L[k][0] < min) L.splice(k, 1); else t += L[k][1]; } return Math.min(Math.floor(t + 1e-6), count(id)); }
+  function freshScale(id, before, after) { const L = S.fresh && S.fresh[id]; if (!L) return; if (before <= 0 || after <= 0) { delete S.fresh[id]; return; } if (after >= before) return; const r = after / before; L.forEach(e => { e[1] *= r; }); }
+  function freshUse(id, n) { const L = S.fresh && S.fresh[id]; if (!L) return; L.sort((x, y) => x[0] - y[0]); for (const e of L) { const k = Math.min(e[1], n); e[1] -= k; n -= k; if (n <= 0) break; } S.fresh[id] = L.filter(e => e[1] > 1e-6); }
   // take n units; 'high' uses best quality first (processing), 'low' uses worst eligible first (orders)
   function take(id, n, minQ = 0, order = 'low') {
-    const a = S.inv[id]; let worst = 2;
+    const a = S.inv[id]; let worst = 2; const b0 = a[0] + a[1] + a[2]; try { return takeInner(id, n, minQ, order, a, worst); } finally { freshScale(id, b0, a[0] + a[1] + a[2]); } }
+  function takeInner(id, n, minQ, order, a, worst) {
     const qs = order === 'high' ? [2, 1, 0] : [0, 1, 2];
     for (const q of qs) { if (q < minQ) continue; const k = Math.min(a[q], n); if (k > 0) { a[q] -= k; n -= k; worst = Math.min(worst, q); } if (!n) break; }
     return worst;
@@ -1349,7 +1358,7 @@
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
     done.forEach(x => { const out = Object.assign({}, D.recipes[x.r].out); if (x.bonus) { const k0 = Object.keys(out)[0]; if (D.items[k0].cat !== 'kit') out[k0]++; } for (const k in out) {
       if (isMast(k)) out[k] += mastExtra(k, room() > out[k]);
-      addItem(k, out[k], x.qual); mastAdd(k, out[k], i); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
+      addItem(k, out[k], x.qual); if (!D.recipes[x.r].in || !Object.keys(D.recipes[x.r].in).some(j => D.items[j] && D.items[j].cat === 'good' && !farmGood(j))) freshAdd(k, out[k]); mastAdd(k, out[k], i); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i, 'craft', k);
       first('craft:' + k, C.firsts.craft, `First ${D.items[k].name} made`);
@@ -1436,7 +1445,7 @@
       run: t => { const b = T_(t.i).b, cr = D.crops[b.crop];
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
         const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
-        addItem(cr.item, yl, q); wk().harvest += yl; float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
+        addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
         if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(t.i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
         gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
@@ -1458,7 +1467,7 @@
         if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(gatherGive(T)) ? null : FULL; },
       run: t => { const T = T_(t.i), out = gatherGive(T); T.r.stock--; useDep(T); const got = [];
         if (gemsHere(T)) S.gemN = (S.gemN || 0) + 1;
-        for (const k in out) { addItem(k, out[k]); got.push(`+${out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
+        for (const k in out) { addItem(k, out[k]); freshAdd(k, out[k]); got.push(`+${out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
         float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i, 'gather', ...Object.keys(D.gather[T.t].out)); emit('gather'); } },
     survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
       check: t => { if (!unlocked('surveying')) return 'Unlock Land Surveying in Discovery'; if (!surveyable(t.p)) return 'Survey land next to an area you already have'; return canPay(surveyCost()); },
@@ -3002,6 +3011,9 @@
   const vShopOn = (V, s, R) => { const b = V.b.find(o => o.k === s.b); return !!(b && vOnRoad(V, b, R)); };
   const vShelves = V => { const R = vReach(V); return vGroups().concat(vShops().filter(s => vShopOn(V, s, R))); };
   const vShelf = id => vGroups().find(g => g.id === id) || vShopOf(id);
+  const vPtsG = (g, id, q) => Math.round(vPts(id, q) * (g && g.farm ? FRESH().mult : 1));
+  const vHave = (g, id) => g && g.farm ? freshCount(id) : count(id); // what you can put on this shelf right now
+  const vArrMul = V => vShops().reduce((m, s) => s.arrive && vShopStocked(V, s) ? m * s.arrive : m, 1);
   const vShopStocked = (V, s) => vShopOn(V, s) && V.sh[s.id] > 0;
   const vPantryMul = V => vShops().reduce((m, s) => s.pantry && vShopStocked(V, s) ? m * s.pantry : m, 1);
   const vPatience = V => vShops().reduce((m, s) => s.patience && vShopStocked(V, s) ? m * s.patience : m, 1);
@@ -3049,22 +3061,22 @@
   // the village score: goods sold (a point per 10), buildings and roads, and how many folk live here, weighted by how happy they are
   function vScore(V) { V = V || S.village; if (!V) return 0; return Math.floor((V.used || 0) / 10 + V.b.filter(b => !VD().buildings[b.k].deco).length * 50 + V.b.filter(b => VD().buildings[b.k].deco).length * 10 + Math.max(0, V.roads.length - 3) * 2 + V.folk * (V.h / 100) * 25 + (V.mkDone || 0) * (VD().marketDay.score || 0)); }
   // goods the store would like next for a shelf: what you have most of first, then what you've made before
-  function vSuggest(g, all) { const have = g.goods.filter(id => D.items[id] && count(id) > 0).sort((a, b) => count(b) - count(a));
+  function vSuggest(g, all) { const have = g.goods.filter(id => D.items[id] && vHave(g, id) > 0).sort((a, b) => vHave(g, b) - vHave(g, a));
     return all ? have : have.slice(0, 4); }
   const vKnown = g => g.goods.filter(id => D.items[id] && S.disc.includes(id));
-  function vMax(V, g, id) { const space = vCap(V, g) - (V.sh[g.id] || 0); if (space <= 0) return 0; return Math.min(count(id), Math.max(1, Math.ceil(space / vPts(id, 0)))); }
+  function vMax(V, g, id) { const space = vCap(V, g) - (V.sh[g.id] || 0); if (space <= 0) return 0; return Math.min(vHave(g, id), Math.max(1, Math.ceil(space / vPtsG(g, id, 0)))); }
   // put goods on a shelf (lowest quality first); returns how many went
   function vGive(id, n, quiet, gid) { const V = vil(), g = gid ? vShelf(gid) : vGroups().find(x => x.id === vGroupOf(id)); if (!g || !g.goods.includes(id) || !(g.b ? vShopOn(V, g) : vStore(V))) return 0;
     n = Math.min(n | 0, vMax(V, g, id)); if (n <= 0) return 0; const a = S.inv[id]; let left = n, pts = 0;
-    for (let q = 0; q < 3 && left > 0; q++) { const k = Math.min(a[q] || 0, left); if (k > 0) { a[q] -= k; left -= k; pts += k * vPts(id, q); } }
-    const gave = n - left; V.sh[g.id] = (V.sh[g.id] || 0) + pts; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[g.id] = false;
+    for (let q = 0; q < 3 && left > 0; q++) { const k = Math.min(a[q] || 0, left); if (k > 0) { a[q] -= k; left -= k; pts += k * vPtsG(g, id, q); } }
+    const gave = n - left; if (g.farm) freshUse(id, gave); else freshScale(id, count(id) + gave, count(id)); V.sh[g.id] = (V.sh[g.id] || 0) + pts; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[g.id] = false;
     if (!quiet && gave) { SND.play('contract'); vMsg(`Put ${gave} ${esc(D.items[id].name)} on the ${esc(g.name)} shelf.`); }
     return gave; }
   function vAuto(V) { if (!unlocked('villageauto')) return; let any = 0; const st = vStore(V);
     vShelves(V).forEach(g => { if (!g.b && !st) return; const lv = V.lvl[g.id] != null ? V.lvl[g.id] : 75, want = vCap(V, g) * lv / 100; if ((V.sh[g.id] || 0) >= want) return;
       g.goods.filter(id => V.auto[id] && V.auto[id].on && D.items[id]).sort((a, b) => count(b) - count(a)).forEach(id => {
-        const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = count(id) - (V.auto[id].keep | 0); if (spare <= 0) return;
-        any += vGive(id, Math.min(spare, Math.ceil(need / vPts(id, 0))), true, g.id); }); });
+        const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = vHave(g, id) - (V.auto[id].keep | 0); if (spare <= 0) return;
+        any += vGive(id, Math.min(spare, Math.ceil(need / vPtsG(g, id, 0))), true, g.id); }); });
     if (any) { V.autoAt = S.day; UI.vDirty = true; } }
   // families moving in (n of them, up to the homes free); `why` is an optional toast
   function vArrive(V, n, why) { const room = vHouses(V), k = Math.max(0, Math.min(n, room - V.folk)); if (!k) return 0;
@@ -3116,7 +3128,7 @@
       if (lvl > was) toast(`<b>${lvl > 1 ? 'Your town folk are unhappy.' : 'Your town folk are grumbling.'}</b> ${esc(m.why)} ${lvl > 1 ? 'A family may leave if this goes on. ' : ''}Tap Folk to see their shelves.`, 'warn');
       if (lvl !== was && (lvl < was ? V.h >= (was > 1 ? 40 : 65) : true)) V.mw = lvl; }
     const room = vHouses(V);
-    if (st && (V.h >= 60 || !V.folk) && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + Math.max(V.h, 60) / 100); if (V.arr >= 1) { V.arr = 0; vArrive(V, 1); } }
+    if (st && (V.h >= 60 || !V.folk) && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + Math.max(V.h, 60) / 100) * vArrMul(V); if (V.arr >= 1) { V.arr = 0; vArrive(V, 1); } }
     if ((V.h < 20 || V.folk > room) && V.folk > 0) { const lv0 = V.lv || 0; V.lv = lv0 + dd * vPatience(V);
       if (lv0 < 1.5 && V.lv >= 1.5) toast(`<b>A family is packing their bags.</b> ${V.folk > room ? 'There aren’t enough homes on a road for everyone.' : 'The shelves have been empty too long.'} Stock the General Store or build a Cottage on a road to make them stay.`, 'warn');
       if (V.lv >= 3) { V.lv = 0; V.folk--; if (V.h < 35) V.h = 35; /* a fresh start: those who remain are a little less sour */ toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
@@ -3231,7 +3243,7 @@
     if (first) { V.folk = Math.max(V.folk, 2); V.h = 70; V.peak = Math.max(V.peak || 0, V.folk); vAwardTitles(V); }
     if (k === 'market') V.mkT = Math.max(V.mkT || 0, VD().marketDay.every - .25); /* the first Market Day comes soon after it opens */
     SND.play('contract'); logAct(`${B.deco ? 'Placed a' : 'Built a'} ${B.name} in your village.`, 'you');
-    toast(`<b>${esc(B.name)} ${B.deco ? 'placed' : 'built'}.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : B.shop ? 'Tap it to stock its shelf with goods from your farm.' : k === 'market' ? 'The first Market Day is coming soon.' : ''}${B.deco || vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
+    toast(`<b>${esc(B.name)} ${B.deco ? 'placed' : 'built'}.</b> ${first ? 'Two town folk moved in straight away! Next, build a General Store so they can shop, and more will come.' : k === 'store' ? 'Stock its shelves with goods from your farm and the village will grow.' : B.shop === 'farmstand' ? 'It only takes goods you grew or collected yourself (not bought): harvest some crops, then tap it to stock its shelf.' : B.shop ? 'Tap it to stock its shelf with goods from your farm.' : k === 'market' ? 'The first Market Day is coming soon.' : ''}${B.deco || vOnRoad(V, V.b[V.b.length - 1]) ? '' : ' It isn’t on a road yet: lay a road from the entrance to it.'}`, 'goal');
     UI.html['#vtray'] = null; save(); dirty(); }
   function vRoad(on) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, k = vKey(x, y), [ex, ey] = vEntrance();
     if (on) { if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vRoadWhy(V) || canPay(VD().road); if (why) { vMsg(esc(why)); SND.play('warn'); return; } pay(VD().road); V.roads.push(k); SND.play('tap'); }
@@ -3262,7 +3274,7 @@
     if (Object.values(D.crops).some(c => c.item === id)) return 'grown on a Farm Plot';
     return D.items[id].buy ? 'sold at the market' : 'gathered or fished'; }
   // goods this shelf takes that aren't in storage right now: ones you can already make first (dearest first), then the cheapest ones you haven't discovered
-  const vWants = g => g.goods.filter(id => D.items[id] && count(id) === 0).sort((a, b) => (S.disc.includes(b) - S.disc.includes(a)) || (S.disc.includes(a) ? (D.items[b].value || 0) - (D.items[a].value || 0) : (D.items[a].value || 0) - (D.items[b].value || 0)));
+  const vWants = g => g.goods.filter(id => D.items[id] && vHave(g, id) === 0).sort((a, b) => (S.disc.includes(b) - S.disc.includes(a)) || (S.disc.includes(a) ? (D.items[b].value || 0) - (D.items[a].value || 0) : (D.items[a].value || 0) - (D.items[b].value || 0)));
   // plain advice for keeping the town happy, from what the village is missing right now
   function vTipsHTML(V) { const [pantry, house, treats] = vGroups(), tips = [];
     if (!(V.sh.pantry > 0)) tips.push(`<b>Food first.</b> An empty Pantry makes folk miserable and they leave. Bread, cheese and vegetables all work.`);
@@ -3270,14 +3282,16 @@
     if (!(V.sh.treats > 0)) tips.push(`<b>Treats.</b> A few jars of jam, honey or cider keep folk happier (+20%) and make the village grow faster.`);
     if (!V.b.some(b => b.k === 'well') && V.folk >= (VD().buildings.well.folk || 0) - 2) tips.push(`<b>A Village Well</b> makes everyone happier (+${VD().buildings.well.happy}%).`);
     Object.entries(VD().buildings).forEach(([k, B]) => { if (B.folk && k !== 'well' && (V.peak || 0) >= B.folk && !vCount(V, k)) tips.push(`<b>New: the ${esc(B.name)}.</b> You have enough folk to build it. ${esc(B.desc)}`); });
-    vShops().forEach(s => { if (vShopOn(V, s) && !(V.sh[s.id] > 0)) tips.push(`<b>The ${esc(s.name)} is empty.</b> Folk are a little less happy while it stands empty (−${s.sad}%). It takes ${esc(s.what)}.`); });
+    vShops().forEach(s => { if (vShopOn(V, s) && !(V.sh[s.id] > 0)) tips.push(`<b>The ${esc(s.name)} is empty.</b> Folk are a little less happy while it stands empty (−${s.sad}%). It takes ${esc(s.what)}${s.farm ? ' (grown or collected by you, not bought)' : ''}.`); });
     return tips.length ? `<span class="eyebrow">To keep folk happy</span><ul class="vtips">${tips.map(t => `<li>${t}</li>`).join('')}</ul>` : `<p class="hint small">Everyone is well supplied. Keep the shelves topped up.</p>`; }
   function vGiveHTML(V, g) { const ui = UI.vil, all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
     let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}`;
+    if (g.farm) { const fr = g.goods.filter(id => D.items[id] && freshCount(id) > 0).sort((a, b) => freshCount(b) - freshCount(a));
+      h += `<div class="cinfo ${fr.length ? '' : 'full'}"><b>Only farm-fresh goods go here</b><small>Goods you <b>grew or collected yourself</b> in the last ${FRESH().days} days count, and they are worth ${FRESH().mult}× on this shelf. Goods you <b>bought</b> from the market, or that are older, can’t be given here.</small><small>${fr.length ? `Farm-fresh in your storage now: ${fr.slice(0, 8).map(id => `${esc(D.items[id].name)} ${freshCount(id)}`).join(', ')}.` : 'You have nothing farm-fresh right now. Harvest crops or collect eggs, milk or honey, then come back.'}</small></div>`; }
     if (list.length) h += `<p class="hint small">${all ? 'Everything you have for this shelf:' : 'Suggested: what you have most of.'}</p><div class="rlist">` + list.map(id => { const mx = vMax(V, g, id), on = V.auto[id] && V.auto[id].on;
-      return `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPts(id, 0)} each · have ${count(id)}${mx ? '' : ' · shelf full'}</small></span>${mx ? `<input type="number" class="qty" data-vq="${id}" min="1" max="${mx}" value="${Math.max(1, Math.min(mx, (UI.vq || {})[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)}"><button class="btn sm pri" data-vgive="${id}" data-vgrp="${g.id}">Give</button>` : ''}${auto ? `<button class="autog ${on ? 'on' : ''}" data-vauto="${id}" aria-pressed="${!!on}">${on ? 'Auto ✓' : 'Auto'}</button>` : ''}</div>`; }).join('') + `</div>`;
-    else { const k = vKnown(g).slice(0, 6).map(id => D.items[id].name); h += `<p class="hint small">You have nothing for this shelf in storage. ${k.length ? `It takes goods like ${esc(k.join(', '))}.` : `It takes ${esc(g.what)}.`}</p>`; }
-    { const w = vWants(g).slice(0, all ? 12 : 4); if (w.length && vNeeded(V, g) || w.length && g.need == null) h += `<span class="optlabel">Not in storage yet</span><div class="rlist vwant">${w.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPts(id, 0)} each · ${esc(vSource(id))}${S.disc.includes(id) ? '' : ' · not discovered yet'}</small></span></div>`).join('')}</div>`; }
+      return `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPtsG(g, id, 0)} each · ${g.farm ? `${vHave(g, id)} farm-fresh` : `have ${count(id)}`}${mx ? '' : ' · shelf full'}</small></span>${mx ? `<input type="number" class="qty" data-vq="${id}" min="1" max="${mx}" value="${Math.max(1, Math.min(mx, (UI.vq || {})[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)}"><button class="btn sm pri" data-vgive="${id}" data-vgrp="${g.id}">Give</button>` : ''}${auto ? `<button class="autog ${on ? 'on' : ''}" data-vauto="${id}" aria-pressed="${!!on}">${on ? 'Auto ✓' : 'Auto'}</button>` : ''}</div>`; }).join('') + `</div>`;
+    else { const k = vKnown(g).slice(0, 6).map(id => D.items[id].name); h += `<p class="hint small">${g.farm ? 'Nothing farm-fresh to give.' : 'You have nothing for this shelf in storage.'} ${k.length ? `It takes goods like ${esc(k.join(', '))}.` : `It takes ${esc(g.what)}.`}</p>`; }
+    { const w = vWants(g).slice(0, all ? 12 : 4); if (w.length && vNeeded(V, g) || w.length && g.need == null) h += `<span class="optlabel">${g.farm ? 'Grow or collect these' : 'Not in storage yet'}</span><div class="rlist vwant">${w.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPtsG(g, id, 0)} each · ${esc(vSource(id))}${S.disc.includes(id) ? '' : ' · not discovered yet'}</small></span></div>`).join('')}</div>`; }
     if (more > 0 || all) h += `<button class="linkish small" data-vall="${g.id}">${all ? 'Show fewer' : `Show all ${list.length + more}`}</button>`;
     return h + `</div>`; }
   function vAutoHTML(V) { if (!unlocked('villageauto')) return `<span class="eyebrow">Auto-supply</span><p class="hint small">Unlock <b>Store Deliveries</b> in Discovery (needs ${(D.discoveries.find(d => d.id === 'villageauto') || {}).folk || 12} town folk) and goods go to the store by themselves.</p>`;
@@ -4656,7 +4670,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), monDraw: (p, s) => vMonDraw(p, s), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), fresh: { run: (a, i) => TASKS[a].run({ a, i, p: undefined, n: 1, q: 0 }), add: (id, n) => freshAdd(id, n), count: id => freshCount(id), raw: () => S.fresh }, monDraw: (p, s) => vMonDraw(p, s), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

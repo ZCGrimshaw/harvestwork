@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.113 — 2026-11-02
+- Farm Stand (`bakery`-style shop `farmstand`, `folk: 6`, gold 450 / plank 24 / stone 8): a shelf that only takes farm-fresh goods. Provenance: `S.fresh[id] = [[day, n], …]` is added by `freshAdd` on harvest (`TASKS.harvest`), station collection (`doCollect`, only when no non-farm food ingredient) and gathering; entries expire after `D.village.farmStand.days` (3); any removal from storage (`take`, auto-sell, giving to a non-farm shelf) scales it in proportion (`freshScale`) so sell-then-rebuy can't launder market goods; giving to the stand uses it up oldest first (`freshUse`). `freshCount` = min(credit, count).
+- Stand effects: shelf points ×`farmStand.mult` (1.5, `vPtsG`), mood +15 stocked / −5 empty, arrivals ×1.25 (`vArrMul`). `vHave/vMax/vSuggest/vWants/vAuto` use `freshCount` for farm shelves. The tray shows a "Only farm-fresh goods go here" box, the farm-fresh goods in storage, and a "Grow or collect these" list; the build text and toast say it plainly. New art `OBJ.farmstand`. Save: new optional `S.fresh`. No server change. Test hooks `HW.vil.fresh.{add,count,raw,run}`.
+
 ## v0.112.3 — 2026-11-02
 - Trophy case capacity back to the house size (`trophy` 3 / 5 / 8 / 12, three shelves). New `caseInfo(b, full)` explains it in the case tray ("N of M spots used · the case is full", the sizes per house, and how to upgrade), the house panel, and a caption above the case (`.tcap`, `.cinfo`). The bottom hint in the tray is replaced by it. No save or server change.
 
