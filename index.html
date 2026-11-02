@@ -864,7 +864,8 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 #village .rhead .sub .linkish { font-size: 13px; }
 /* the goal, village orders and village wants cards are windows on computers: drag the title to move them, double-click it to put them back */
 body.hudmv :is(#goals, #vorders, #vwants) .goalhead, body.hudmv :is(#goals, #vorders, #vwants) .vordhead { cursor: move; touch-action: none; }
-body.hdrag { user-select: none; } .vwrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-weight: 700; font-size: 13.5px; } .vwrow .low { color: #b23a2a; } .vwgood { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 0 4px; color: #5a3a22; } .vwgood small { color: #8a6236; }
+body.hdrag { user-select: none; } .vwshow { width: auto; padding: 5px 10px; font-size: 12px; }
+  .vwrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-weight: 700; font-size: 13.5px; } .vwrow .low { color: #b23a2a; } .vwgood { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 0 4px; color: #5a3a22; } .vwgood small { color: #8a6236; }
 /* village orders under the goal card */
 :is(#goals, #vorders, #vwants) .gneed .coin { flex: 0 0 18px; width: 18px; height: 18px; }
 :is(#goals, #vorders, #vwants) .vord { margin-top: 10px; padding-top: 6px; border-top: 1px dashed #c9a96a; } :is(#goals, #vorders, #vwants) .vordhead { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; } :is(#goals, #vorders, #vwants) .vordhead b { flex: 1; font-family: var(--f-display); } :is(#goals, #vorders, #vwants) .vready { font-size: 11px; font-weight: 700; color: #2f6b2a; text-transform: uppercase; letter-spacing: .04em; }
@@ -975,8 +976,8 @@ body.hdrag { user-select: none; } .vwrow { display: flex; justify-content: space
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261102-015610"></script>
-<script src="art.js?v=20261102-015610"></script>
-<script src="sound.js?v=20261102-015610"></script>
-<script src="game.js?v=20261102-015610"></script>
+<script src="data.js?v=20261102-021147"></script>
+<script src="art.js?v=20261102-021147"></script>
+<script src="sound.js?v=20261102-021147"></script>
+<script src="game.js?v=20261102-021147"></script>
 </body></html>

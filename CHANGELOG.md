@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.110.1 — 2026-11-01
+- Second HUD column now starts to the right of the first column's widest card (`w1`) so it no longer covers Village orders' × buttons. Hiding the wants card leaves a `Village wants ▸` pill (`data-vwants-show`) while the store is available; no server change.
+
 ## v0.110 — 2026-11-01
 - Village wants card (`#vwants`, `vWantsHTML`/`vWantsOn`) on the farm under the goal card, mirroring the General Store list (shelf status, goods for the first low shelf via `vWants`/`vSource`); `S.vwants` toggle in Settings and a × button. Village orders moved out of `#goals` into its own card `#vorders`.
 - Movable HUD windows (desktop only): `#goals`, `#vorders`, `#vwants` drag by title (`HUDPOS_KEY` harvestworks.hudpos), double-click resets; unmoved cards stack from the ticker/tutorial button and wrap to a second column above `#zoom` (`placeHud`). Phones stay static. No server change.

@@ -2314,8 +2314,9 @@
       return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
         return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}`; }
   // the store's shopping list on the farm: each shelf's state and, for shelves running low, goods you have none of in storage yet
+  const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
   const vWantsOn = () => { const V = S.village; return !!(S.vwants !== false && !S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
-  function vWantsHTML() { if (!vWantsOn()) return ''; const V = S.village;
+  function vWantsHTML() { if (!vWantsOn()) return vWantsAvail() ? `<button class="gbtn vwshow" data-vwants-show title="Show what the General Store is short of">Village wants ▸</button>` : ''; const V = S.village;
     let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
     let shown = 0; vGroups().forEach(g => { if (g.need != null && !vNeeded(V, g)) return; const d = vDaysLeft(V, g), low = d < 3 && (g.need != null || V.sh[g.id] > 0), txt = g.need == null && !(V.sh[g.id] > 0) ? 'optional' : V.sh[g.id] > 0 ? vDaysTxt(d) : 'empty';
       h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="${low || (g.need != null && !(V.sh[g.id] > 0)) ? 'low' : ''}">${esc(txt)}</span></div>`;
@@ -2328,7 +2329,7 @@
   function placeHud() { const mv = !isPhone() && !mq('(max-height: 500px)'); document.body.classList.toggle('hudmv', mv);
     HUDCARDS.forEach(id => { const el = $('#' + id); if (!el) return; if (!mv) { if (el.style.top || el.style.left) { el.style.top = el.style.left = ''; } return; } });
     if (!mv) return;
-    let y = null, col = 10, anchor = 0; // y = the bottom of the last card stacked in its default place; col = its left edge
+    let y = null, col = 10, anchor = 0, w1 = 0; // y = the bottom of the last card stacked in its default place; col = its left edge
     HUDCARDS.forEach(id => { const el = $('#' + id); if (!el || el.hidden) return; const P = UI.hudPos[id], r = el.getBoundingClientRect();
       if (P) { const L = Math.max(0, Math.min(innerWidth - 60, P.x)), T = Math.max(0, Math.min(innerHeight - 40, P.y)); if (el.style.left !== L + 'px') el.style.left = L + 'px'; if (el.style.top !== T + 'px') el.style.top = T + 'px'; return; }
       if (id === 'goals') { if (el.style.top || el.style.left) el.style.top = el.style.left = ''; y = el.getBoundingClientRect().bottom; const tb = $('#tutbtn'); if (tb && !tb.hidden) y = Math.max(y, tb.getBoundingClientRect().bottom); return; }
@@ -2336,8 +2337,8 @@
       if (!anchor) anchor = y + 8;
       { const tb = $('#tutbtn'); if (tb && !tb.hidden && !UI.hudPos.goals) y = Math.max(y, tb.getBoundingClientRect().bottom - 8); }
       const zm = $('#zoom'), limit = zm && zm.offsetHeight ? zm.getBoundingClientRect().top - 8 : innerHeight - 70, hh = el.offsetHeight;
-      if (col === 10 && y + 8 + hh > limit) { col = 290; y = anchor - 8; } // no room left above the camera buttons: start a second column
-      const T = Math.round(y + 8) + 'px', L = col + 'px'; if (el.style.top !== T) el.style.top = T; if (col !== 10) { if (el.style.left !== L) el.style.left = L; } else if (el.style.left) el.style.left = ''; y = el.getBoundingClientRect().bottom; }); }
+      if (col === 10 && y + 8 + hh > limit) { col = Math.round(10 + w1 + 10); y = anchor - 8; } // no room left above the camera buttons: start a second column
+      const T = Math.round(y + 8) + 'px', L = col + 'px'; if (el.style.top !== T) el.style.top = T; if (col !== 10) { if (el.style.left !== L) el.style.left = L; } else if (el.style.left) el.style.left = ''; y = el.getBoundingClientRect().bottom; if (col === 10) w1 = Math.max(w1, el.offsetWidth); }); }
   (() => { let drag = null;
     document.addEventListener('pointerdown', e => { if (e.button !== 0 || !document.body.classList.contains('hudmv')) return; const head = e.target.closest('.goalhead, .vordhead'); if (!head || e.target.closest('button, a, input')) return;
       const el = head.closest('#goals, #vorders, #vwants'); if (!el) return; const r = el.getBoundingClientRect(); drag = { id: el.id, x: e.clientX, y: e.clientY, r0: [r.left, r.top], el }; document.body.classList.add('hdrag'); e.preventDefault(); });
@@ -3293,7 +3294,8 @@
   vcv.addEventListener('pointerup', vEnd); vcv.addEventListener('pointercancel', vEnd);
   vcv.addEventListener('wheel', e => { if (!UI.vil) return; e.preventDefault(); vZoomAt(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); dirty(); }, { passive: false });
   vcv.addEventListener('contextmenu', e => e.preventDefault()); vcv.addEventListener('auxclick', e => e.preventDefault());
-  document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-x]')) return; S.vwants = false; save(); dirty(); toast('The village wants list is hidden. Turn it back on in Settings → Look and layout.', 'info'); e.stopPropagation(); }, true);
+  document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-show]')) return; S.vwants = true; save(); dirty(); e.stopPropagation(); }, true);
+  document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-x]')) return; S.vwants = false; save(); dirty(); toast('Village wants hidden. Tap “Village wants ▸” under your cards to bring it back.', 'info'); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vil-go]'); if (!el) return; vilGo(); e.stopPropagation(); }, true);
   document.addEventListener('input', e => { const d = e.target.dataset || {}; if (d.vq) { (UI.vq = UI.vq || {})[d.vq] = Math.max(1, parseInt(e.target.value, 10) || 1); }
