@@ -2317,13 +2317,15 @@
       return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
         return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}`; }
   // the store's shopping list on the farm: each shelf's state and, for shelves running low, goods you have none of in storage yet
-  const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
-  const vWantsOn = () => { const V = S.village; return !!(S.vwants !== false && !S.race && unlocked('village') && V && V.folk > 0 && vStore(V)); };
+  const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && V.b.some(b => b.k === 'store')); };
+  const vWantsOn = () => S.vwants !== false && vWantsAvail();
   function vWantsHTML() { if (S.vwantMin && vWantsOn()) return ''; if (!vWantsOn()) return vWantsAvail() ? `<button class="gbtn vwshow" data-vwants-show title="Show what the General Store is short of">Village wants ▸</button>` : ''; const V = S.village;
     let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vmin="vwantMin" title="Minimize to the top bar" aria-label="Minimize village wants">–</button><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
+    if (!vStore(V)) return h + '<div class="vwrow"><span>Put the General Store on a road that links to the village entrance so folk can shop.</span></div>';
+    if (!(V.folk > 0)) return h + '<div class="vwrow"><span>No town folk yet. The list fills in once folk move in.</span></div>';
     let shown = 0; vGroups().forEach(g => { if (g.need != null && !vNeeded(V, g)) return; const d = vDaysLeft(V, g), low = d < 3 && (g.need != null || V.sh[g.id] > 0), txt = g.need == null && !(V.sh[g.id] > 0) ? 'optional' : V.sh[g.id] > 0 ? vDaysTxt(d) : 'empty';
       h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="${low || (g.need != null && !(V.sh[g.id] > 0)) ? 'low' : ''}">${esc(txt)}</span></div>`;
-      if (low && g.need != null && shown < 1 && (shown = 1)) vWants(g).slice(0, 3).forEach(id => { h += `<div class="vwgood">${ico(id)}<span>${esc(D.items[id].name)} <small>${esc(vSource(id))}</small></span></div>`; }); });
+      if (g.need != null && shown < 1 && (shown = 1)) vWants(g).slice(0, 3).forEach(id => { h += `<div class="vwgood">${ico(id)}<span>${esc(D.items[id].name)} <small>${esc(vSource(id))}</small></span></div>`; }); });
     return h; }
   /* The goal, village orders and village wants cards are windows on computers: drag a card's title to move it, double-click the title to put it back. Positions are saved in this browser. */
   const HUDPOS_KEY = 'harvestworks.hudpos', HUDCARDS = ['goals', 'vchips', 'vorders', 'vwants'];
@@ -4188,7 +4190,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-022007';
+  const BUILD = '20261102-022354';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
