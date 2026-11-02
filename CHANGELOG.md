@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.113.1 — 2026-11-02
+- `infoHTML` always states a source: bonus-gather lines for `sand` (pond fishing, needs glassworks) and `copper_ore` (boulders, needs prospecting), and a "Buy it" line for every item with `buy`.
+
 ## v0.113 — 2026-11-02
 - Farm Stand (`bakery`-style shop `farmstand`, `folk: 6`, gold 450 / plank 24 / stone 8): a shelf that only takes farm-fresh goods. Provenance: `S.fresh[id] = [[day, n], …]` is added by `freshAdd` on harvest (`TASKS.harvest`), station collection (`doCollect`, only when no non-farm food ingredient) and gathering; entries expire after `D.village.farmStand.days` (3); any removal from storage (`take`, auto-sell, giving to a non-farm shelf) scales it in proportion (`freshScale`) so sell-then-rebuy can't launder market goods; giving to the stand uses it up oldest first (`freshUse`). `freshCount` = min(credit, count).
 - Stand effects: shelf points ×`farmStand.mult` (1.5, `vPtsG`), mood +15 stocked / −5 empty, arrivals ×1.25 (`vArrMul`). `vHave/vMax/vSuggest/vWants/vAuto` use `freshCount` for farm shelves. The tray shows a "Only farm-fresh goods go here" box, the farm-fresh goods in storage, and a "Grow or collect these" list; the build text and toast say it plainly. New art `OBJ.farmstand`. Save: new optional `S.fresh`. No server change. Test hooks `HW.vil.fresh.{add,count,raw,run}`.

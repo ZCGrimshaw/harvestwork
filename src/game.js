@@ -2245,6 +2245,9 @@
     if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
     if (crop) P.push(`Grown on a Farm Plot from ${esc(D.items[crop.seed].name)}.`);
     const g = Object.entries(D.gather).filter(([t, G]) => G.out[id]).map(([t]) => D.terrain[t].name); if (g.length) P.push(`Gathered from ${esc(nmList(g))} tiles.`);
+    if (id === 'sand') P.push(`Washed up as a bonus when you fish at a Pond tile${unlocked('glassworks') ? '' : ', once you have the Glassworks discovery'}. It is the main ingredient of glass.`);
+    if (id === 'copper_ore') P.push(`Turns up as a bonus when you break a Boulder${unlocked('prospecting') ? '' : ', once you have the Prospecting discovery'}.`);
+    if (it.buy) P.push(`<b>Buy it</b> at the market for ${buyPrice(id)}g${crop || seedOf ? '' : ' each'}.`);
     if (id === 'rough_gem') P.push(`Every third dig at an Iron Seam turns one up${unlocked('jeweler') ? '' : ', once you have the Jeweler discovery'}.`);
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
