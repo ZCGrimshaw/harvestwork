@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.112.2 — 2026-11-02
+- Trophy case capacity: `D.house.levels[].trophy` is now 12 / 12 / 15 / 18 (was 3 / 5 / 8 / 12); `caseRows` lays the shelves out in rows of up to four spots (was always three rows). Existing `tc` entries keep their spots. No server change.
+
 ## v0.112.1 — 2026-11-01
 - Folk unlocks use the peak (`V.peak`): `vBuildWhy` (buildings and the cottage fill rule), `vExWhy` (expansion), and `vFolk()` (Discovery `folk` gates) now use the most folk ever.
 - Arrivals go through `vArrive(V, n, why)`; with 0 folk the mood bar is skipped (and the first newcomer lifts mood to at least 60).

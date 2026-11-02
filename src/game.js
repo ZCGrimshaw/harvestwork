@@ -1395,7 +1395,7 @@
   /* Trophy case: every house has one, separate from the decor spots. b.tc lists what is in it: { t: 'medal', k: '2963-3' } (a medal's key),
      { t: 'model', k: monument id } or { t: 'item', k: item id, q: quality } (a trophy item, taken out of storage). Medals and models are
      references: they can be in the case or on grass, never both on one farm. Slots come from the house size (D.house.levels[].trophy). */
-  const caseSlots = b => houseLv(b).trophy || 3;
+  const caseSlots = b => houseLv(b).trophy || 12;
   const caseOf = b => b.tc || (b.tc = []);
   const caseHas = (t, k) => { const o = houseIdx(); return o >= 0 && (T_(o).b.tc || []).some(e => e.t === t && e.k === k); };
   const MEDAL_NAMES = { 1: 'Gold', 2: 'Silver', 3: 'Bronze' };
@@ -2888,14 +2888,14 @@
       const later = RZ().levels.slice((R.lv | 0) + 2); if (later.length) t += `<p class="hint small">After that: ${later.map(x => `${esc(x.name)} ${x.n}×${x.n} (${x.cost.gold.toLocaleString()}g)`).join(' · ')}.</p>`;
     }
     setHTML('#rtray', t); }
-  /* ---------- the trophy case: a room fixture that opens to three shelves ----------
+  /* ---------- the trophy case: a room fixture that opens to shelves of four spots ----------
      Its contents stay in b.tc (as before); each entry now also has s, its spot on the shelves (0 … caseSlots − 1, filled shelf
      by shelf). caseFix gives a spot to any entry without a good one (from before this, or put in by an older copy of the game).
      The case itself is given (once, into the waiting list) as soon as you have a medal, a monument model or a trophy. */
   function caseFix(b) { const tc = caseOf(b), cap = caseSlots(b), used = new Set();
     tc.forEach(e => { if (Number.isInteger(e.s) && e.s >= 0 && e.s < cap && !used.has(e.s)) used.add(e.s); else delete e.s; });
     tc.forEach(e => { if (e.s == null) { let s = 0; while (used.has(s)) s++; if (s < cap) { e.s = s; used.add(s); } } }); return tc; }
-  const caseRows = cap => { const base = Math.floor(cap / 3), ex = cap % 3, rows = []; let s = 0; for (let r = 0; r < 3; r++) { const n = base + (r < ex ? 1 : 0); rows.push(Array.from({ length: n }, () => s++)); } return rows; };
+  const caseRows = cap => { const rows = []; for (let s = 0; s < cap; s += 4) rows.push(Array.from({ length: Math.min(4, cap - s) }, (_, k) => s + k)); return rows; }; // shelves of up to four spots
   const caseEarned = b => caseOf(b).length > 0 || NET.medals.length > 0 || earnedModels().length > 0 || Object.keys(S.inv).some(id => D.items[id] && D.items[id].trophy && count(id) > 0);
   function caseAward() { const o = houseIdx(); if (o < 0 || S.race) return; const b = T_(o).b, R = roomOf(); if (!R) return;
     if (R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case') || !caseEarned(b)) return;
