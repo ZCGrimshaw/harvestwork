@@ -883,6 +883,50 @@ window.HW_ART = (function () {
     r('#9aa0aa', 14, 12, 4, 10); r('#b0b4bc', 14, 12, 1, 10); ell(r, '#b0b4bc', 16, 12, 6, 2); ell(r, '#4aa3d8', 16, 12, 4, 1);
     [[16, 4], [14, 6], [18, 6], [12, 9], [20, 9]].forEach(([x, y]) => r('#bfe8fa', x, y, 1, 2));
   });
+  // village shops (v0.112): a bakery, a market square, a tavern and an apothecary
+  OBJ.bakery = () => mk(32, 38, (g, r) => {
+    shadow(r, 38, 13);
+    r('#e8c98a', 4, 19, 12, 15); r('#c9a66a', 16, 19, 12, 15); for (let y = 21; y < 34; y += 3) { r('#d8b878', 4, y, 12, 1); r('#b8945a', 16, y, 12, 1); }
+    for (let i = 0; i < 12; i++) { const hw = 3 + i; r('#8a5a8a', 16 - hw, 7 + i, hw, 1); r('#6e466e', 16, 7 + i, hw, 1); }
+    r('#5e3a5e', 2, 19, 28, 1);
+    r('#a0522d', 22, 2, 4, 9); r('#7a3a1e', 25, 2, 1, 9); r('#c86a3a', 22, 2, 4, 1); r('#d8d8d8', 23, 0, 2, 2); // brick chimney with smoke
+    r('#efe0b4', 6, 21, 8, 4); r('#c9b07a', 6, 24, 8, 1); r('#d89a3a', 8, 22, 4, 2); r('#b87a2a', 8, 23, 4, 1); // sign with a loaf
+    r('#9fd8f0', 18, 22, 8, 5); r('#5e3519', 18, 27, 8, 1); r('#d89a3a', 19, 25, 3, 2); r('#c8843a', 23, 25, 2, 2); // window with loaves
+    r('#7a4b28', 7, 27, 5, 7); r('#5e3519', 7, 27, 5, 1); r('#f6d24a', 11, 30, 1, 1); // door
+    r('#c99b5a', 28, 31, 3, 3); r('#e8d6a8', 28, 31, 3, 1); // a flour sack
+  });
+  OBJ.market = () => mk(32, 30, (g, r) => {
+    shadow(r, 30, 14);
+    ell(r, '#b0a48a', 16, 22, 14, 6); ell(r, '#c8bc9e', 16, 21, 13, 5); // a paved square
+    const stall = (x, c1, c2, goods) => { r('#6b4220', x, 10, 1, 12); r('#6b4220', x + 9, 10, 1, 12);
+      for (let i = 0; i < 10; i++) r(i % 2 ? c1 : c2, x + i, 8, 1, 3); r('#5e3519', x, 11, 10, 1);
+      r('#a8743e', x, 16, 10, 3); r('#8a5a2e', x, 18, 10, 1); goods.forEach((c, j) => r(c, x + 1 + j * 2, 15, 2, 1)); };
+    stall(3, '#c8483a', '#f2ece0', ['#e86a3a', '#f6e27a', '#5aa83f', '#b5523b']);
+    stall(18, '#3a7ac8', '#f2ece0', ['#d89a3a', '#9a6a3c', '#e8d6a8', '#e86aa8']);
+    r('#c99b5a', 14, 21, 3, 3); r('#a8743e', 14, 21, 3, 1); r('#e8d6a8', 12, 24, 3, 2); // crates and a sack between the stalls
+  });
+  OBJ.tavern = () => mk(32, 42, (g, r) => {
+    shadow(r, 42, 14);
+    r('#d6caa8', 3, 18, 13, 20); r('#b8ac8a', 16, 18, 13, 20);
+    [3, 9, 15].forEach(x => r('#5e3519', x, 18, 1, 20)); [16, 22, 28].forEach(x => r('#4a2c14', x, 18, 1, 20)); r('#5e3519', 3, 27, 26, 1); r('#4a2c14', 3, 37, 26, 1);
+    for (let i = 0; i < 13; i++) { const hw = 3 + i; r('#4a5a6a', 16 - hw, 5 + i, hw, 1); r('#3a4858', 16, 5 + i, hw, 1); } // slate roof
+    r('#2e3a48', 1, 18, 30, 1);
+    r('#9fd8f0', 5, 20, 3, 4); r('#f6d24a', 5, 22, 3, 2); r('#9fd8f0', 11, 20, 3, 4); r('#f6d24a', 11, 22, 3, 2); // warm windows upstairs
+    r('#9fd8f0', 19, 29, 7, 5); r('#f6d24a', 19, 31, 7, 3); r('#5e3519', 19, 34, 7, 1);
+    r('#7a4b28', 6, 29, 6, 8); r('#5e3519', 6, 29, 6, 1); r('#f6d24a', 11, 33, 1, 1); // door
+    r('#5e3519', 28, 21, 4, 1); r('#efe0b4', 29, 22, 3, 4); r('#c99b5a', 30, 23, 1, 2); // hanging sign with a mug
+    r('#8a5a2e', 0, 34, 3, 4); r('#6b4220', 0, 35, 3, 1); r('#6b4220', 0, 37, 3, 1); // a barrel
+  });
+  OBJ.apothecary = () => mk(32, 38, (g, r) => {
+    shadow(r, 38, 12);
+    r('#cfe0c8', 5, 19, 11, 15); r('#adc4a4', 16, 19, 11, 15);
+    for (let i = 0; i < 12; i++) { const hw = 2 + i; r('#3f7f5f', 16 - hw, 7 + i, hw, 1); r('#2f6a4c', 16, 7 + i, hw, 1); }
+    r('#25553c', 3, 19, 26, 1);
+    r('#9fd8f0', 7, 21, 7, 5); r('#5e3519', 7, 26, 7, 1); r('#e86aa8', 8, 24, 1, 2); r('#4aa3d8', 10, 23, 1, 3); r('#5aa83f', 12, 24, 1, 2); // bottles in the window
+    r('#efe0b4', 18, 21, 7, 4); r('#5aa83f', 20, 22, 3, 1); r('#5aa83f', 21, 21, 1, 3); // sign with a green cross
+    r('#7a4b28', 19, 27, 5, 7); r('#5e3519', 19, 27, 5, 1); r('#f6d24a', 23, 30, 1, 1); // door
+    r('#6b4220', 4, 32, 1, 2); r('#5aa83f', 2, 30, 4, 2); r('#b07ae0', 3, 29, 1, 1); r('#e86aa8', 5, 30, 1, 1); // herb pot
+  });
   // countryside round the village: a hedgerow bush and a stake with a bit of string and a flag
   OBJ.bush = () => mk(32, 18, (g, r) => {
     shadow(r, 20, 7); ell(r, '#3f7f2f', 16, 12, 8, 5); ell(r, '#4f9a3a', 14, 10, 6, 4); ell(r, '#6bbb4c', 12, 8, 3, 2); r('#e86aa8', 18, 11, 1, 1); r('#f6e27a', 11, 12, 1, 1);

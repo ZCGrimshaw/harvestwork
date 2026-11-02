@@ -871,6 +871,10 @@ body.pdrag, body.pdrag * { user-select: none !important; }
 /* the goal, village orders and village wants cards are windows on computers: drag the title to move them, double-click it to put them back */
 body.hudmv :is(#goals, #vorders, #vwants) .goalhead, body.hudmv :is(#goals, #vorders, #vwants) .vordhead { cursor: move; touch-action: none; }
 body.hdrag { user-select: none; }
+#vwants .vmkg { margin-left: auto; padding: 2px 8px; font: 700 12px var(--f-body, inherit); color: #3a2416; background: #f5c542; border: 2px solid #24160d; border-radius: 3px; cursor: pointer; }
+#vwants .vmkg:hover { background: #ffd866; }
+#vwants .vwgood.vmk { display: flex; align-items: center; gap: 6px; }
+body.hudmv #vwants { max-height: calc(100vh - 150px); overflow-y: auto; }
 #vwants .vwshow { width: auto; padding: 5px 10px; font-size: 12px; }
   .vwrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-weight: 700; font-size: 13.5px; } .vwrow .low { color: #b23a2a; } .vwgood { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 0 4px; color: #5a3a22; } .vwgood small { color: #8a6236; }
 /* village orders under the goal card */
@@ -983,8 +987,8 @@ body.hdrag { user-select: none; }
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261102-023817"></script>
-<script src="art.js?v=20261102-023817"></script>
-<script src="sound.js?v=20261102-023817"></script>
-<script src="game.js?v=20261102-023817"></script>
+<script src="data.js?v=20261102-044420"></script>
+<script src="art.js?v=20261102-044420"></script>
+<script src="sound.js?v=20261102-044420"></script>
+<script src="game.js?v=20261102-044420"></script>
 </body></html>

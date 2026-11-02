@@ -259,8 +259,24 @@ window.HW_DATA = {
       tree:     { name: 'Shade Tree', deco: true, cost: { gold: 120, log: 4 }, desc: 'A leafy tree to shade the lane. Fills a lot and adds a little to your village score.' },
       bench:    { name: 'Park Bench', deco: true, cost: { gold: 90, plank: 4 }, desc: 'A place to sit and watch the village. Fills a lot and adds a little to your village score.' },
       fountain: { name: 'Fountain', deco: true, cost: { gold: 600, stone: 30, brick: 6 }, desc: 'A stone fountain for the village square. Fills a lot and adds a little to your village score.' },
-      well:    { name: 'Village Well', cost: { gold: 300, stone: 20, plank: 4 }, max: 1, folk: 8, happy: 10, desc: 'Fresh water for everyone: town folk are happier, so the village grows a little faster.' }
+      well:    { name: 'Village Well', cost: { gold: 300, stone: 20, plank: 4 }, max: 1, folk: 8, happy: 10, desc: 'Fresh water for everyone: town folk are happier, so the village grows a little faster.' },
+      // shops (v0.112): each has its own shelf (see `shops` below) that you stock from the farm; unlocked by town folk milestones
+      bakery:  { name: 'Bakery', cost: { gold: 900, plank: 30, brick: 30, stone: 10 }, max: 1, folk: 10, shop: 'bakery', desc: 'Bakes your flour, eggs and butter into fresh bread. While its shelf is stocked, the Pantry lasts a quarter longer and folk are a little happier.' },
+      market:  { name: 'Market Square', cost: { gold: 1200, plank: 40, stone: 30 }, max: 1, folk: 16, desc: 'Holds a Market Day every few days: the village posts a list of goods it wants by a deadline. Fill it for gold, a Discovery token and a happy village.' },
+      tavern:  { name: 'Tavern', cost: { gold: 1800, plank: 50, brick: 40, roof_tile: 16 }, max: 1, folk: 24, shop: 'tavern', desc: 'Pours your ales, ciders and wines and serves your cheeses. While stocked, folk are much happier and it pays the full value of what it sells into the till.' },
+      apothecary: { name: 'Apothecary', cost: { gold: 1500, plank: 30, brick: 30, roof_tile: 12 }, max: 1, folk: 32, shop: 'apothecary', desc: 'Makes remedies from mushrooms, flowers and honey. While stocked, folk are happier and much slower to give up and leave when times are hard.' }
     },
+    // shop shelves: like the store's, but in their own building. rate = points used per town folk per day; happy = mood while stocked; sad = mood lost while it stands empty (mild)
+    shops: [
+      { id: 'bakery', b: 'bakery', name: 'Bakery', what: 'flour, grain, eggs and dairy', rate: 4, need: 0, happy: 5, sad: 5, good: 'fresh bread', closed: 'the bakery’s ovens are cold', pantry: .75,
+        goods: ['wheat', 'flour', 'corn', 'egg', 'milk', 'butter', 'honey', 'malt'] },
+      { id: 'tavern', b: 'tavern', name: 'Tavern', what: 'ale, cider, wine and cheese', rate: 4, need: 0, happy: 15, sad: 5, good: 'an evening at the tavern', closed: 'the tavern is dry', takings: 1,
+        goods: ['ale', 'stout', 'cherry_ale', 'mead', 'cider', 'perry', 'berry_wine', 'apple_brandy', 'cheese', 'smoked_cheese', 'aged_cheddar', 'blue_cheese', 'smoked_fish', 'pickled_carrots'] },
+      { id: 'apothecary', b: 'apothecary', name: 'Apothecary', what: 'mushrooms, flowers, honey and jars', rate: 3, need: 0, happy: 5, sad: 5, good: 'remedies from the apothecary', closed: 'the apothecary has run out of remedies', patience: .5,
+        goods: ['mushrooms', 'flowers', 'honey', 'glass_jar', 'linen', 'reeds', 'clay_pot', 'berry_juice'] }
+    ],
+    // Market Day at the Market Square: a list of `goods` different goods, each worth about pts + perFolk × folk points, to fill within `days` game days; a new one every `every` days
+    marketDay: { every: 3, days: 1.5, goods: 4, pts: 40, perFolk: 4, pay: 1.5, dp: 1, happy: 10, score: 100 },
     // titles for the most town folk you have ever had (kept once earned); each pays a few Discovery tokens, smallest to largest
     titles: [
       { id: 'outpost', name: 'Outpost', folk: 2, dp: 1, blurb: 'The first families have settled.' },
@@ -272,7 +288,7 @@ window.HW_DATA = {
     ],
     // decorations: no road needed and no folk, but they fill a lot (so you can expand) and add a little score
     decor: ['bed', 'tree', 'bench', 'fountain'],
-    soon: [['Saloon', 15], ['Post Office', 25]], // shown as coming in a later update
+    soon: [['Post Office', 50], ['Town Hall', 70]], // shown as coming in a later update
     road: { gold: 5, stone: 1 },
     // Expanding: needs `folk[k]` town folk for the k-th expansion, and once every lot is filled (building, road or decoration) the three sides away from the entrance can each grow by a strip of `strip` lots, up to `max` lots across.
     // Each expansion costs more than the last: base + step × (expansions so far).
@@ -1067,6 +1083,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.112', at: '2026-11-01 22:30', notes: ['Four new village buildings unlock as your town grows: the Bakery at 10 town folk, the Market Square at 16, the Tavern at 24 and the Apothecary at 32. You get a message when each one unlocks, and the build list shows what each needs.','The Bakery, Tavern and Apothecary each have a shelf you stock from your farm. Bakery (flour, grain, eggs, dairy): the Pantry lasts a quarter longer. Tavern (ale, cider, wine, cheese): folk are much happier and it pays the full value of what it sells into the till. Apothecary (mushrooms, flowers, honey, jars): folk are much slower to leave when times are hard. A shop left empty makes folk only a little less happy.','Market Day: every 3 days the Market Square posts 4 goods the village wants within a day and a half. Give them at the Market Square or straight from the Village wants card on the farm. Fill the list for 150% of the goods’ value, a Discovery token and happier folk; if time runs out you are still paid for what you brought.','The Village wants card is shorter: it shows only the shelves that need attention, plus goods to try for the emptiest one.'] },
   { v: '0.111', at: '2026-11-01 20:45', notes: ['Town folk are more patient. A family now needs three days of misery before it packs up, you get a “packing their bags” warning before it happens, and the folk who stay cheer up a little after one leaves. With nobody left, the village recovers faster so new families arrive sooner.','Warnings reach you on the farm: a message when the folk start grumbling and another when they turn unhappy (with the reason), and a shelf running low now warns you even before your first delivery. The Folk button in the top bar turns orange with a warning mark when something needs attention, and the Village wants card shows the folk’s mood.'] },
   { v: '0.110.4', at: '2026-11-01 20:20', notes: ['With no town folk yet, the Village wants card now shows a short checklist of what brings families in: a General Store on a road and a Cottage on a road, ticked off as you do them.'] },
   { v: '0.110.3', at: '2026-11-01 20:00', notes: ['The Village wants card now shows as soon as you have built a General Store, even before folk arrive or the store is on a road, and tells you what is missing. It always lists goods the village would like (food first), not only when a shelf is running low. If you hid it, a “Village wants ▸” button brings it back, or use Settings.'] },

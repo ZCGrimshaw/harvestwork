@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.112 — 2026-11-01
+- New village buildings with folk milestones (`B.folk`): Bakery 10, Market Square 16, Tavern 24, Apothecary 32 (costs use gold, plank, brick, stone, roof tiles only). `vUnlockNotes` toasts once per building (`V.bu`) when the peak folk reaches it; `vTipsHTML` suggests buildings you can now build and empty shops.
+- Shops (`D.village.shops`, `vShops/vShopOn/vShelves/vShelf`): their own shelf, stocked in the shop's tray (`data-vgrp` on Give; `vGive(id, n, quiet, gid)`), consumed in `vilTick`, auto-supply and low warnings cover them. Effects: Bakery `pantry .75` (via `vPantryMul` in `vUseDay`), Tavern `takings 1`, Apothecary `patience .5` (leaving timer), mood `happy` when stocked, `sad` 5 when empty. `vMood` now lists positives first, then ", but …".
+- Market Day (`D.village.marketDay`, `vMarketTick/Start/Give/End/HTML`): every 3 game days while the Market Square is on a road; 4 goods from known items, each ~40 + 4 × folk points (max 60); full = 1.5× value + 1 DT + 10 mood + 100 village score per Market Day (`V.mkDone`); expired = 1× value of what was brought. Give from the square or the farm wants card (`data-vmkgive`).
+- Wants card shows only shelves under 3 days plus goods for the emptiest; compact Give buttons; `placeHud` second column counts the goal card / tutorial button width. New art: `OBJ.bakery/market/tavern/apothecary`. `soon` is now Post Office (50) and Town Hall (70). New village save fields `bu, mk, mkT, mkDone` (defaulted). No server change.
+
 ## v0.111 — 2026-11-01
 - Folk mercy: leaving needs `V.lv >= 3` days (was 2) of h < 20 / too few homes, with a "packing their bags" toast at 1.5; after a family leaves h is raised to at least 35; with 0 folk the mood recovers at 30/day (was 15).
 - Mood warnings from `vilTick` (works on the farm): `V.mw` 0/1/2 for Content / Grumbling (<60) / Unhappy (<35) with hysteresis, one toast per step with `vMood().why`. The low-shelf warning no longer waits for `V.fed`.
