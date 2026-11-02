@@ -2888,14 +2888,18 @@
       const later = RZ().levels.slice((R.lv | 0) + 2); if (later.length) t += `<p class="hint small">After that: ${later.map(x => `${esc(x.name)} ${x.n}×${x.n} (${x.cost.gold.toLocaleString()}g)`).join(' · ')}.</p>`;
     }
     setHTML('#rtray', t); }
-  /* ---------- the trophy case: a room fixture that opens to shelves of four spots ----------
+  /* ---------- the trophy case: a room fixture that opens to three shelves ----------
      Its contents stay in b.tc (as before); each entry now also has s, its spot on the shelves (0 … caseSlots − 1, filled shelf
      by shelf). caseFix gives a spot to any entry without a good one (from before this, or put in by an older copy of the game).
      The case itself is given (once, into the waiting list) as soon as you have a medal, a monument model or a trophy. */
   function caseFix(b) { const tc = caseOf(b), cap = caseSlots(b), used = new Set();
     tc.forEach(e => { if (Number.isInteger(e.s) && e.s >= 0 && e.s < cap && !used.has(e.s)) used.add(e.s); else delete e.s; });
     tc.forEach(e => { if (e.s == null) { let s = 0; while (used.has(s)) s++; if (s < cap) { e.s = s; used.add(s); } } }); return tc; }
-  const caseRows = cap => { const rows = []; for (let s = 0; s < cap; s += 4) rows.push(Array.from({ length: Math.min(4, cap - s) }, (_, k) => s + k)); return rows; }; // shelves of up to four spots
+  const caseRows = cap => { const base = Math.floor(cap / 3), ex = cap % 3, rows = []; let s = 0; for (let r = 0; r < 3; r++) { const n = base + (r < ex ? 1 : 0); rows.push(Array.from({ length: n }, () => s++)); } return rows; };
+  // plain words about the case's size: how many spots this house has, how many are used, and what a bigger house gives
+  function caseInfo(b, full) { const tc = caseFix(b), cap = caseSlots(b), on = tc.filter(e => e.s != null).length, lv = b.lv || 0, L = HZ().levels, nx = L[lv + 1], isFull = on >= cap;
+    const sizes = L.map((x, k) => `<span class="${k === lv ? 'cur' : ''}">${esc(x.name)} ${x.trophy}</span>`).join(' · ');
+    return `<div class="cinfo ${isFull ? 'full' : ''}"><b>${on} of ${cap} spots used${isFull ? ' · the case is full' : ''}</b><small>Your ${esc(houseName(b))} has room for ${cap}. The case grows with the house: ${sizes}.</small>${full ? (nx ? `<small>${unlocked('additions') ? `Select your house on the farm → Grow the house to make it a ${esc(nx.name)} (${nx.trophy} spots).` : `Unlock “House Additions” in Discovery, then grow your house to a ${esc(nx.name)} (${nx.trophy} spots).`}</small>` : `<small>Your house is the biggest size, so this is the most spots there are.</small>`) : ''}</div>`; }
   const caseEarned = b => caseOf(b).length > 0 || NET.medals.length > 0 || earnedModels().length > 0 || Object.keys(S.inv).some(id => D.items[id] && D.items[id].trophy && count(id) > 0);
   function caseAward() { const o = houseIdx(); if (o < 0 || S.race) return; const b = T_(o).b, R = roomOf(); if (!R) return;
     if (R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case') || !caseEarned(b)) return;
@@ -2928,9 +2932,9 @@
   function caseViewHTML(b) { const tc = caseFix(b), rm = UI.rm, cap = caseSlots(b), h = rm.chand;
     const spot = s => { const j = tc.findIndex(e => e.s === s), e = j >= 0 ? tc[j] : null, c = e ? caseEntry(e) : null, lit = h && (h.src === 'move' ? j !== h.i : !e);
       return `<button class="tspot ${e ? 'full' : ''} ${rm.csel === j && e ? 'sel' : ''} ${lit ? 'lit' : ''}" data-case-spot="${s}" aria-label="${e ? esc(c.name) : 'Empty spot'}" title="${e ? esc(c.name) : 'Empty spot'}">${e ? c.img : ''}</button>`; };
-    return `<div class="tcab"><div class="tcrest"></div>${caseRows(cap).map(row => `<div class="tshelf">${row.map(spot).join('')}</div>`).join('')}<div class="tcbase"></div></div>`; }
+    return `<div class="tcap">${tc.filter(e => e.s != null).length} of ${cap} spots used · ${esc(houseName(b))}</div><div class="tcab"><div class="tcrest"></div>${caseRows(cap).map(row => `<div class="tshelf">${row.map(spot).join('')}</div>`).join('')}<div class="tcbase"></div></div>`; }
   function caseTrayHTML(b) { const tc = caseFix(b), rm = UI.rm, cap = caseSlots(b), on = tc.filter(e => e.s != null).length, sel = rm.csel != null ? tc[rm.csel] : null, h = rm.chand;
-    let t = `<div class="rbtns" style="margin-top:0"><button class="btn sm ghost" data-rm-back>← Back to the room</button></div><span class="eyebrow">Trophy Case · ${on} of ${cap} spots</span>`;
+    let t = `<div class="rbtns" style="margin-top:0"><button class="btn sm ghost" data-rm-back>← Back to the room</button></div><span class="eyebrow">Trophy Case · ${on} of ${cap} spots</span>` + caseInfo(b, true);
     if (rm.msg) t += `<p class="rmsg">${rm.msg}</p>`;
     if (h) { const c = h.src === 'move' ? caseEntry(tc[h.i]) : caseEntry({ t: h.t, k: h.k });
       t += `<div class="rcard"><div class="row">${c.img}<div class="grow1"><b>${h.src === 'move' ? 'Moving' : 'Placing'}: ${esc(c.name)}</b><small>Tap a lit spot on a shelf${h.src === 'move' ? '. Tap a filled one to swap them' : ''}.</small></div><button class="btn sm ghost" data-cs-cancel>Cancel</button></div></div>`; }
@@ -2941,7 +2945,6 @@
       : `<p class="hint small">Nothing new to show. Weekly Challenge medals, Valley Monument models and fish trophies can go in the case. A medal or model you’ve placed on your farm has to be put away first.</p>`);
     const off = tc.map((e, j) => ({ e, j })).filter(x => x.e.s == null);
     if (off.length) t += `<span class="eyebrow">No room on the shelves</span><div class="rlist">` + off.map(({ e, j }) => { const c = caseEntry(e); return `<div class="rpiece">${c.img}<span><b>${esc(c.name)}</b></span><button class="btn sm ghost" data-cs-pick="${j}">Choose</button></div>`; }).join('') + `</div>`;
-    t += `<p class="hint small">A bigger house outside (House Additions) has more spots: Cottage 3, House 5, Farmhouse 8, Manor 12.</p>`;
     return t; }
   // room events: the tray's buttons, taps in the room, and keys while inside
   function roomButton(ds) { const R = roomOf(), rm = UI.rm; if (!R || !rm) return false;
@@ -3412,7 +3415,7 @@
     if (own || R.w.length) h += `<p class="hint small">${R.w.length ? `${R.w.length} piece${R.w.length === 1 ? ' is' : 's are'} waiting inside for you to place.` : ''}${own ? ` You have decor in storage ready to place.` : ''}</p>`;
     else h += `<p class="hint small">${esc(decoWhere())}</p>`;
     { const tc = caseFix(b), has = R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case');
-      h += `<span class="eyebrow">Trophy case · ${tc.filter(e => e.s != null).length} of ${caseSlots(b)} spots</span>` + (has ? `<p class="hint small">${R.p.some(p => p.k === 'trophy_case') ? 'It stands in your room.' : 'It’s waiting inside to be placed.'} Medals, monument models and fish trophies go on its shelves.</p><button class="btn" data-room-case>Open the trophy case</button>`
+      h += `<span class="eyebrow">Trophy case · ${tc.filter(e => e.s != null).length} of ${caseSlots(b)} spots</span>` + caseInfo(b, false) + (has ? `<p class="hint small">${R.p.some(p => p.k === 'trophy_case') ? 'It stands in your room.' : 'It’s waiting inside to be placed.'} Medals, monument models and fish trophies go on its shelves.</p><button class="btn" data-room-case>Open the trophy case</button>`
         : `<p class="hint small">You’ll get a Trophy Case for your room as soon as you have a Weekly Challenge medal, a Valley Monument model or a fish trophy.</p>`); }
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
     h += `<p class="hint small">Pieces in your room leave storage, so they don’t take up space. Put one away to keep it in the house, then send it back to storage from the waiting list.</p>`;
@@ -4260,7 +4263,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-173202';
+  const BUILD = '20261102-173350';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

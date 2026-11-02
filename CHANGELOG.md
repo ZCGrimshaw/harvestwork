@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.112.3 — 2026-11-02
+- Trophy case capacity back to the house size (`trophy` 3 / 5 / 8 / 12, three shelves). New `caseInfo(b, full)` explains it in the case tray ("N of M spots used · the case is full", the sizes per house, and how to upgrade), the house panel, and a caption above the case (`.tcap`, `.cinfo`). The bottom hint in the tray is replaced by it. No save or server change.
+
 ## v0.112.2 — 2026-11-02
 - Trophy case capacity: `D.house.levels[].trophy` is now 12 / 12 / 15 / 18 (was 3 / 5 / 8 / 12); `caseRows` lays the shelves out in rows of up to four spots (was always three rows). Existing `tc` entries keep their spots. No server change.
 

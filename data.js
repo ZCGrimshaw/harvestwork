@@ -636,10 +636,10 @@ window.HW_DATA = {
     build: { gold: 400, plank: 20, brick: 10 },
     move: { gold: 120, plank: 4 }, // moving it (Rollers & Skids) costs this for every size it has reached, plus the usual surcharge after recent moves
     levels: [
-      { name: 'Cottage', w: 1, h: 1, slots: 3, trophy: 12 },
-      { name: 'House', w: 1, h: 2, slots: 6, trophy: 12, cost: { gold: 1500, plank: 30, brick: 24 } },
-      { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 15, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
-      { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 18, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
+      { name: 'Cottage', w: 1, h: 1, slots: 3, trophy: 3 },
+      { name: 'House', w: 1, h: 2, slots: 6, trophy: 5, cost: { gold: 1500, plank: 30, brick: 24 } },
+      { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 8, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
+      { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 12, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
     ],
     /* Inside the house ("Go inside"): a room you decorate, separate from the size of the house outside. The floor is n×n cells with
        two back walls of n spots each. Every house starts at the first size; the rest are paid upgrades that get steep on purpose,
@@ -1083,6 +1083,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.112.3', at: '2026-11-02 10:00', notes: ['The trophy case holds as many pieces as your house is big, as before: Cottage 3, House 5, Farmhouse 8, Manor 12. It is now much clearer: the case shows how many spots you have and how many are used, says when it is full, and tells you what the next house size gives and where to upgrade it (House Additions in Discovery, then select your house → Grow the house). Pieces that did not fit wait in a list until you have room.'] },
   { v: '0.112.2', at: '2026-11-02 09:45', notes: ['The trophy case holds a lot more: 12 spots even in a starter cottage (it was 3), 12 in a House, 15 in a Farmhouse and 18 in a Manor, laid out in shelves of four. Anything already on your shelves stays where it is.'] },
   { v: '0.112.1', at: '2026-11-01 23:00', notes: ['Village unlocks now stay unlocked: once you have had enough town folk for a building, more land or a Discovery, it stays available even if some folk leave.','An empty village always welcomes newcomers: if you have a General Store and a Cottage on a road, families move in even before the mood is back up.','The village keeps living while you are in town with the farm paused, so folk can arrive and shelves are used while you watch.','Monuments draw visitors: every gift you give to the valley monument brings a new family closer to settling in your village, and each finished monument stage brings up to two families at once (if you have homes free).'] },
   { v: '0.112', at: '2026-11-01 22:30', notes: ['Four new village buildings unlock as your town grows: the Bakery at 10 town folk, the Market Square at 16, the Tavern at 24 and the Apothecary at 32. You get a message when each one unlocks, and the build list shows what each needs.','The Bakery, Tavern and Apothecary each have a shelf you stock from your farm. Bakery (flour, grain, eggs, dairy): the Pantry lasts a quarter longer. Tavern (ale, cider, wine, cheese): folk are much happier and it pays the full value of what it sells into the till. Apothecary (mushrooms, flowers, honey, jars): folk are much slower to leave when times are hard. A shop left empty makes folk only a little less happy.','Market Day: every 3 days the Market Square posts 4 goods the village wants within a day and a half. Give them at the Market Square or straight from the Village wants card on the farm. Fill the list for 150% of the goods’ value, a Discovery token and happier folk; if time runs out you are still paid for what you brought.','The Village wants card is shorter: it shows only the shelves that need attention, plus goods to try for the emptiest one.'] },
