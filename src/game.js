@@ -2323,6 +2323,7 @@
     let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vmin="vwantMin" title="Minimize to the top bar" aria-label="Minimize village wants">–</button><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
     const okS = !!vStore(V), okH = vHouses(V) > 0, ck = o => `<span class="${o ? '' : 'low'}">${o ? 'done ✓' : 'needed'}</span>`;
     if (!okS || !(V.folk > 0)) return h + `<div class="vwrow"><span>To bring folk in</span></div><div class="vwrow"><span>General Store on a road</span>${ck(okS)}</div><div class="vwrow"><span>Cottage on a road</span>${ck(okH)}</div><div class="vwrow"><span><small>With both, a family moves in every couple of minutes while the village is content. Roads must link to the entrance.</small></span></div>`;
+    h += `<div class="vwrow"><span>Folk mood</span><span class="${V.h < 60 ? 'low' : ''}">${vMoodName(V.h)}</span></div>`;
     let shown = 0; vGroups().forEach(g => { if (g.need != null && !vNeeded(V, g)) return; const d = vDaysLeft(V, g), low = d < 3 && (g.need != null || V.sh[g.id] > 0), txt = g.need == null && !(V.sh[g.id] > 0) ? 'optional' : V.sh[g.id] > 0 ? vDaysTxt(d) : 'empty';
       h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="${low || (g.need != null && !(V.sh[g.id] > 0)) ? 'low' : ''}">${esc(txt)}</span></div>`;
       if (g.need != null && shown < 1 && (shown = 1)) vWants(g).slice(0, 3).forEach(id => { h += `<div class="vwgood">${ico(id)}<span>${esc(D.items[id].name)} <small>${esc(vSource(id))}</small></span></div>`; }); });
@@ -3025,8 +3026,8 @@
       toast(`<b>Your village is now a ${esc(t.name)}</b> · ${V.peak} town folk · +${t.dp} Discovery<br>${esc(t.blurb)}`, 'disc'); logAct(`Village title earned: ${t.name} (${t.dp} Discovery).`, 'auto'); }
     return got; }
   const vFolkChip = () => { const V = S.village; return !!(V && V.b.length && !S.race && unlocked('village')); };
-  const folkBtn = () => { const V = S.village, t = vTitleFor(V.peak || 0);
-    return `<button class="stat folk" data-drawer="folk" title="Your town folk: tap for their mood, shelves and titles"><span class="lbl"><span class="lg">${t ? esc(t.name) : 'Town folk'}</span><span class="sm">Folk</span></span><b>${V.folk}</b></button>`; };
+  const folkBtn = () => { const V = S.village, t = vTitleFor(V.peak || 0), bad = V.folk > 0 && vStore(V) && (V.h < 60 || vLow(V).length), mn = vMoodName(V.h);
+    return `<button class="stat folk${bad ? ' warn' : ''}" data-drawer="folk" title="${bad ? `Town folk are ${mn.toLowerCase()}${vLow(V).length ? ' and a shelf is running low' : ''}. ` : ''}Tap for their mood, shelves and titles"><span class="lbl"><span class="lg">${t ? esc(t.name) : 'Town folk'}</span><span class="sm">Folk</span></span><b>${V.folk}${bad ? ' ⚠' : ''}</b></button>`; };
   const vMoodName = h => h >= 80 ? 'Cheerful' : h >= 60 ? 'Content' : h >= 35 ? 'Grumbling' : h >= 20 ? 'Unhappy' : 'Miserable';
   // the village score: goods sold (a point per 10), buildings and roads, and how many folk live here, weighted by how happy they are
   function vScore(V) { V = V || S.village; if (!V) return 0; return Math.floor((V.used || 0) / 10 + V.b.filter(b => !VD().buildings[b.k].deco).length * 50 + V.b.filter(b => VD().buildings[b.k].deco).length * 10 + Math.max(0, V.roads.length - 3) * 2 + V.folk * (V.h / 100) * 25); }
@@ -3052,12 +3053,18 @@
   function vilTick(dt) { if (!vilOn() || !S.village) return; const V = S.village, dd = dt / C.dayLength, st = vStore(V);
     if (st && V.folk > 0) vGroups().forEach(g => { const have = V.sh[g.id] || 0; if (have <= 0) return; const use = Math.min(have, vUseDay(V, g) * dd);
       V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * VD().takings; });
-    const m = vMood(V); V.h += Math.sign(m.t - V.h) * Math.min(Math.abs(m.t - V.h), 15 * dd);
+    const m = vMood(V); V.h += Math.sign(m.t - V.h) * Math.min(Math.abs(m.t - V.h), (V.folk ? 15 : 30) * dd);
+    // early warnings while you are on the farm: one toast as the mood slips into Grumbling, and another as it becomes Unhappy
+    { const lvl = V.folk > 0 && st ? (V.h < 35 ? 2 : V.h < 60 ? 1 : 0) : 0, was = V.mw || 0;
+      if (lvl > was) toast(`<b>${lvl > 1 ? 'Your town folk are unhappy.' : 'Your town folk are grumbling.'}</b> ${esc(m.why)} ${lvl > 1 ? 'A family may leave if this goes on. ' : ''}Tap Folk to see their shelves.`, 'warn');
+      if (lvl !== was && (lvl < was ? V.h >= (was > 1 ? 40 : 65) : true)) V.mw = lvl; }
     const room = vHouses(V);
     if (st && V.h >= 60 && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + V.h / 100); if (V.arr >= 1) { V.arr = 0; V.folk++; V.peak = Math.max(V.peak || 0, V.folk); logAct(`A new family moved into your village (${V.folk} town folk).`, 'auto'); vAwardTitles(V); UI.vDirty = true; } }
-    if ((V.h < 20 || V.folk > room) && V.folk > 0) { V.lv = (V.lv || 0) + dd; if (V.lv >= 2) { V.lv = 0; V.folk--; toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
+    if ((V.h < 20 || V.folk > room) && V.folk > 0) { const lv0 = V.lv || 0; V.lv = lv0 + dd;
+      if (lv0 < 1.5 && V.lv >= 1.5) toast(`<b>A family is packing their bags.</b> ${V.folk > room ? 'There aren’t enough homes on a road for everyone.' : 'The shelves have been empty too long.'} Stock the General Store or build a Cottage on a road to make them stay.`, 'warn');
+      if (V.lv >= 3) { V.lv = 0; V.folk--; if (V.h < 35) V.h = 35; /* a fresh start: those who remain are a little less sour */ toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
     else V.lv = 0;
-    if (st && V.folk > 0 && V.fed) vGroups().forEach(g => { if (!vNeeded(V, g)) return; const d = vDaysLeft(V, g);
+    if (st && V.folk > 0) vGroups().forEach(g => { if (!vNeeded(V, g)) return; const d = vDaysLeft(V, g);
       if (d < VD().lowDays && !V.warn[g.id]) { V.warn[g.id] = true; const sug = vSuggest(g).slice(0, 3).map(id => D.items[id].name);
         toast(`<b>Village: the ${esc(g.name)} shelf is running low</b> (${d <= 0 ? 'empty' : 'under a day left'}). ${sug.length ? `Bring ${esc(sug.join(', '))}.` : `It takes ${esc(g.what)}.`}`, 'warn'); }
       else if (d > VD().lowDays * 2) V.warn[g.id] = false; });

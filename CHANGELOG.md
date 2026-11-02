@@ -3,6 +3,11 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.111 — 2026-11-01
+- Folk mercy: leaving needs `V.lv >= 3` days (was 2) of h < 20 / too few homes, with a "packing their bags" toast at 1.5; after a family leaves h is raised to at least 35; with 0 folk the mood recovers at 30/day (was 15).
+- Mood warnings from `vilTick` (works on the farm): `V.mw` 0/1/2 for Content / Grumbling (<60) / Unhappy (<35) with hysteresis, one toast per step with `vMood().why`. The low-shelf warning no longer waits for `V.fed`.
+- Folk button (`folkBtn`) gets `.warn` (orange with ⚠; the mood is in its tooltip) when h < 60 or a shelf is low; wants card has a "Folk mood" row. No save or server change (`mw` is a new village field, defaulted).
+
 ## v0.110.4 — 2026-11-01
 - Wants card with no folk (or an unconnected store) shows a checklist: store on a road (`vStore`), cottage on a road (`vHouses`). No server change.
 
