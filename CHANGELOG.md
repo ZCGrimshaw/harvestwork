@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.112.1 — 2026-11-01
+- Folk unlocks use the peak (`V.peak`): `vBuildWhy` (buildings and the cottage fill rule), `vExWhy` (expansion), and `vFolk()` (Discovery `folk` gates) now use the most folk ever.
+- Arrivals go through `vArrive(V, n, why)`; with 0 folk the mood bar is skipped (and the first newcomer lifts mood to at least 60).
+- The main loop runs `vilTick` while you are in the village with the farm paused (`UI.vil.pause`), so the village isn't frozen while you watch it.
+- Monuments: `vMonDraw(points)` after each successful `monGive` adds 0.1–0.6 to `V.arr`, and `showMonStage` calls `vMonDraw(0, true)` for up to 2 families at once (needs a store on a road and free homes). Found from a player save: 0 folk, mood 55, `arr` 0.998, sitting paused in town. No server change.
+
 ## v0.112 — 2026-11-01
 - New village buildings with folk milestones (`B.folk`): Bakery 10, Market Square 16, Tavern 24, Apothecary 32 (costs use gold, plank, brick, stone, roof tiles only). `vUnlockNotes` toasts once per building (`V.bu`) when the peak folk reaches it; `vTipsHTML` suggests buildings you can now build and empty shops.
 - Shops (`D.village.shops`, `vShops/vShopOn/vShelves/vShelf`): their own shelf, stocked in the shop's tray (`data-vgrp` on Give; `vGive(id, n, quiet, gid)`), consumed in `vilTick`, auto-supply and low warnings cover them. Effects: Bakery `pantry .75` (via `vPantryMul` in `vUseDay`), Tavern `takings 1`, Apothecary `patience .5` (leaving timer), mood `happy` when stocked, `sad` 5 when empty. `vMood` now lists positives first, then ", but …".

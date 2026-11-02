@@ -648,7 +648,7 @@
   function showMonStage() { const p = UI.monPend; UI.monPend = null; const m = MONK(); if (!m || m.id !== p.id) return;
     const seen = lsGet('harvestworks.monseen', {}); seen[m.id] = p.stage; lsSet('harvestworks.monseen', seen);
     if (p.stage >= m.phases.length && m.mine > 0) { S.monDone = S.monDone || {}; if (!S.monDone[m.id]) { S.monDone[m.id] = 1; S.dp += 2; toast(`<b>+2 Discovery</b> · you helped finish ${esc(m.name)}`, 'disc'); save(); } }
-    UI.monShow = p; openTitle('monstage'); SND.play('contract'); }
+    vMonDraw(0, true); UI.monShow = p; openTitle('monstage'); SND.play('contract'); }
   /* The Valley Green: a 6×6 plaza with the monument and the Depot, tucked against one of the four corners of your farm
      (the area diagonal to that corner). You pick the corner, and can move it any time for free. */
   const greenT = i => !!(D.terrain[T_(i).t] && D.terrain[T_(i).t].green);
@@ -726,6 +726,7 @@
         if (!got.includes(ph)) { got.push(ph); S.dp += 1; toast(`<b>+1 Discovery</b> · your first gift to the ${esc(m.phases[ph].name)} phase`, 'disc'); }
         if ((m.mine || 0) < m.keep_min && (st.mine || 0) >= m.keep_min) toast(`<b>You earned the ${esc(monShort(m.name))} model!</b> Place it on your farm from the Monument Depot or the Homestead. It always shows the monument’s current stage.`, 'goal');
         if (S.green) UI.cart = { t: 0 };
+        vMonDraw(r.points);
         SND.play('sell'); setMon(st); save(); monAutoCapStop(st); } }
     catch (e) { if (!auto) toast('Couldn’t reach the valley. Nothing was given, so your goods are still in storage.', 'warn'); }
     UI.monBusy = null; dirty(); }
@@ -2987,7 +2988,7 @@
   const VD = () => D.village;
   const vilOn = () => !!S && !S.race && unlocked('village');
   const gateIdx = () => S.tiles.findIndex(T => T.b && T.b.type === 'vgate');
-  const vFolk = () => (S && S.village ? S.village.folk | 0 : 0);
+  const vFolk = () => (S && S.village ? Math.max(S.village.folk | 0, S.village.peak | 0) : 0); // the most town folk you have had: folk unlocks stay unlocked
   function vil() { if (!S.village) S.village = { n: VD().n0, roads: [0, 1, 2].map(k => vKey(VD().entrance[0] + k, VD().entrance[1])), b: [], folk: 0, h: 70, sh: {}, till: 0, used: 0, arr: 0, lv: 0, auto: {}, lvl: {}, warn: {}, peak: 0, ti: 0, autoT: 0, x0: 0, x1: VD().n0, y0: 0, y1: VD().n0, ex: 0 };
     const V = S.village;
     if (typeof V.x1 !== 'number') { const n = V.n || VD().n0; V.x0 = 0; V.x1 = n; V.y0 = 0; V.y1 = n; V.ex = Math.max(0, Math.round((n - VD().n0) / VD().expand.strip)); } /* older saves were a square of n lots */ ['sh', 'auto', 'lvl', 'warn'].forEach(k => { if (!V[k] || typeof V[k] !== 'object') V[k] = {}; }); if (!Array.isArray(V.roads)) V.roads = [VD().entrance.join(',')]; if (!Array.isArray(V.b)) V.b = []; return V; }
@@ -3062,6 +3063,15 @@
         const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = count(id) - (V.auto[id].keep | 0); if (spare <= 0) return;
         any += vGive(id, Math.min(spare, Math.ceil(need / vPts(id, 0))), true, g.id); }); });
     if (any) { V.autoAt = S.day; UI.vDirty = true; } }
+  // families moving in (n of them, up to the homes free); `why` is an optional toast
+  function vArrive(V, n, why) { const room = vHouses(V), k = Math.max(0, Math.min(n, room - V.folk)); if (!k) return 0;
+    V.folk += k; V.peak = Math.max(V.peak || 0, V.folk); if (V.folk === k && V.h < 60) V.h = 60;
+    logAct(`${k > 1 ? k + ' new families' : 'A new family'} moved into your village (${V.folk} town folk).`, 'auto'); if (why) toast(why, 'goal');
+    vAwardTitles(V); vUnlockNotes(V); UI.vDirty = true; return k; }
+  // the valley's monument draws visitors, and some of them stay: every gift brings arrivals closer; a new stage brings families at once
+  function vMonDraw(pts, stage) { if (!S || S.race || !unlocked('village') || !S.village) return; const V = S.village; if (!vStore(V) || V.folk >= vHouses(V)) return;
+    if (stage) { const k = vArrive(V, 2); if (k) toast(`<b>Visitors came to see the monument, and ${k > 1 ? k + ' families' : 'a family'} stayed in your village.</b> (${V.folk} town folk)`, 'goal'); save(); return; }
+    V.arr = (V.arr || 0) + Math.min(.6, Math.max(.1, (pts || 0) / 500)); if (V.arr >= 1) { V.arr = 0; if (vArrive(V, 1)) toast(`<b>A family who came to see the monument moved into your village.</b> (${V.folk} town folk)`, 'goal'); } }
   // a toast the first time the village has enough folk for a new building
   function vUnlockNotes(V) { const seen = V.bu || (V.bu = {}); Object.entries(VD().buildings).forEach(([k, B]) => { if (!B.folk || seen[k] || (V.peak || 0) < B.folk) return; seen[k] = 1;
     if (!vCount(V, k)) toast(`<b>New in your village: the ${esc(B.name)}</b> (${B.folk} town folk). ${esc(B.desc)} Tap an empty lot in the village to build it.`, 'goal'); }); }
@@ -3103,7 +3113,7 @@
       if (lvl > was) toast(`<b>${lvl > 1 ? 'Your town folk are unhappy.' : 'Your town folk are grumbling.'}</b> ${esc(m.why)} ${lvl > 1 ? 'A family may leave if this goes on. ' : ''}Tap Folk to see their shelves.`, 'warn');
       if (lvl !== was && (lvl < was ? V.h >= (was > 1 ? 40 : 65) : true)) V.mw = lvl; }
     const room = vHouses(V);
-    if (st && V.h >= 60 && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + V.h / 100); if (V.arr >= 1) { V.arr = 0; V.folk++; V.peak = Math.max(V.peak || 0, V.folk); logAct(`A new family moved into your village (${V.folk} town folk).`, 'auto'); vAwardTitles(V); vUnlockNotes(V); UI.vDirty = true; } }
+    if (st && (V.h >= 60 || !V.folk) && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + Math.max(V.h, 60) / 100); if (V.arr >= 1) { V.arr = 0; vArrive(V, 1); } }
     if ((V.h < 20 || V.folk > room) && V.folk > 0) { const lv0 = V.lv || 0; V.lv = lv0 + dd * vPatience(V);
       if (lv0 < 1.5 && V.lv >= 1.5) toast(`<b>A family is packing their bags.</b> ${V.folk > room ? 'There aren’t enough homes on a road for everyone.' : 'The shelves have been empty too long.'} Stock the General Store or build a Cottage on a road to make them stay.`, 'warn');
       if (V.lv >= 3) { V.lv = 0; V.folk--; if (V.h < 35) V.h = 35; /* a fresh start: those who remain are a little less sour */ toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
@@ -3209,8 +3219,8 @@
     if (B.max && vCount(V, k) >= B.max) return `You already have ${B.max === 1 ? 'one' : B.max}.`;
     if (B.after && !vCount(V, B.after)) return `Build a ${VD().buildings[B.after].name} first.`;
     if (k === 'cottage' && vCount(V, 'cottage') && !vCount(V, 'store')) return 'Build the General Store before a second cottage.';
-    if (k === 'cottage' && vCount(V, 'cottage')) { const need = vCount(V, 'cottage') * B.houses - 1; if (V.folk < need) return `Needs ${need} town folk (you have ${V.folk}), so the cottages you have are nearly full first.`; }
-    if (B.folk && V.folk < B.folk) return `Needs ${B.folk} town folk (you have ${V.folk}).`;
+    if (k === 'cottage' && vCount(V, 'cottage')) { const need = vCount(V, 'cottage') * B.houses - 1, best = Math.max(V.folk, V.peak || 0); if (best < need) return `Needs ${need} town folk (your most so far is ${best}), so the cottages you have are nearly full first.`; }
+    if (B.folk && (V.peak || 0) < B.folk) return `Needs ${B.folk} town folk (your most so far is ${V.peak || 0}).`; /* unlocked for good once you have had that many */
     return canPay(B.cost); }
   function vBuild(k) { const V = vil(), s = UI.vil && UI.vil.sel; if (!s) return; const [x, y] = s, B = VD().buildings[k];
     if (vBAt(V, x, y) || vRoadAt(V, x, y)) return; const why = vBuildWhy(V, k); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
@@ -3229,7 +3239,7 @@
   const vExSides = { x1: ['Lower right', 'x'], y1: ['Lower left', 'y'], y0: ['Upper right', 'y'] };
   function vExWhy(V, side) { const E = VD().expand, ax = vExSides[side][1];
     if ((ax === 'x' ? V.x1 - V.x0 : V.y1 - V.y0) + E.strip > E.max) return `That side is already as big as it gets (${E.max} lots across).`;
-    const need = E.folk[Math.min(V.ex || 0, E.folk.length - 1)]; if (V.folk < need) return `Needs ${need} town folk to open more land (you have ${V.folk}).`;
+    const need = E.folk[Math.min(V.ex || 0, E.folk.length - 1)]; if ((V.peak || 0) < need) return `Needs ${need} town folk to open more land (your most so far is ${V.peak || 0}).`;
     const f = vFilled(V), n = vLots(V); if (f < n) return `Fill every lot first (${f} of ${n} have a building, road or decoration).`;
     return canPay(vExCost(V)); }
   function vExpand(side) { const V = vil(), E = VD().expand, why = vExWhy(V, side); if (why) { vMsg(esc(why)); SND.play('warn'); return; }
@@ -3577,7 +3587,7 @@
       const sel = catSel('disc'), card = d => { const own = unlocked(d.id), reqOk = discOk(d);
         const st = own ? 'own' : reqOk ? (S.dp >= d.cost ? 'can' : 'short') : 'lock';
         return `<div class="card ${st}"><div class="ctop"><img class="dimg" src="${ART.discPic(d.pic, D.items)}" alt=""><div class="ctxt"><b>${esc(d.name)}</b><span class="cost">${own ? 'Unlocked' : d.cost + ' DP'}</span></div></div><p>${esc(d.text)}</p><p class="where">${esc(d.where)}</p>
-          ${own ? '' : !reqOk ? `<small>Needs ${[...d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : []), ...(d.folk && vFolk() < d.folk ? [`${d.folk} town folk in your village (you have ${vFolk()})`] : [])].join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
+          ${own ? '' : !reqOk ? `<small>Needs ${[...d.req.filter(r => !unlocked(r)).map(r => esc(D.discoveries.find(x => x.id === r).name)), ...(d.survey && !(S.surveys > 0) ? ['your first new area surveyed'] : []), ...(d.folk && vFolk() < d.folk ? [`${d.folk} town folk in your village (your most so far is ${vFolk()})`] : [])].join(', ')}</small>` : `<button class="btn ${st === 'can' ? 'pri' : ''}" data-unlock="${d.id}" ${st === 'can' ? '' : 'disabled'}>Unlock${st === 'short' ? `<small>Need ${d.cost - S.dp} more</small>` : ''}</button>`}</div>`; };
       if (sel === 'avail') h += `<div class="cards">${[...avail].sort((a, b) => rank(a) - rank(b)).map(card).join('')}</div>`;
       else h += D.discoveryBranches.filter(b => sel === 'all' || sel === b.id).map(b => {
         const ds = D.discoveries.filter(d => branchOf(d) === b.id).sort((x, y) => rank(x) - rank(y));
@@ -4237,7 +4247,7 @@
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
     else if (UI.monWelcome && !UI.title && !UI.catchup && !S.race) { UI.monWelcome = false; openTitle('monwelcome'); }
     else if (UI.monPend && !UI.title && !UI.catchup && !S.race) showMonStage();
-    if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) { try { update(dt); } catch (e) { frameFail(e); } } tickYaw(dt); tickTicker(dt); tutTick();
+    if (UI.pendingWeek && !UI.title && !UI.catchup) { UI.week = UI.pendingWeek; UI.pendingWeek = null; openTitle('week'); SND.play('day'); } if (!paused()) { try { update(dt); } catch (e) { frameFail(e); } } else if (UI.vil && UI.vil.pause && !UI.vil.ask && !UI.title && !UI.idle) { try { vilTick(dt); } catch (e) { frameFail(e); } } /* the village keeps living while you are in town, even with the farm paused */ tickYaw(dt); tickTicker(dt); tutTick();
     UI.floats.forEach(f => f.t += dt); UI.floats = UI.floats.filter(f => f.t < 1.6);
     UI.parts.forEach(q => q.t += dt); UI.parts = UI.parts.filter(q => q.t < 1);
     if (UI.cart && (UI.cart.t += dt) > 2.4) UI.cart = null;
@@ -4643,7 +4653,7 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), monDraw: (p, s) => vMonDraw(p, s), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();
