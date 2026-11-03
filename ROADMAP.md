@@ -135,7 +135,8 @@ Not built yet; picked up when we choose to.
   and start orders ask for about twice the amount; crop-eating recipes take one more of their main crop (aim: one busy station per
   ~3 plots); land step 8 → 11. Races and weekly challenges keep the old numbers (HW_DATA.classic, swapped in by paceSync).
   Contracts open at the update keep their old amounts (S.msKeep).
-  - Next, Stage D: 2-tile footprints for later buildings (new placements only), so land and layout matter more.
+  - Stage D shipped in v0.115: 15 mid/late stations take 2 tiles (station + yard piece) when placed from now on; older ones and
+    races stay 1 tile.
   - Pinned: seasonal pressure (bigger season bonuses, a reason to plant ahead for winter).
   - Possible: goods as part of mid/late discovery prices.
 - **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:

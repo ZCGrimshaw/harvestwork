@@ -455,7 +455,7 @@ button, .chipf, input, select { touch-action: manipulation; }
     border-radius: 14px 14px 0 0; border-bottom: 0; padding: 18px 16px calc(14px + env(safe-area-inset-bottom, 0px));
     box-shadow: inset 0 0 0 2px var(--wood-hi), 0 -6px 18px rgba(0,0,0,.35); }
   #panel { max-height: 42%; } #panel.full { max-height: 58%; }
-  #panel:not(.full) .phead .sub, #panel:not(.full) p.hint:not(.err), #panel:not(.full) p.tip, #panel:not(.full) .more { display: none; }
+  #panel:not(.full) .phead .sub, #panel:not(.full) p.hint:not(.err):not(.yardhint), #panel:not(.full) p.tip, #panel:not(.full) .more { display: none; }
   #panel .pmore { display: block; position: sticky; top: 0; width: fit-content; min-width: 120px; margin: 0 auto 2px; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: transparent; color: var(--paper-dim); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; z-index: 2; }
   #panel:not(:has(.phead .sub, p.hint:not(.err), p.tip, .more)) .pmore { display: none; }
   #panel .pmore { background: var(--wood); z-index: 6; width: 100%; border-radius: 0; margin: 0 0 0; }
@@ -991,8 +991,8 @@ body.hudmv #vwants { max-height: calc(100vh - 150px); overflow-y: auto; }
   </div>
   <input type="file" id="loadfile" accept=".json,.txt,application/json,text/plain" hidden>
 </div>
-<script src="data.js?v=20261103-050506"></script>
-<script src="art.js?v=20261103-050506"></script>
-<script src="sound.js?v=20261103-050506"></script>
-<script src="game.js?v=20261103-050506"></script>
+<script src="data.js?v=20261103-052652"></script>
+<script src="art.js?v=20261103-052652"></script>
+<script src="sound.js?v=20261103-052652"></script>
+<script src="game.js?v=20261103-052652"></script>
 </body></html>

@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.115 — 2026-11-02
+- 2-tile stations (ROADMAP Farm-first pacing, Stage D). `D.buildings[k].yard` = yard sprite key on 15 mid/late stations; new `annex` building kind (`{ type: 'annex', pt }`) on the yard tile, station keeps `b.yd`. `yardOf` (off when `S.race`), `yardSpots`, `yardPick` (`UI.yardTurn`), `kits2`, `yardFix()` in migrate (drops orphans). Place takes `t.y`; move carries the yard only when `b.yd` exists (old 1-tile stations never gain one); salvage clears it; `clickTile` and `renderPanel` redirect the yard to the station; selection outlines both tiles; grass panel hint + "Turn the yard". Art: `yard_heap:0-2`, `yard_wood`, `yard_lumber`, `yard_crates`, `yard_bales`, `yard_pen`, `yard_cans`, `yard_barrels`, `yard_anvil`.
+
 ## v0.114 — 2026-11-02
 - Pacing pass (ROADMAP "Farm-first pacing", Stages A-C). `config.firsts` craft / craftDeep / build → 0. Farm almanac: `S.harvN` (crops harvested, backfilled from `S.mast` on first load), `S.alm`, thresholds `ALM` in game.js (10, 30, 60, 100 … 3500, then every +1000), toast + Discovery drawer line. `fieldCheck()` → `first('field', 2)` + `emit('field')` for a sprinkler with 8 growing/ready plots.
 - Discovery costs re-tiered (tree 240 → 394 DT). Irrigation `req: []`; `sprinkler_kit.buy: 80`. Goals 8+ replaced: expand → 4 plots (`state: 'plots'`) → Irrigation (`state: 'unlid'`) → sprinkler (`'sprk'`) → full field (`'field'`) → Woodcutting → chop → Sawmill → planks; old saves remapped once (`S.gv = 2`).

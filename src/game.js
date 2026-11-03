@@ -127,7 +127,7 @@
     if (!S.wk) weekStart();
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
-    expandWorld(); UI.live = null; fixMsOrder();
+    expandWorld(); UI.live = null; fixMsOrder(); yardFix();
     // v0.114: the tutorial gained farm goals after "Fill an order" (old goals 8-12 → 8 onward, finished stays finished)
     if (S.gv !== 2) { if (S.goal >= 13) S.goal = D.goals.length; else if (S.goal >= 8) S.goal = 8; S.gv = 2; }
     // v0.114 farm almanac: older farms start with every crop they have already harvested (from mastery's counts)
@@ -1333,6 +1333,18 @@
   const capMsg = bt => { const B = D.buildings[bt], n = capFor(bt); if (B.max) return `You can only have ${B.max === 1 ? 'one' : B.max} ${B.name}.`; return `Limit reached: ${n} ${B.name}${n === 1 ? '' : 's'} with ${areas()} area${areas() === 1 ? '' : 's'}. Survey new land to build more.`; };
   /* moving buildings: expensive, and pricier for each recent move */
   const MOVABLE = ['station', 'storage', 'sprinkler', 'gate'];
+  /* 2-tile stations (v0.115): mid- and late-game stations placed from now on take their tile plus a yard tile beside it
+     ({ type: 'annex', pt: station }); the station records it as b.yd. Stations placed before keep one tile for good,
+     and races and weekly challenges stay one tile. */
+  const yardOf = bt => !S.race && D.buildings[bt] && D.buildings[bt].yard ? D.buildings[bt].yard : null;
+  const yardSpots = (i, skip) => [[1, 0], [0, 1], [-1, 0], [0, -1]].map(([dx, dy]) => inB(tx(i) + dx, ty(i) + dy) ? idx(tx(i) + dx, ty(i) + dy) : -1)
+    .filter(j => j >= 0 && j !== skip && isEmptyGrass(j));
+  const yardPick = (i, skip) => { const sp = yardSpots(i, skip); return sp.length ? sp[(UI.yardTurn || 0) % sp.length] : -1; };
+  const kits2 = () => Object.keys(S.inv).filter(id => D.items[id] && D.items[id].cat === 'kit' && count(id) > 0 && yardOf(D.items[id].building));
+  const YARD_ERR = 'Needs a free grass tile beside it for its yard';
+  function yardFix() { S.tiles.forEach((T, j) => { const b = T.b; if (!b) return;
+    if (b.type === 'annex') { const o = S.tiles[b.pt]; if (!o || !o.b || o.b.yd !== j) T.b = null; }
+    else if (b.yd != null && !(S.tiles[b.yd] && S.tiles[b.yd].b && S.tiles[b.yd].b.type === 'annex' && S.tiles[b.yd].b.pt === j)) delete b.yd; }); }
   function moveCost(bt) { const k = kitFor(bt), kit = k && D.items[k], B = D.buildings[bt], heat = Math.pow(C.move.heat, S.moveHeat || 0);
     const c = { gold: Math.round((C.move.gold + (kit && kit.buy || 60)) * heat / 10) * 10 };
     if (B.place && (B.place.brick || 0) > 0) c.brick = Math.max(2, Math.round(B.place.brick / 2)); else c.plank = Math.max(2, Math.round(((B.place && B.place.plank) || 2) / 2) + 1);
@@ -1506,8 +1518,13 @@
     move: { label: t => `Move ${t.nm || 'building'}`,
       check: t => { const b = T_(t.p) && T_(t.p).b; if (!unlocked('rollers')) return 'Unlock Rollers & Skids';
         if (!b || !MOVABLE.includes(D.buildings[b.type].kind)) return 'Nothing to move'; if (t.i === t.p) return 'Pick a different tile';
-        if (!isEmptyGrass(t.i)) return 'Pick empty grass you own'; return canPay(moveCost(b.type)); },
-      run: t => { const b = T_(t.p).b; pay(moveCost(b.type)); T_(t.i).b = b; T_(t.p).b = null;
+        if (!isEmptyGrass(t.i)) return 'Pick empty grass you own';
+        if (b.yd != null) { const yb = T_(b.yd).b; T_(b.yd).b = null; const ok = yardSpots(t.i, t.p).length; T_(b.yd).b = yb; if (!ok) return YARD_ERR; }
+        return canPay(moveCost(b.type)); },
+      run: t => { const b = T_(t.p).b, two = b.yd != null; pay(moveCost(b.type));
+        if (two) { T_(b.yd).b = null; delete b.yd; }   // a 2-tile station takes its yard along; a 1-tile one stays 1 tile
+        T_(t.i).b = b; T_(t.p).b = null;
+        if (two) { const y = yardPick(t.i); if (y >= 0) { T_(y).b = { type: 'annex', pt: t.i }; b.yd = y; } }
         S.queue.forEach(q => { if (q.i === t.p) q.i = t.i; });
         if (S.helper) { S.helper.steps.forEach(st => { if (st.i === t.p) st.i = t.i; }); if (S.helper.cur && S.helper.cur.i === t.p) S.helper.cur = null; }
         S.moveHeat = (S.moveHeat || 0) + 1; S.moveCool = 0; if (UI.sel === t.p) UI.sel = t.i;
@@ -1542,8 +1559,12 @@
       run: t => { pay(C.farmPlotCost); T_(t.i).b = makeB('farm'); gainScore(C.score.build / 2, t.i); } },
     place: { label: t => `Place ${D.buildings[D.items[t.p].building].name}`,
       check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; const bt = D.items[t.p].building;
-        if (builtCount(bt) >= capFor(bt)) return capMsg(bt); return canPay(D.buildings[bt].place); },
-      run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1; fieldCheck();
+        if (builtCount(bt) >= capFor(bt)) return capMsg(bt);
+        if (yardOf(bt)) { const sp = yardSpots(t.i); if (!sp.length || (t.y != null && !sp.includes(t.y))) return YARD_ERR; }
+        return canPay(D.buildings[bt].place); },
+      run: t => { const bt = D.items[t.p].building, y = yardOf(bt) ? (t.y != null && yardSpots(t.i).includes(t.y) ? t.y : yardPick(t.i)) : -1;
+        take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1; fieldCheck();
+        if (y >= 0) { T_(y).b = { type: 'annex', pt: t.i }; T_(t.i).b.yd = y; }
         if (S.recycled && S.recycled[t.p] > 0) S.recycled[t.p]--; else { gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`); }
         toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].hold ? `It holds ${D.buildings[bt].hold.base} ${SK[D.buildings[bt].hold.cls].name} apart from main storage.` : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
     pickup: { label: t => { const b = T_(t.i).b; return `Pick up ${b ? D.buildings[b.type].name : 'sprinkler'}`; },
@@ -1592,7 +1613,7 @@
         if (builtCount(b.type) < 2) return 'You only have one of these'; if (b.q && b.q.length) return 'Collect its batches first';
         const items = Object.entries(salvageRefund(b)).filter(([k]) => k !== 'gold').reduce((n, [, v]) => n + v, 0);
         T.b = null; HC.at = -1; const ok = room() - items >= 0; T.b = b; HC.at = -1; return ok ? null : 'Storage wouldn’t hold everything afterwards'; },
-      run: t => { const T = T_(t.i), b = T.b, nm = D.buildings[b.type].name, r = salvageRefund(b); T.b = null; HC.at = -1; S.built = Math.max(0, (S.built || 0) - 1);
+      run: t => { const T = T_(t.i), b = T.b, nm = D.buildings[b.type].name, r = salvageRefund(b); T.b = null; if (b.yd != null && T_(b.yd).b && T_(b.yd).b.type === 'annex') T_(b.yd).b = null; HC.at = -1; S.built = Math.max(0, (S.built || 0) - 1);
         if (S.helper) { S.helper.steps = S.helper.steps.filter(st => st.i !== t.i); if (S.helper.cur && S.helper.cur.i === t.i) S.helper.cur = null; }
         for (const k in r) { if (k === 'gold') S.gold += r[k]; else addItem(k, r[k], 0, true); }
         float(t.i, 'Taken down', '#b8f08a'); toast(`<b>${esc(nm)} taken down.</b> Refunded ${costTxt(r)}.`, 'info'); } },
@@ -1986,6 +2007,7 @@
   }
   function clickTile(i) {
     if (i < 0) { UI.sel = -1; dirty(); return; }
+    { const b = S.tiles[i] && S.tiles[i].b; if (b && b.type === 'annex' && UI.moving == null) i = b.pt; } // a station's yard selects the station
     if (i !== UI.sel) frameTile(i);
     if (i === UI.sel) { const pa = primaryAction(i); if (pa && !(pa.a === 'harvest' && (S.cur && S.cur.a === 'harvest' && S.cur.i === i || S.queue.some(x => x.a === 'harvest' && x.i === i)))) { const t = Object.assign({ i }, pa); const e = checkTask(t); if (e && !['load'].includes(t.a)) toast(esc(e), 'warn'); else queueTask(t); } }
     else if (UI.moving == null && !UI.placeMon && !UI.placeMedal) { // a ripe crop is harvested by the first tap; no need to open the panel and press Harvest
@@ -2135,11 +2157,14 @@
       cx.closePath(); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke();
       const gp = UI.growPick && UI.growPick.split(':'), go = gp && +gp[0] === selHouse && growOpt(selHouse, gp[1]);
       if (go) go.add.forEach(j => { tilePoly(j, 1); cx.fillStyle = `rgba(184,240,138,${.3 + .2 * pulse})`; cx.fill(); cx.setLineDash([3 * p, 2 * p]); cx.strokeStyle = '#b8f08a'; cx.lineWidth = p * .8; cx.stroke(); cx.setLineDash([]); }); }
-    else if (UI.sel >= 0 && !isVoid(UI.sel)) { tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke(); }
+    else if (UI.sel >= 0 && !isVoid(UI.sel)) { const sb = S.tiles[UI.sel].b; tilePoly(UI.sel); cx.strokeStyle = '#f6e27a'; cx.lineWidth = p * 1.2; cx.stroke();
+      if (sb && sb.yd != null) { tilePoly(sb.yd); cx.stroke(); }
+      else if (!sb && UI.moving == null && isEmptyGrass(UI.sel) && kits2().length) { const y = yardPick(UI.sel); if (y >= 0) { tilePoly(y); cx.fillStyle = `rgba(184,240,138,${.25 + .2 * pulse})`; cx.fill(); cx.setLineDash([3 * p, 2 * p]); cx.strokeStyle = '#b8f08a'; cx.lineWidth = p * .8; cx.stroke(); cx.setLineDash([]); } } }
     const mvB = UI.moving != null && S.tiles[UI.moving] && S.tiles[UI.moving].b;
     if (mvB && mvB.type === 'house') { const at = UI.sel >= 0 ? UI.sel : UI.hover;
       if (at >= 0 && !isVoid(at)) { const s = houseSpot(at, mvB.w, mvB.h); s.tiles.forEach(j => { tilePoly(j, 1); cx.fillStyle = s.bad ? 'rgba(224,72,94,.32)' : `rgba(184,240,138,${.3 + .2 * pulse})`; cx.fill(); }); } }
-    else if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill(); }
+    else if (UI.moving != null && UI.hover >= 0 && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.fillStyle = isEmptyGrass(UI.hover) ? 'rgba(184,240,138,.3)' : 'rgba(224,72,94,.25)'; cx.fill();
+      if (mvB && mvB.yd != null && isEmptyGrass(UI.hover)) { const y = yardPick(UI.hover, UI.moving); if (y >= 0 && y !== mvB.yd) { tilePoly(y); cx.fillStyle = 'rgba(184,240,138,.2)'; cx.fill(); } } }
     // task target markers
     [S.cur, ...S.queue].forEach((t, k) => { if (!t) return; tilePoly(t.i, 3); cx.strokeStyle = k ? 'rgba(143,211,239,.55)' : 'rgba(143,211,239,.9)'; cx.lineWidth = p * .7; cx.stroke(); });
     // objects + avatar, depth sorted
@@ -2182,6 +2207,7 @@
             if (UI.labels && !again) labels.push({ sx: mx, sy: my - (img.ay - 6) * p, name: (D.monuments[kind] || D.monuments.pyramid).name }); }
         } else {
           let key = b.type; const active = b.q && b.q.some(j => !j.done);
+          if (b.type === 'annex') { const o = S.tiles[b.pt] && S.tiles[b.pt].b, img = ART.get((o && D.buildings[o.type] && D.buildings[o.type].yard) || 'yard_crates'); blit(img, sx, sy, p, 16, img.height - 4, a); return; }
           if (b.type === 'depot') { const m = MONK(); key = 'depot:' + (m ? Math.min(5, Math.ceil((m.today || 0) / Math.max(1, (m.cap || 800) / 5))) : 0); }
           if (b.type === 'monument') key = `mon:${b.m.kind || 'pyramid'}.${monStageOf(b.m.id)}.deco`;
           if (b.type === 'stove' && active) key = 'stove_on';
@@ -2267,6 +2293,7 @@
       if (B.kind === 'station') { const rs = Object.values(D.recipes).filter(r => r.station === it.building).map(r => D.items[Object.keys(r.out)[0]].name); if (rs.length) P.push(`Makes ${esc(nmList(rs))}.`); }
       if (B.hold) P.push(`Holds ${B.hold.base} ${SK[B.hold.cls].name} outside main storage, up to ${holdAt(B.hold, B.hold.max)} when fully expanded.`);
       else if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
+      if (B.yard) P.push('Takes 2 tiles when placed: the station and its working yard beside it. Stations placed before v0.115 keep one tile.');
       P.push(`Place the kit on empty grass you own${B.place && Object.keys(B.place).length ? ` (placing also takes ${costTxt(B.place)})` : ''}.`); }
     const crop = Object.values(D.crops).find(c => c.item === id), seedOf = Object.values(D.crops).find(c => c.seed === id);
     if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
@@ -3486,7 +3513,9 @@
     h += btn({ a: 'build', i }, 'Build Farm Plot', { cls: UI.placeMedal || UI.placeMon ? '' : 'pri', sub: costTxt(C.farmPlotCost) });
     if (unlocked('homemaking') && houseIdx() < 0 && !S.race) h += btn({ a: 'housebuild', i }, `Build your ${HZ().levels[0].name} here`, { sub: `${costTxt(HZ().build)} · one per farm, for showing off decor` });
     const kits = Object.keys(S.inv).filter(id => D.items[id].cat === 'kit' && count(id) > 0);
-    h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building]; return btn({ a: 'place', i, p: id }, `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}` }); }).join('')
+    const y2 = yardPick(i), n2 = yardSpots(i).length;
+    if (kits.some(id => yardOf(D.items[id].building))) h += `<p class="hint small yardhint">Bigger stations take 2 tiles: the station here and its yard on the ${n2 ? 'highlighted' : 'next'} tile.${n2 > 1 ? ' <button class="btn ghost sm" data-yard-turn>Turn the yard</button>' : n2 ? '' : ' This tile has no free grass beside it.'}</p>`;
+    h += kits.length ? kits.map(id => { const B = D.buildings[D.items[id].building], two = yardOf(D.items[id].building); return btn(Object.assign({ a: 'place', i, p: id }, two && y2 >= 0 ? { y: y2 } : {}), `Place ${esc(B.name)}`, { sub: `Kit + ${costTxt(B.place)}${two ? ' · 2 tiles' : ''}` }); }).join('')
       : `<p class="hint">Station kits are sold at the Open Market once unlocked.</p>`;
     return h + reshapeSection(i);
   }
@@ -3585,6 +3614,7 @@
     let h;
     if (T.t === 'void') h = surveyPanel(i);
     else if (!T.o) h = lockedPanel(i, T);
+    else if (T.b && T.b.type === 'annex') { UI.sel = T.b.pt; return renderPanel(); }
     else if (T.b) { const k = D.buildings[T.b.type].kind;
       h = k === 'gate' ? gatePanel(i) : k === 'farm' ? farmPanel(i, T.b) : k === 'station' ? stationPanel(i, T.b) : k === 'home' ? homePanel(i) : k === 'house' ? housePanel(houseAt(i), i) : k === 'market' ? marketPanel(i) : k === 'sprinkler' ? sprinklerPanel(i) : k === 'storage' ? storagePanel(i) : k === 'decor' ? (T.b.type === 'monument' ? modelPanel(i) : medalPanel(i)) : k === 'depot' || k === 'monsite' ? monPanel(i) : boardPanel(i);
       if (k === 'home') S.noticeSeen = UI.noticeK; }
@@ -4031,12 +4061,13 @@
     const el = e.target.closest('button'); if (!el) return;
     const ds = el.dataset;
     if ('task' in ds) { const t = { a: ds.a, i: +ds.i }; if (ds.p !== undefined) t.p = isNaN(+ds.p) || ds.p === '' ? ds.p : (ds.a === 'deliver' ? +ds.p : ds.p);
-      if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; if (ds.nm) t.nm = ds.nm;
+      if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; if (ds.y !== undefined) t.y = +ds.y; if (ds.nm) t.nm = ds.nm;
       if (t.a === 'move' || t.a === 'housemove' || t.a === 'survey') t.p = +ds.p; queueTask(t); if (t.a === 'move' || t.a === 'housemove') UI.moving = null; }
     else if ('close' in ds) UI.sel = -1;
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
+    else if ('yardTurn' in ds) { UI.yardTurn = (UI.yardTurn || 0) + 1; UI.html['#panel'] = null; }
     else if ('tutResume' in ds) { resumeTut(); }
     else if (ds.shint) { UI.shints = UI.shints || {}; UI.shints[ds.shint] = !UI.shints[ds.shint]; }
     else if (ds.sjump) { const f = UI.mfold || (UI.mfold = lsGet('harvestworks.mfold', {})); f[ds.sjump] = true; lsSet('harvestworks.mfold', f); UI.setq = ''; UI.sjumpTo = ds.sjump; }
