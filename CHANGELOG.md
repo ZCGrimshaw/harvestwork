@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.116 — 2026-11-03
+- Village load (Joel at 150-220 folk): `vEat(n)` = first 30 folk full, folk 31-80 at 65%, 81+ at 45% (150 folk → 63% of the old use); used by `vUseDay` and `vCap`. Rations `V.ration` (`RATIONS`: lean .6 + mood cap 78, normal, generous 1.3 + mood +5 + arrivals ×1.2) with `vRationHTML` in the Folk drawer and General Store tray (`data-vration`, handled in the global click handler). `vAuto` skips what open and Grand orders need (`ordersNeed`) and takes the most spare first.
+
 ## v0.115 — 2026-11-02
 - 2-tile stations (ROADMAP Farm-first pacing, Stage D). `D.buildings[k].yard` = yard sprite key on 15 mid/late stations; new `annex` building kind (`{ type: 'annex', pt }`) on the yard tile, station keeps `b.yd`. `yardOf` (off when `S.race`), `yardSpots`, `yardPick` (`UI.yardTurn`), `kits2`, `yardFix()` in migrate (drops orphans). Place takes `t.y`; move carries the yard only when `b.yd` exists (old 1-tile stations never gain one); salvage clears it; `clickTile` and `renderPanel` redirect the yard to the station; selection outlines both tiles; grass panel hint + "Turn the yard". Art: `yard_heap:0-2`, `yard_wood`, `yard_lumber`, `yard_crates`, `yard_bales`, `yard_pen`, `yard_cans`, `yard_barrels`, `yard_anvil`.
 

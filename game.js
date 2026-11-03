@@ -415,6 +415,7 @@
     if (V.folk && st) h += `<span class="eyebrow">Shelves</span><div class="fshelves">${vShelves(V).filter(g => vNeeded(V, g)).map(g => { const d = vDaysLeft(V, g); const days = d === Infinity ? '' : d < .1 ? 'empty' : d < 1 ? 'under a day' : Math.floor(d) + ' day' + (Math.floor(d) === 1 ? '' : 's');
       return `<div class="fshelf"><b>${esc(g.name)}</b><span class="${d < VD().lowDays ? 'warnt' : ''}">${days} left</span></div>`; }).join('')}</div>`;
     else if (V.folk) h += `<p class="hint warnt">No General Store on a road, so nobody can shop.</p>`;
+    if (V.folk) h += vRationHTML(V);
     h += `<span class="eyebrow">Titles</span><div class="vtitles">${vTitleList().map((x, k) => { const own = k < (V.ti || 0); return `<div class="vtitle ${own ? 'own' : ''}"><b>${own ? '✓ ' : ''}${esc(x.name)}</b><span>${x.folk} town folk · +${x.dp} Discovery</span><small>${own ? esc(x.blurb) : 'Not yet earned.'}</small></div>`; }).join('')}</div>`;
     h += `<div class="menu">${unlocked('village') && gateIdx() >= 0 && !UI.vil ? '<button class="btn pri" data-vil-go>Go to the village</button>' : ''}<button class="btn ghost" data-close-drawer>Close</button></div>`;
     return h; }
@@ -3088,8 +3089,14 @@
   const vStore = V => { const s = V.b.find(b => b.k === 'store'); return s && vOnRoad(V, s) ? s : null; };
   const vHouses = V => { const R = vReach(V); return V.b.filter(b => b.k === 'cottage' && vOnRoad(V, b, R)).length * VD().buildings.cottage.houses; };
   const vNeeded = (V, g) => g.b ? vShopOn(V, g) : g.need != null && V.folk >= g.need;
-  const vCap = (V, g) => Math.max(VD().minShelf, Math.ceil(Math.max(1, V.folk) * g.rate * VD().bufferDays));
-  const vUseDay = (V, g) => V.folk * g.rate * (g.id === 'pantry' ? vPantryMul(V) : 1);
+  /* Appetite (v0.116): the first 30 town folk eat in full; a big village shares and wastes less, so folk 31-80 eat 65% and folk 81 and up 45%.
+     The rations dial then scales it: Lean 60%, Normal 100%, Generous 130%. */
+  const vEat = n => n <= 30 ? n : 30 + Math.min(n - 30, 50) * .65 + Math.max(0, n - 80) * .45;
+  const RATIONS = { lean: { name: 'Lean', use: .6, text: 'Folk eat 40% less. Mood tops out at Content, so nobody is cheerful.' }, normal: { name: 'Normal', use: 1, text: 'The usual.' },
+    generous: { name: 'Generous', use: 1.3, text: 'Folk eat 30% more, are a bit happier, and families move in faster.' } };
+  const vRation = V => RATIONS[V && V.ration] || RATIONS.normal;
+  const vCap = (V, g) => Math.max(VD().minShelf, Math.ceil(Math.max(1, vEat(V.folk)) * vRation(V).use * g.rate * VD().bufferDays));
+  const vUseDay = (V, g) => vEat(V.folk) * vRation(V).use * g.rate * (g.id === 'pantry' ? vPantryMul(V) : 1);
   const vDaysLeft = (V, g) => { const u = vUseDay(V, g); return u > 0 ? (V.sh[g.id] || 0) / u : Infinity; };
   const vPts = (id, q) => Math.max(1, Math.round((D.items[id].value || 1) * (1 + .25 * (q | 0))));
   // where happiness is heading, and why (shown to the player)
@@ -3102,7 +3109,8 @@
     if (V.sh.treats > 0) { t += 20; why.push('treats'); }
     if (well) { t += VD().buildings.well.happy; why.push('fresh water from the well'); }
     { const R = vReach(V); vShops().forEach(s => { if (!vShopOn(V, s, R)) return; if (V.sh[s.id] > 0) { t += s.happy; why.push(s.good); } else { t -= s.sad; bad.push(s.closed); } }); }
-    return { t: Math.max(0, Math.min(100, t)), why: 'Happiness comes from ' + why.join(', ') + (bad.length ? ', but ' + bad.join(' and ') : '') + '.' }; }
+    if (V.ration === 'generous') t += 5; const top = V.ration === 'lean' ? 78 : 100;
+    return { t: Math.max(0, Math.min(top, t)), why: (V.ration === 'lean' ? 'Lean rations. ' : '') + 'Happiness comes from ' + why.join(', ') + (bad.length ? ', but ' + bad.join(' and ') : '') + '.' }; }
   // titles: the best one you have earned (by the most folk you ever had), and the next one to aim for
   const vTitleList = () => VD().titles || [];
   const vTitleFor = n => { let t = null; vTitleList().forEach(x => { if (n >= x.folk) t = x; }); return t; };
@@ -3129,10 +3137,12 @@
     const gave = n - left; if (g.farm) freshUse(id, gave); else freshScale(id, count(id) + gave, count(id)); V.sh[g.id] = (V.sh[g.id] || 0) + pts; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[g.id] = false;
     if (!quiet && gave) { SND.play('contract'); vMsg(`Put ${gave} ${esc(D.items[id].name)} on the ${esc(g.name)} shelf.`); }
     return gave; }
+  const ordersNeed = id => [...S.orders, ...(S.adv || [])].reduce((t, o) => t + o.need.reduce((n, [k, q]) => n + (k === id ? q : 0), 0), 0);
   function vAuto(V) { if (!unlocked('villageauto')) return; let any = 0; const st = vStore(V);
     vShelves(V).forEach(g => { if (!g.b && !st) return; const lv = V.lvl[g.id] != null ? V.lvl[g.id] : 75, want = vCap(V, g) * lv / 100; if ((V.sh[g.id] || 0) >= want) return;
-      g.goods.filter(id => V.auto[id] && V.auto[id].on && D.items[id]).sort((a, b) => count(b) - count(a)).forEach(id => {
-        const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = vHave(g, id) - (V.auto[id].keep | 0); if (spare <= 0) return;
+      const held = id => vHave(g, id) - (V.auto[id].keep | 0) - ordersNeed(id);   // what is really spare: above your keep level and above what an open order or Grand order still needs
+      g.goods.filter(id => V.auto[id] && V.auto[id].on && D.items[id]).sort((a, b) => held(b) - held(a)).forEach(id => {
+        const need = want - (V.sh[g.id] || 0); if (need <= 0) return; const spare = held(id); if (spare <= 0) return;
         any += vGive(id, Math.min(spare, Math.ceil(need / vPtsG(g, id, 0))), true, g.id); }); });
     if (any) { V.autoAt = S.day; UI.vDirty = true; } }
   // families moving in (n of them, up to the homes free); `why` is an optional toast
@@ -3185,7 +3195,7 @@
       if (lvl > was) toast(`<b>${lvl > 1 ? 'Your town folk are unhappy.' : 'Your town folk are grumbling.'}</b> ${esc(m.why)} ${lvl > 1 ? 'A family may leave if this goes on. ' : ''}Tap Folk to see their shelves.`, 'warn');
       if (lvl !== was && (lvl < was ? V.h >= (was > 1 ? 40 : 65) : true)) V.mw = lvl; }
     const room = vHouses(V);
-    if (st && (V.h >= 60 || !V.folk) && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + Math.max(V.h, 60) / 100) * vArrMul(V); if (V.arr >= 1) { V.arr = 0; vArrive(V, 1); } }
+    if (st && (V.h >= 60 || !V.folk) && V.folk < room) { V.arr = (V.arr || 0) + dd * (1 + Math.max(V.h, 60) / 100) * vArrMul(V) * (V.ration === 'generous' ? 1.2 : 1); if (V.arr >= 1) { V.arr = 0; vArrive(V, 1); } }
     if ((V.h < 20 || V.folk > room) && V.folk > 0) { const lv0 = V.lv || 0; V.lv = lv0 + dd * vPatience(V);
       if (lv0 < 1.5 && V.lv >= 1.5) toast(`<b>A family is packing their bags.</b> ${V.folk > room ? 'There aren’t enough homes on a road for everyone.' : 'The shelves have been empty too long.'} Stock the General Store or build a Cottage on a road to make them stay.`, 'warn');
       if (V.lv >= 3) { V.lv = 0; V.folk--; if (V.h < 35) V.h = 35; /* a fresh start: those who remain are a little less sour */ toast(`<b>A family left your village.</b> ${V.folk > room ? 'There weren’t enough homes on a road for them.' : 'Its shelves have been empty too long.'} Keep the General Store stocked to bring folk back.`, 'warn'); } }
@@ -3351,6 +3361,8 @@
     { const w = vWants(g).slice(0, all ? 12 : 4); if (w.length && vNeeded(V, g) || w.length && g.need == null) h += `<span class="optlabel">${g.farm ? 'Grow or collect these' : 'Not in storage yet'}</span><div class="rlist vwant">${w.map(id => `<div class="rpiece">${ico(id)}<span><b>${esc(D.items[id].name)}</b><small>worth ${vPtsG(g, id, 0)} each · ${esc(vSource(id))}${S.disc.includes(id) ? '' : ' · not discovered yet'}</small></span></div>`).join('')}</div>`; }
     if (more > 0 || all) h += `<button class="linkish small" data-vall="${g.id}">${all ? 'Show fewer' : `Show all ${list.length + more}`}</button>`;
     return h + `</div>`; }
+  function vRationHTML(V) { const r = vRation(V);
+    return `<span class="eyebrow">Rations</span><div class="chips">${Object.entries(RATIONS).map(([k, x]) => `<button class="chipf ${r === x ? 'on' : ''}" data-vration="${k}" aria-pressed="${r === x}">${x.name}</button>`).join('')}</div><p class="hint small">${esc(r.text)}</p>`; }
   function vAutoHTML(V) { if (!unlocked('villageauto')) return `<span class="eyebrow">Auto-supply</span><p class="hint small">Unlock <b>Store Deliveries</b> in Discovery (needs ${(D.discoveries.find(d => d.id === 'villageauto') || {}).folk || 12} town folk) and goods go to the store by themselves.</p>`;
     const on = Object.keys(V.auto).filter(id => V.auto[id].on && D.items[id]);
     let h = `<span class="eyebrow">Auto-supply</span><p class="hint small">Goods marked <b>Auto</b> go to the store by themselves while the game runs, to keep each shelf at the level you pick. They never take your last few: set how many to keep in storage.</p>`;
@@ -3377,7 +3389,7 @@
       else if (sb.k === 'market') t += `<p class="hint">${esc(B.desc)}</p>` + vMarketHTML(V, false);
       else if (sb.k === 'store') { t += `<div class="vtill"><span>Takings in the till: <b>${Math.floor(V.till || 0).toLocaleString()}g</b></span><button class="btn sm ${V.till >= 1 ? 'pri' : ''}" data-vcollect ${V.till >= 1 ? '' : 'disabled'}>Collect</button></div>`;
         if (!V.folk) t += `<p class="hint small">No town folk yet: a cottage on the road brings them.</p>`;
-        t += vTipsHTML(V) + vGroups().map(g => vGiveHTML(V, g)).join('') + vAutoHTML(V); } }
+        t += vTipsHTML(V) + vRationHTML(V) + vGroups().map(g => vGiveHTML(V, g)).join('') + vAutoHTML(V); } }
     else if (s && road) { const ent = s[0] === ex && s[1] === ey;
       t += `<div class="rcard"><div class="row"><div class="grow1"><b>${ent ? 'The road from your farm' : 'Road'}</b><small>${ent ? 'Every building needs a road back to here.' : vReach(V).has(vKey(s[0], s[1])) ? 'Connected to the road from your farm ✓' : '<b class="warnt">Not connected</b> to the road from your farm.'}</small></div><button class="btn sm ghost" data-vdesel>Done</button></div>${ent ? '' : '<div class="rbtns"><button class="btn sm ghost" data-vunroad>Remove this road</button></div>'}</div>`; }
     else if (s) { t += `<div class="rcard"><div class="row"><div class="grow1"><b>Empty lot</b><small>Build here, or lay a road.</small></div><button class="btn sm ghost" data-vdesel>Done</button></div></div>`;
@@ -4067,6 +4079,7 @@
     else if ('closeDrawer' in ds) { UI.drawer = null; UI.confirmReset = false; }
     else if (ds.moveStart) { UI.moving = +ds.moveStart; UI.sel = -1; }
     else if ('moveCancel' in ds) { UI.moving = null; }
+    else if (ds.vration && RATIONS[ds.vration]) { if (S.village) { S.village.ration = ds.vration; UI.html['#drawer'] = null; UI.html['#vtray'] = null; save(); dirty(); } }
     else if ('yardTurn' in ds) { UI.yardTurn = (UI.yardTurn || 0) + 1; UI.html['#panel'] = null; }
     else if ('tutResume' in ds) { resumeTut(); }
     else if (ds.shint) { UI.shints = UI.shints || {}; UI.shints[ds.shint] = !UI.shints[ds.shint]; }
@@ -4338,7 +4351,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261103-052712';
+  const BUILD = '20261103-185850';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
