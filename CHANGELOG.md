@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.117 — 2026-11-03
+- Free built-in stores (Joel: seeds, saplings and decor were using the main storage that overnight products fill). `D.storeKinds.pocket` (cats seed + supply) and `homestore` (decor), both `free: true`; `holdCaps()` adds `pocket` = max(40, 15% of main capacity) and `homestore` = 10 × (house level + 1) when a house exists; overflow spills into main as for the Silo/Cellar/Yard. Shown automatically in the Storage panel via the existing store lines.
+- Kits can be sold back: `kit` added to `MARKET_BUYS`; `baseValue` gives kits half their `buy` price, or half their ingredients' value (`kitWorth`) when they have none. `pickup` no longer requires free storage. New `HW.holdCaps` test hook.
+
 ## v0.116 — 2026-11-03
 - Village load (Joel at 150-220 folk): `vEat(n)` = first 30 folk full, folk 31-80 at 65%, 81+ at 45% (150 folk → 63% of the old use); used by `vUseDay` and `vCap`. Rations `V.ration` (`RATIONS`: lean .6 + mood cap 78, normal, generous 1.3 + mood +5 + arrivals ×1.2) with `vRationHTML` in the Folk drawer and General Store tray (`data-vration`, handled in the global click handler). `vAuto` skips what open and Grand orders need (`ordersNeed`) and takes the most spare first.
 
