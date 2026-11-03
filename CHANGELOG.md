@@ -3,6 +3,12 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.114 — 2026-11-02
+- Pacing pass (ROADMAP "Farm-first pacing", Stages A-C). `config.firsts` craft / craftDeep / build → 0. Farm almanac: `S.harvN` (crops harvested, backfilled from `S.mast` on first load), `S.alm`, thresholds `ALM` in game.js (10, 30, 60, 100 … 3500, then every +1000), toast + Discovery drawer line. `fieldCheck()` → `first('field', 2)` + `emit('field')` for a sprinkler with 8 growing/ready plots.
+- Discovery costs re-tiered (tree 240 → 394 DT). Irrigation `req: []`; `sprinkler_kit.buy: 80`. Goals 8+ replaced: expand → 4 plots (`state: 'plots'`) → Irrigation (`state: 'unlid'`) → sprinkler (`'sprk'`) → full field (`'field'`) → Woodcutting → chop → Sawmill → planks; old saves remapped once (`S.gv = 2`).
+- Quantities: `genOrder` raw 4-10 / crafted 1-4; contracts ×2 (goods/crops/gathered) or ×1.5 (components) with gold by value; `startOrders` bigger. Recipes: main plant crop +1 (1 → 2); values raised where margins broke (flour 23, pumpkin soup 57, sauerkraut 58, malt 30). `expandStep` 8 → 11.
+- Races and weekly challenges keep the old numbers: `HW_DATA.classic` lists [path, old value]; `paceSync()` swaps them in while `S.race` is set (called every frame and in the presets). The contract open at update time keeps its old need/gold via `S.msKeep` in `curMs()`.
+
 ## v0.113.1 — 2026-11-02
 - `infoHTML` always states a source: bonus-gather lines for `sand` (pond fishing, needs glassworks) and `copper_ore` (boulders, needs prospecting), and a "Buy it" line for every item with `buy`.
 

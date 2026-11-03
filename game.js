@@ -86,7 +86,8 @@
   /* Contracts run in order, except the new-land ones: if the next contract needs an area you haven't surveyed yet
      and a later one needs an area you have (or none at all), they swap, so you're never stuck waiting on land. */
   const hasLand = th => th === 'any' ? (S.surveys || 0) > 0 : S.regions.some(R => R.open && R.theme === th);
-  const curMs = () => D.milestones[S.msOrd ? S.msOrd[S.ms] : S.ms];
+  const curMs = () => { const k = S.msOrd ? S.msOrd[S.ms] : S.ms, m = D.milestones[k];
+    return m && S.msKeep && S.msKeep.k === k && !S.race ? Object.assign({}, m, { need: S.msKeep.need, gold: S.msKeep.gold }) : m; }; // a contract open at the v0.114 update keeps its old amounts
   function fixMsOrder() { if (!S.msOrd) S.msOrd = D.milestones.map((m, k) => k); for (let k = 0; k < D.milestones.length; k++) if (!S.msOrd.includes(k)) S.msOrd.push(k);
     const O = S.msOrd, cur = D.milestones[O[S.ms]]; if (!cur || !cur.land || hasLand(cur.land)) return;
     for (let k = S.ms + 1; k < O.length; k++) { const m = D.milestones[O[k]]; if (!m.land || hasLand(m.land)) { [O[S.ms], O[k]] = [O[k], O[S.ms]]; return; } } }
@@ -127,6 +128,13 @@
     if (!S.mode) S.mode = 'online'; // farms from before modes existed were all part of the valley
     if (!S.fid) S.fid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     expandWorld(); UI.live = null; fixMsOrder();
+    // v0.114: the tutorial gained farm goals after "Fill an order" (old goals 8-12 → 8 onward, finished stays finished)
+    if (S.gv !== 2) { if (S.goal >= 13) S.goal = D.goals.length; else if (S.goal >= 8) S.goal = 8; S.gv = 2; }
+    // v0.114 farm almanac: older farms start with every crop they have already harvested (from mastery's counts)
+    if (S.harvN == null && !S.race && S.score > 0) { const k = S.msOrd ? S.msOrd[S.ms] : S.ms, old = f => ((D.classic || []).find(([p]) => p[0] === 'milestones' && p[1] === k && p[2] === f) || [])[1];
+      if (D.milestones[k] && old('need')) S.msKeep = { k, need: old('need'), gold: old('gold') || D.milestones[k].gold }; }
+    if (S.harvN == null && !S.race) { S.harvN = Object.values(D.crops).reduce((t, c) => t + ((S.mast || {})[c.item] || 0), 0); S.alm = 0;
+      const got = almanac(true); if (got) setTimeout(() => toast(`<b>Farm almanac · +${got} discovery tokens</b> for the ${S.harvN} crops you have already harvested. From now on discovery tokens come mostly from farming.`, 'disc'), 2500); }
     { const o = houseIdx(); if (o >= 0) { roomFix(S.tiles[o].b); caseFix(S.tiles[o].b); } }   // the room inside the house (and decor from the old display spots)
     S.tiles.forEach(T => { if (!T.r && D.gather[T.t]) T.r = initRes(T.t); });   // a gathering tile must always carry its resource
     S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
@@ -495,11 +503,30 @@
     const g = D.goals[S.goal];
     if (g && g.ev === ev && (!g.item || g.item === data.item) && (!g.st || g.st === data.st)) completeGoal();
   }
-  function goalStateDone(g) { return g.state === 'unl' ? S.unl.length > 0 : g.state === 'exp' ? S.exp > 0 : g.state === 'built' ? S.built > 0 : false; }
+  function goalStateDone(g) { return g.state === 'unl' ? S.unl.length > 0 : g.state === 'exp' ? S.exp > 0 : g.state === 'built' ? S.built > 0
+      : g.state === 'unlid' ? S.unl.includes(g.d) : g.state === 'plots' ? S.tiles.filter(T => T.o && T.b && T.b.type === 'farm').length >= g.n
+      : g.state === 'sprk' ? S.tiles.some(T => T.o && T.b && (D.buildings[T.b.type] || {}).kind === 'sprinkler') : g.state === 'field' ? !!S.firsts.field : false; }
+  /* v0.114 pacing: races and weekly challenges keep the numbers from before (D.classic: [path, old value]); the farm uses the new ones. */
+  const PACE = (D.classic || []).map(([p, old]) => { const o = p.slice(0, -1).reduce((a, k) => a[k], D), k = p[p.length - 1]; return [o, k, old, o[k]]; });
+  let paceRace = null;
+  function paceSync() { const r = !!(S && S.race); if (r === paceRace) return; paceRace = r;
+    PACE.forEach(([o, k, old, nw]) => { const v = r ? old : nw; if (v === null || v === undefined) delete o[k]; else o[k] = v; }); }
+  /* Farm almanac: discovery tokens for crops harvested over the farm's life (S.harvN), so farming is what pays for discoveries. */
+  const ALM = [[10, 1], [30, 1], [60, 1], [100, 2], [175, 2], [275, 2], [400, 3], [600, 3], [850, 3], [1200, 4], [1600, 4], [2100, 4], [2700, 5], [3500, 5]];
+  const almAt = k => k < ALM.length ? ALM[k] : [ALM[ALM.length - 1][0] + 1000 * (k - ALM.length + 1), 5];
+  function almanac(quiet) { if (S.race) return 0; let got = 0, k = S.alm || 0;
+    while ((S.harvN || 0) >= almAt(k)[0]) { got += almAt(k)[1]; k++; }
+    if (got) { const n = k - (S.alm || 0); S.alm = k; S.dp += got; if (!quiet) toast(`<b>+${got} discovery token${got > 1 ? 's' : ''}</b> · Farm almanac: ${almAt(k - 1)[0]} crops harvested`, 'disc'); }
+    return got; }
+  const almNext = () => { const [n, dp] = almAt(S.alm || 0); return { at: n, left: Math.max(0, n - (S.harvN || 0)), dp }; };
+  // a full field: a sprinkler with crops growing on all 8 tiles around it
+  function fieldCheck() { if (S.race || (S.firsts && S.firsts.field)) return;
+    const ok = S.tiles.some((T, i) => T.o && T.b && (D.buildings[T.b.type] || {}).kind === 'sprinkler' && around(i, 1).filter(j => j !== i && (b => b && ['growing', 'ready'].includes(b.st))(farmAt(j))).length >= 8);
+    if (ok) { first('field', 2, 'Your first full field: 8 crops around a sprinkler'); emit('field'); } }
   function completeGoal() {
     const g = D.goals[S.goal]; S.goal++; S.gold += g.reward || 0; SND.play('goal');
     toast(`<b>Goal complete:</b> ${esc(g.title)}${g.reward ? ` · +${g.reward}g` : ''}`, 'goal');
-    if (S.goal === D.goals.length) { S.dp += 1; toast('<b>Tutorial finished · +1 Discovery.</b> Your homestead is on its feet. Check the Order Board for the next contract.', 'disc'); }
+    if (S.goal === D.goals.length) { S.dp += 1; toast('<b>Tutorial finished · +1 discovery token.</b> Your homestead is on its feet. Check the Order Board for the next contract.', 'disc'); }
     dirty();
   }
   function depth(id) {
@@ -822,7 +849,7 @@
   const RACE_TRAP_KITS = [['smelter_kit', 'smelter', 'copper ore from Prospecting'], ['loom_kit', 'loom', 'flax'], ['press_kit', 'press', 'apple trees'], ['oven_kit', 'oven', 'bricks to place it']];
   function raceRng(code) { let h = 2166136261; for (const ch of code) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
     return () => { h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ h >>> 15, 1 | h); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  function racePreset(code) {
+  function racePreset(code) { paceSync();
     const R = raceRng(code), int = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
     const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
     const kit = []; const unl = id => { if (!S.unl.includes(id)) S.unl.push(id); };
@@ -895,7 +922,7 @@
     return themeRound(T, NEW_ROUNDS, w, 'ROUNDB', weekTheme(NEW_ROUNDS - 1).id); }
   const fmtLeft = ms => { const m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60);
     return d ? `${d}d ${h}h` : h ? `${h}h ${m % 60}m` : `${m % 60}m`; };
-  function weeklyPreset(w) {
+  function weeklyPreset(w) { paceSync();
     const th = weekTheme(w), st = th.start, R = raceRng('WEEKLY' + w), int = (a, b) => a + Math.floor(R() * (b - a + 1));
     const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
     const unl = id => { if (!S.unl.includes(id)) S.unl.push(id); }, give = (k, n) => { if (n > 0) addItem(k, n, 0, true); }, kit = [];
@@ -1206,7 +1233,7 @@
     const raw = pool.filter(id => !crafted.includes(id));
     const useC = crafted.length && (!raw.length || Math.random() < .55);
     const list = useC ? crafted : raw, id = list[(Math.random() * list.length) | 0];
-    const qty = useC ? 1 + ((Math.random() * 2.5) | 0) : 2 + ((Math.random() * 4) | 0);
+    const qty = S.race ? (useC ? 1 + ((Math.random() * 2.5) | 0) : 2 + ((Math.random() * 4) | 0)) : useC ? 1 + ((Math.random() * 3.5) | 0) : 4 + ((Math.random() * 7) | 0);
     const minQ = S.maxQ >= 1 && Math.random() < .25 && canGood(id) ? 1 : 0;
     const gold = Math.round(D.items[id].value * qty * (useC ? 1.6 : 1.35) * (1 + minQ * .6));
     const names = D.orderNames[useC ? 'crafted' : 'raw'];
@@ -1433,7 +1460,7 @@
         if (t.f && count('fertilizer') < 1) return 'No fertilizer'; return null; },
       run: t => { const cr = D.crops[t.p]; take(cr.seed, 1); if (t.f) take('fertilizer', 1);
         T_(t.i).b = { type: 'farm', st: 'growing', crop: t.p, last: t.p, g: 0, wet: false, w: [0, 0], half: false, fert: !!t.f };
-        gainScore(C.score.plant, t.i); emit('plant'); } },
+        gainScore(C.score.plant, t.i); emit('plant'); fieldCheck(); } },
     fertilize: { label: () => 'Fertilize crop',
       check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm' || b.st !== 'growing') return 'Only growing crops can be fertilized';
         if (b.fert) return 'Already fertilized'; return count('fertilizer') < 1 ? 'No fertilizer in storage' : null; },
@@ -1445,7 +1472,7 @@
       run: t => { const b = T_(t.i).b, cr = D.crops[b.crop];
         const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
         const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
-        addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
+        addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; if (!S.race) { S.harvN = (S.harvN || 0) + yl; almanac(); } float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
         if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(t.i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
         T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
         gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
@@ -1516,7 +1543,7 @@
     place: { label: t => `Place ${D.buildings[D.items[t.p].building].name}`,
       check: t => { if (!isEmptyGrass(t.i)) return 'Tile is not empty grass'; if (count(t.p) < 1) return 'No kit in storage'; const bt = D.items[t.p].building;
         if (builtCount(bt) >= capFor(bt)) return capMsg(bt); return canPay(D.buildings[bt].place); },
-      run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1;
+      run: t => { const bt = D.items[t.p].building; take(t.p, 1); pay(D.buildings[bt].place); T_(t.i).b = makeB(bt); S.built++; HC.at = -1; fieldCheck();
         if (S.recycled && S.recycled[t.p] > 0) S.recycled[t.p]--; else { gainScore(C.score.build, t.i); first('build:' + bt, C.firsts.build, `${D.buildings[bt].name} built`); }
         toast(`<b>${esc(D.buildings[bt].name)} is running.</b> ${D.buildings[bt].kind === 'station' ? 'Select it to load recipes.' : D.buildings[bt].hold ? `It holds ${D.buildings[bt].hold.base} ${SK[D.buildings[bt].hold.cls].name} apart from main storage.` : D.buildings[bt].kind === 'storage' ? `Storage is now ${cap()}.` : 'It waters the planted plots around it.'}`, 'info'); emit('build', { st: bt }); } },
     pickup: { label: t => { const b = T_(t.i).b; return `Pick up ${b ? D.buildings[b.type].name : 'sprinkler'}`; },
@@ -3599,7 +3626,7 @@
     if (!UI.drawer) { el.hidden = true; UI.html['#drawer'] = ''; return; }
     el.hidden = false; let h = '';
     if (UI.drawer === 'disc') {
-      h = `<div class="phead"><div><h2>Discovery</h2><p class="sub">Earned from firsts, deeper chains, quality and contracts. Never from repeating cheap work. You have <b>${S.dp}</b>.</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
+      h = `<div class="phead"><div><h2>Discovery</h2><p class="sub">Discovery tokens come from farming: first harvests, the farm almanac, quality, new land, orders and contracts. You have <b>${S.dp}</b>.${S.race ? '' : ` <span class="almn">Farm almanac: harvest ${almNext().left} more crop${almNext().left === 1 ? '' : 's'} for +${almNext().dp}.</span>`}</p></div><button class="close" data-close-drawer aria-label="Close">×</button></div>`;
       const rank = d => unlocked(d.id) ? 3 : discOk(d) ? (S.dp >= d.cost ? 0 : 1) : 2;
       const branchOf = d => (D.discoveryBranches.find(b => b.ids.includes(d.id)) || D.discoveryBranches[0]).id;
       const avail = D.discoveries.filter(d => !unlocked(d.id) && discOk(d));
@@ -3864,7 +3891,7 @@
     how('quality', 'Quality', 'basic good excellent water fertilizer tier price', QUALITY_HELP);
     how('orders', 'Orders and the Order Board', 'deliver request gold board contract', `<p>The Order Board posts requests for goods you’ve already made: deliver them for gold and score. The board holds ${C.orderSlots} requests and gains one for every ${C.orderSlotEvery} Discoveries you unlock (up to ${C.orderSlotMax}). A new one arrives ${C.orderRefill} seconds after you fill or pass one. Contracts (the card top left) are one-off goals that pay gold and Discovery. Decor is never requested.</p>`);
     how('grand', 'Grand orders', 'big orders five goods advanced', `<p>With the Grand Orders discovery, the Board also posts ${C.grand.slots} Grand orders: five different goods, many of each, for big gold and score. They scale with your storage. After you fill or pass one, the next arrives ${Math.round(C.grand.refill / 60)} minutes later, by the real clock, even while you’re away. No more than ${C.grand.perDay} new Grand orders come up in a day (the count restarts at midnight UTC, 5 PM Pacific), whether you fill them or pass them.</p>`);
-    how('discovery', 'Discovery', 'tokens points unlock tree', `<p>Discovery is what you spend to unlock things in the tree. You earn it from first-time accomplishments, deeper production chains, quality, contracts, mastery tiers and the Valley Monument, never from repeating cheap work. Score is separate: everything you do earns score.</p>`);
+    how('discovery', 'Discovery', 'tokens points unlock tree', `<p>Discovery tokens are what you spend to unlock things in the tree. They come mostly from farming: the first harvest of each crop, the farm almanac (every few dozen crops you harvest, then every few hundred), your first full field around a sprinkler, quality, new land, orders, contracts, mastery tiers, your village and the Valley Monument. Building stations and cooking new recipes no longer pay them. Score is separate: everything you do earns score.</p>`);
     how('mastery', 'Mastery', 'tier bronze silver gold legend mythic perk', `<p>Every crop and animal good you produce counts toward its mastery (Menu → Mastery). Tiers: ${MAS.tiers.map(T => T.name).join(', ')}. Each tier makes that good sell for more, and higher tiers make it faster or give extra yield. Legend and Mythic pay gold instead of Discovery. Mastery is off during races and weekly challenges.</p>`);
     how('seasons', 'Seasons and weather', 'spring summer autumn winter rain frost snow heat', `<p>A season lasts ${SR.len} days and a year ${YEAR}. Crops and goods in season grow faster and sell for more; rain waters crops, heat dries soil, frost slows tender crops and snow days only let hardy crops be planted. Cold Frames protect your plots. See the Season button in the top bar.</p>`);
     how('storage', 'Storage', 'inventory capacity full barn silo cellar', `<p>Everything you own lives in shared storage that every station and order draws from. The Homestead provides the base capacity; Storage Barns and Warehouses add to it. Silos, Cold Cellars and Material Yards hold one kind of goods apart from main storage. Kits and decor on display don’t use storage.</p>`);
@@ -4261,7 +4288,7 @@
       if (UI.errN === 1) { try { save(); } catch (x) { } } } catch (x) { }
   }
   function frameBody(now) {
-    const dt = Math.min(.25, (now - last) / 1000); last = now;
+    const dt = Math.min(.25, (now - last) / 1000); last = now; paceSync();
     tickCatchUp(); SND.setHour(hour()); checkIdle(now); checkFull(); tickRace(dt);
     { const sc = (noSeasons() ? 'spring' : season().id) + '|' + wxNow() + '|' + raining(); if (sc !== UI.sndScene || (SND.ready && !UI.sndReady)) { UI.sndScene = sc; UI.sndReady = SND.ready; SND.setScene(...sc.split('|').map((v, k) => k === 2 ? v === 'true' : v)); } }
     if (UI.medalPend && !UI.title && !UI.catchup && !S.race) showMedal();
@@ -4280,7 +4307,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261102-224304';
+  const BUILD = '20261103-050443';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

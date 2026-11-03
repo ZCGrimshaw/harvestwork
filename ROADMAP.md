@@ -127,6 +127,17 @@ Not built yet; picked up when we choose to.
   Silo, Cold Cellar or Material Yard panel shows a single count too. Joel wants to see which goods are in each store. Idea: in the Storage drawer, a
   "Where" switch (All / Main / Silo / Cold Cellar / Material Yard) or grouped sections; and a list of contents in each store building's own panel. The
   data is already there (`storeKind(id)` says which store a good belongs to; `holdUsed()` totals each).
+- **Farm-first pacing (agreed 2026-11-02; Stages A-C shipped in v0.114):** the early game unlocked too much too fast (first crafts and
+  first builds each paid 1 DT, so every station paid for itself) and farms stayed at ~4 plots. v0.114: no DT for first crafts/builds;
+  farm almanac DT for crops harvested (backfilled from mastery counts); first full field (8 crops around a sprinkler) +2 DT; discovery
+  prices tiered early 2-3 / mid 4-8 / late 10-15 (tree 240 → 394 DT); Irrigation needs nothing and a Sprinkler kit is sold at the
+  market (80g); tutorial goals 8-12 are now land → 4 plots → Irrigation → sprinkler → full field, then woodcutting; orders, contracts
+  and start orders ask for about twice the amount; crop-eating recipes take one more of their main crop (aim: one busy station per
+  ~3 plots); land step 8 → 11. Races and weekly challenges keep the old numbers (HW_DATA.classic, swapped in by paceSync).
+  Contracts open at the update keep their old amounts (S.msKeep).
+  - Next, Stage D: 2-tile footprints for later buildings (new placements only), so land and layout matter more.
+  - Pinned: seasonal pressure (bigger season bonuses, a reason to plant ahead for winter).
+  - Possible: goods as part of mid/late discovery prices.
 - **Time edit (pinned 2026-10-20, discussed, not built):** lengthen the game without making it grindy. Three parts:
   (1) Task durations: user's idea was +5% short, +7% medium, +10% long tasks, farmhand matched. Concern: that's small and
   mastery/speed upgrades cancel it; 10/15/25% would be felt; a flat % is simpler; one tier function (short <15 s, medium 15-40,
@@ -136,7 +147,7 @@ Not built yet; picked up when we choose to.
   day). Plan by phase. Early = learning: steady cheap DT (1-2) from tutorial goals and first-times. Middle = planning: DT from
   contracts, mastery to Gold and deeper chains; costs 3-6 plus some goods; branching choices. Late = systems: DT from top mastery,
   monuments, supply contracts, medals and throughput goals; costs 8-15 plus goods; unlocks automation, factories, more workers.
-  Target tree about 350-450 DT. (v0.72 added six late Discoveries for 45 DT: tree now 70 / 231 DT.) Existing saves keep their tokens; only new prices apply. First step: tag all 60 Discoveries
+  Target tree about 350-450 DT (v0.114: 394 DT, see Farm-first pacing). (v0.72 added six late Discoveries for 45 DT: tree now 70 / 231 DT.) Existing saves keep their tokens; only new prices apply. First step: tag all 60 Discoveries
   early/mid/late and set DT and goods costs in a table for approval (best done on Opus).
   (3) More than one farmhand (today exactly one: 4 jobs, 8 with Seasoned Farmhand).
 - **Time on work (to discuss, pinned 2026-10-20):** put a duration on every task that needs work (tilling, building, crafting,
