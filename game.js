@@ -417,10 +417,12 @@
     let h = `<div class="phead"><div><h2>Town folk</h2><p class="sub">${t ? `Your village is a <b>${esc(t.name)}</b>.` : 'Your village is just starting out.'}</p></div>${close}</div>`;
     h += `<div class="wgrid folkgrid">${[[V.folk, 'Town folk now'], [V.peak || 0, 'Most ever'], [room, 'Homes'], [vScore(V).toLocaleString(), 'Village score']].map(([a, b]) => `<div class="wstat"><b>${a}</b><span>${b}</span></div>`).join('')}</div>`;
     h += `<p class="hint"><b>${vMoodName(V.h)}, ${mood}%</b> · ${esc(m.why)}${V.folk ? '' : ''}</p><div class="vbar"><i style="width:${mood}%"></i></div>`;
+    if (V.feast > 0) h += `<p class="hint small"><b>Village feast</b>: ${Math.max(1, Math.ceil(V.feast))} day${Math.ceil(V.feast) > 1 ? 's' : ''} left. Folk are happier and shops take more.</p>`;
     if (nx) h += `<p class="hint small">Next title: <b>${esc(nx.name)}</b> at ${nx.folk} town folk (${Math.max(0, nx.folk - (V.peak || 0))} to go) · +${nx.dp} Discovery.</p>`;
     if (V.folk && st) h += `<span class="eyebrow">Shelves</span><div class="fshelves">${vShelves(V).filter(g => vNeeded(V, g)).map(g => { const d = vDaysLeft(V, g); const days = d === Infinity ? '' : d < .1 ? 'empty' : d < 1 ? 'under a day' : Math.floor(d) + ' day' + (Math.floor(d) === 1 ? '' : 's');
       return `<div class="fshelf"><b>${esc(g.name)}</b><span class="${d < VD().lowDays ? 'warnt' : ''}">${days} left</span></div>`; }).join('')}</div>`;
     else if (V.folk) h += `<p class="hint warnt">No General Store on a road, so nobody can shop.</p>`;
+    if (V.folk && st) vShelves(V).forEach(g => { if (vSpec(V, g).ready) h += `<div class="vgrp"><span class="eyebrow">${esc(g.name)}: specialty dish</span>${vSpecHTML(V, g, false)}</div>`; });
     if (V.folk) h += vRationHTML(V);
     h += `<span class="eyebrow">Titles</span><div class="vtitles">${vTitleList().map((x, k) => { const own = k < (V.ti || 0); return `<div class="vtitle ${own ? 'own' : ''}"><b>${own ? '✓ ' : ''}${esc(x.name)}</b><span>${x.folk} town folk · +${x.dp} Discovery</span><small>${own ? esc(x.blurb) : 'Not yet earned.'}</small></div>`; }).join('')}</div>`;
     h += `<div class="menu">${unlocked('village') && gateIdx() >= 0 && !UI.vil ? '<button class="btn pri" data-vil-go>Go to the village</button>' : ''}<button class="btn ghost" data-close-drawer>Close</button></div>`;
@@ -1234,7 +1236,7 @@
     return Object.entries(D.recipes).some(([rid, R]) => R.out[id] && (S.tiles.some(T => T.b && T.b.type === R.station && T.b.lv && T.b.lv.quality > 0)
       || (Object.keys(R.in).length && Object.keys(R.in).every(k => canGood(k, depth + 1))))); }
   function genOrder() {
-    const pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && !S.orders.some(o => o.need[0][0] === id));
+    const pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && !D.items[id].spec && !S.orders.some(o => o.need[0][0] === id));
     if (!pool.length) return null;
     const crafted = pool.filter(id => ['good', 'component'].includes(D.items[id].cat));
     const raw = pool.filter(id => !crafted.includes(id));
@@ -1251,7 +1253,7 @@
      goods come from the upper half of what you can sell by value, and the reward is the goods' value × goldMult. */
   function genGrand() { const G = C.grand;
     const taken = new Set(S.adv.flatMap(o => o.need.map(n => n[0])));
-    let pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && (D.items[id].value || 0) > 0 && !taken.has(id)).sort((a, b) => D.items[b].value - D.items[a].value);
+    let pool = S.disc.filter(id => SELLABLE.includes(D.items[id].cat) && !D.items[id].spec && (D.items[id].value || 0) > 0 && !taken.has(id)).sort((a, b) => D.items[b].value - D.items[a].value);
     if (pool.length < G.goods) return null;
     pool = pool.slice(0, Math.max(G.goods, Math.ceil(pool.length * .6)));
     const ids = []; while (ids.length < G.goods) ids.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
@@ -2302,6 +2304,7 @@
       else if (B.kind === 'storage') P.push(`Adds ${B.storage} storage space.`);
       if (B.yard) P.push('Takes 2 tiles when placed: the station and its working yard beside it. Stations placed before v0.115 keep one tile.');
       P.push(`Place the kit on empty grass you own${B.place && Object.keys(B.place).length ? ` (placing also takes ${costTxt(B.place)})` : ''}.`); }
+    if (it.spec) { const sg = vShelf(it.spec), SP = VD().special; P.push(`A village specialty: it can’t be bought, only made. Served <b>Excellent</b> to the ${esc(sg ? sg.name : 'village')} shelf when it is half empty, it fills ${Math.round(SP.fill * 100)}% of the shelf and starts a ${SP.days}-day feast (folk ${SP.mood}% happier, shops take ${Math.round((SP.takings - 1) * 100)}% more). Or sell it for gold instead.`); }
     const crop = Object.values(D.crops).find(c => c.item === id), seedOf = Object.values(D.crops).find(c => c.seed === id);
     if (seedOf) P.push(`Plant on a tilled Farm Plot to grow ${esc(seedOf.name)}: ${seedOf.yield} per harvest after about ${seedOf.grow}s of growing (faster when watered).`);
     if (crop) P.push(`Grown on a Farm Plot from ${esc(D.items[crop.seed].name)}.`);
@@ -2399,6 +2402,8 @@
     if (!okS || !(V.folk > 0)) return h + `<div class="vwrow"><span>To bring folk in</span></div><div class="vwrow"><span>General Store on a road</span>${ck(okS)}</div><div class="vwrow"><span>Cottage on a road</span>${ck(okH)}</div><div class="vwrow"><span><small>With both, a family moves in every couple of minutes while the village is content. Roads must link to the entrance.</small></span></div>`;
     h += `<div class="vwrow"><span>Folk mood</span><span class="${V.h < 60 ? 'low' : ''}">${vMoodName(V.h)}</span></div>`;
     if (V.mk) h += vMarketHTML(V, true);
+    if (V.feast > 0) h += `<div class="vwrow"><span>Village feast</span><span>${Math.max(1, Math.ceil(V.feast))} day${Math.ceil(V.feast) > 1 ? 's' : ''} left</span></div>`;
+    vShelves(V).forEach(g => { h += vSpecHTML(V, g, true); });
     // only the shelves that need attention (under 3 days left), then a count of the rest; goods to bring for the emptiest one
     const L = vShelves(V).filter(g => g.need != null && vNeeded(V, g)).map(g => ({ g, d: vDaysLeft(V, g), have: V.sh[g.id] > 0 })), low = L.filter(x => x.d < 3), first = L.slice().sort((a, b) => a.d - b.d)[0];
     low.forEach(({ g, d, have }) => { h += `<div class="vwrow"><span>${esc(g.name)}</span><span class="low">${esc(have ? vDaysTxt(d) : 'empty')}</span></div>`; });
@@ -3113,6 +3118,7 @@
     let t = 65; const why = ['food on the shelf'], bad = [];
     if (vNeeded(V, house)) { if (V.sh.household > 0) { t += 20; why.push('household goods'); } else { t -= 30; bad.push('there are no household goods'); } }
     if (V.sh.treats > 0) { t += 20; why.push('treats'); }
+    if (V.feast > 0) { t += VD().special.mood; why.push('a village feast'); }
     if (well) { t += VD().buildings.well.happy; why.push('fresh water from the well'); }
     { const R = vReach(V); vShops().forEach(s => { if (!vShopOn(V, s, R)) return; if (V.sh[s.id] > 0) { t += s.happy; why.push(s.good); } else { t -= s.sad; bad.push(s.closed); } }); }
     if (V.ration === 'generous') t += 5; const top = V.ration === 'lean' ? 78 : 100;
@@ -3143,6 +3149,30 @@
     const gave = n - left; if (g.farm) freshUse(id, gave); else freshScale(id, count(id) + gave, count(id)); V.sh[g.id] = (V.sh[g.id] || 0) + pts; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[g.id] = false;
     if (!quiet && gave) { SND.play('contract'); vMsg(`Put ${gave} ${esc(D.items[id].name)} on the ${esc(g.name)} shelf.`); }
     return gave; }
+  /* Specialty dishes (v0.118): when a shelf is at or under half, one Excellent dish made for it fills half the bar and starts a feast. */
+  const vDishes = gid => Object.keys(D.items).filter(id => D.items[id].spec === gid);
+  function vSpec(V, g) { const P = VD().special, dishes = vDishes(g.id), own = dishes.filter(id => S.inv[id] && S.inv[id][2] > 0);
+    const on = !!(V.folk > 0 && (g.b ? vShopOn(V, g) : vStore(V))), low = (V.sh[g.id] || 0) <= vCap(V, g) * P.below;
+    const at = V.sp && V.sp[g.id] != null ? V.sp[g.id] : -1e9, wait = Math.max(0, at + C.dayLength * P.cooldown - S.time);
+    return { on, low, wait, dishes, own, ready: !!(on && low && !wait && own.length) }; }
+  function vSpecialGive(gid, id) { const V = S.village, g = vShelf(gid); if (!V || !g || !D.items[id] || D.items[id].spec !== gid) return 0;
+    const sp = vSpec(V, g); if (!sp.ready || !sp.own.includes(id)) return 0; const P = VD().special, cap = vCap(V, g);
+    S.inv[id][2]--; freshScale(id, count(id) + 1, count(id));
+    V.sh[gid] = Math.min(cap, (V.sh[gid] || 0) + cap * P.fill); V.feast = Math.max(V.feast || 0, P.days); (V.sp = V.sp || {})[gid] = S.time; (V.spw = V.spw || {})[gid] = 1; V.fed = true; if (vDaysLeft(V, g) > VD().lowDays * 2) V.warn[gid] = false;
+    SND.play('contract'); toast(`<b>${esc(D.items[id].name)} served!</b> The ${esc(g.name)} shelf is a lot fuller, and the village is feasting for ${P.days} days: happier folk and busier shops.`, 'goal');
+    logAct(`Served ${D.items[id].name} to the village (${g.name} shelf, feast for ${P.days} days).`, 'you'); UI.html['#drawer'] = null; UI.html['#vtray'] = null; UI.vDirty = true; save(); dirty(); return 1; }
+  // one toast when a shelf drops to half and you have an Excellent dish for it; re-armed once the shelf is back above half
+  function vSpecNotice(V) { if (!(V.folk > 0)) return; const P = VD().special, seen = V.spw || (V.spw = {});
+    vShelves(V).forEach(g => { if (!vDishes(g.id).length) return; const sp = vSpec(V, g);
+      if (!sp.low) { if (seen[g.id]) seen[g.id] = 0; return; }
+      if (sp.ready && !seen[g.id]) { seen[g.id] = 1; toast(`<b>The ${esc(g.name)} shelf is running low.</b> You have an Excellent ${esc(sp.own.map(id => D.items[id].name).join(' or '))}: serve it to fill half the shelf and start a village feast. Tap Folk.`, 'goal'); } }); }
+  function vSpecHTML(V, g, farm) { const P = VD().special, s = vSpec(V, g); if (!s.dishes.length || !s.on) return '';
+    const names = s.dishes.map(id => D.items[id].name).join(' or ');
+    if (s.ready) return (farm ? '' : `<div class="cinfo vspec"><b>Specialty dish</b><small>This shelf is half empty. An Excellent dish fills ${Math.round(P.fill * 100)}% of it and starts a ${P.days}-day feast: folk ${P.mood}% happier and shops busier. Or sell it for gold instead.</small></div>`) + s.own.map(id => `<div class="${farm ? 'vwgood vmk' : 'vspecrow'}">${ico(id)}<span>${farm ? `${esc(D.items[id].name)} <small>fills the ${esc(g.name)} shelf · feast</small>` : `<b>${esc(D.items[id].name)}</b><small>Excellent · have ${S.inv[id][2]}</small>`}</span><button class="${farm ? 'vmkg' : 'btn sm pri'}" data-vspec="${g.id}:${id}">Serve</button></div>`).join('');
+    if (farm) return '';
+    if (s.wait > 0) return `<p class="hint small">Specialty dish: the folk are still full from the last one (ready again ${s.wait < C.dayLength ? 'in under a day' : 'in about a day'}).</p>`;
+    if (!s.low) return `<p class="hint small">Specialty dish: when this shelf is half empty, an Excellent ${esc(names)} fills half of it and starts a feast. It can’t be bought, only made.</p>`;
+    return `<p class="hint small">The shelf is half empty. Make an <b>Excellent</b> ${esc(names)} (needs the Quality upgrade on its station) and you can serve it here.</p>`; }
   const ordersNeed = id => [...S.orders, ...(S.adv || [])].reduce((t, o) => t + o.need.reduce((n, [k, q]) => n + (k === id ? q : 0), 0), 0);
   function vAuto(V) { if (!unlocked('villageauto')) return; let any = 0; const st = vStore(V);
     vShelves(V).forEach(g => { if (!g.b && !st) return; const lv = V.lvl[g.id] != null ? V.lvl[g.id] : 75, want = vCap(V, g) * lv / 100; if ((V.sh[g.id] || 0) >= want) return;
@@ -3193,7 +3223,9 @@
   // one step of village life, in game seconds
   function vilTick(dt) { if (!vilOn() || !S.village) return; const V = S.village, dd = dt / C.dayLength, st = vStore(V);
     if (V.folk > 0) vShelves(V).forEach(g => { if (!g.b && !st) return; const have = V.sh[g.id] || 0; if (have <= 0) return; const use = Math.min(have, vUseDay(V, g) * dd);
-      V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * (g.takings != null ? g.takings : VD().takings); });
+      V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * (g.takings != null ? g.takings : VD().takings) * (V.feast > 0 ? VD().special.takings : 1); });
+    if (V.feast > 0) { V.feast = Math.max(0, V.feast - dd); if (!V.feast) { logAct('The village feast is over.', 'auto'); UI.vDirty = true; } }
+    vSpecNotice(V);
     vMarketTick(V, dd);
     const m = vMood(V); V.h += Math.sign(m.t - V.h) * Math.min(Math.abs(m.t - V.h), (V.folk ? 15 : 30) * dd);
     // early warnings while you are on the farm: one toast as the mood slips into Grumbling, and another as it becomes Unhappy
@@ -3358,7 +3390,7 @@
     vShops().forEach(s => { if (vShopOn(V, s) && !(V.sh[s.id] > 0)) tips.push(`<b>The ${esc(s.name)} is empty.</b> Folk are a little less happy while it stands empty (−${s.sad}%). It takes ${esc(s.what)}${s.farm ? ' (grown or collected by you, not bought)' : ''}.`); });
     return tips.length ? `<span class="eyebrow">To keep folk happy</span><ul class="vtips">${tips.map(t => `<li>${t}</li>`).join('')}</ul>` : `<p class="hint small">Everyone is well supplied. Keep the shelves topped up.</p>`; }
   function vGiveHTML(V, g) { const ui = UI.vil, all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
-    let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}`;
+    let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}${vSpecHTML(V, g, false)}`;
     if (g.farm) { const fr = g.goods.filter(id => D.items[id] && freshCount(id) > 0).sort((a, b) => freshCount(b) - freshCount(a));
       h += `<div class="cinfo ${fr.length ? '' : 'full'}"><b>Only farm-fresh goods go here</b><small>Goods you <b>grew or collected yourself</b> in the last ${FRESH().days} days count, and they are worth ${FRESH().mult}× on this shelf. Goods you <b>bought</b> from the market, or that are older, can’t be given here.</small><small>${fr.length ? `Farm-fresh in your storage now: ${fr.slice(0, 8).map(id => `${esc(D.items[id].name)} ${freshCount(id)}`).join(', ')}.` : 'You have nothing farm-fresh right now. Harvest crops or collect eggs, milk or honey, then come back.'}</small></div>`; }
     if (list.length) h += `<p class="hint small">${all ? 'Everything you have for this shelf:' : 'Suggested: what you have most of.'}</p><div class="rlist">` + list.map(id => { const mx = vMax(V, g, id), on = V.auto[id] && V.auto[id].on;
@@ -3462,6 +3494,7 @@
   vcv.addEventListener('contextmenu', e => e.preventDefault()); vcv.addEventListener('auxclick', e => e.preventDefault());
   document.addEventListener('click', e => { const m = e.target.closest('[data-vmin]'), r = e.target.closest('[data-vrestore]'); if (!m && !r) return; S[(m || r).dataset[m ? 'vmin' : 'vrestore']] = !!m; save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vmkgive]'); if (!el) return; const k = vMarketGive(el.dataset.vmkgive); if (k && UI.vil) { vMsg(`Gave ${k} ${esc(D.items[el.dataset.vmkgive].name)} for Market Day.`); UI.html['#vtray'] = null; } e.stopPropagation(); }, true);
+  document.addEventListener('click', e => { const el = e.target.closest('[data-vspec]'); if (!el) return; const [gid, id] = el.dataset.vspec.split(':'); vSpecialGive(gid, id); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-show]')) return; S.vwants = true; save(); dirty(); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { if (!e.target.closest('[data-vwants-x]')) return; S.vwants = false; save(); dirty(); toast('Village wants hidden. Tap “Village wants ▸” under your cards to bring it back.', 'info'); e.stopPropagation(); }, true);
   document.addEventListener('click', e => { const el = e.target.closest('[data-vord-x]'); if (!el) return; S.vord = (S.vord || []).filter(o => o !== el.dataset.vordX); save(); dirty(); e.stopPropagation(); }, true);
@@ -4357,7 +4390,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261103-194100';
+  const BUILD = '20261104-214959';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
