@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.118 — 2026-11-04
+- Specialty dishes. Six `spec` items in `D.items` (`farmhouse_feast`, `harvest_banquet` pantry; `royal_trifle` treats; `golden_loaf` bakery; `brewers_hotpot` tavern; `meadow_tonic` apothecary), no `buy`, recipes `requires: 'village'`, in the 'dishes' item group; excluded from `genOrder`/`genGrand`. Config `D.village.special` {below .5, fill .5, days 3, mood 10, takings 1.5, cooldown 1 game day}. `vSpec`/`vSpecialGive`/`vSpecNotice`/`vSpecHTML`: needs ≥1 Excellent dish, shelf ≤ 50% of `vCap`, per-shelf cooldown `V.sp[gid]`; fills `fill` × cap and sets `V.feast` (days, counted down in `vilTick`), which adds `mood` in `vMood` and multiplies `V.till` takings. UI in `vGiveHTML`, the Folk drawer and Village wants (`data-vspec="gid:id"`, global click handler); one toast per shelf drop (`V.spw`). `infoHTML` line. Saves need no migration (`V.feast`, `V.sp`, `V.spw` are lazy).
+
 ## v0.117 — 2026-11-03
 - Free built-in stores (Joel: seeds, saplings and decor were using the main storage that overnight products fill). `D.storeKinds.pocket` (cats seed + supply) and `homestore` (decor), both `free: true`; `holdCaps()` adds `pocket` = max(40, 15% of main capacity) and `homestore` = 10 × (house level + 1) when a house exists; overflow spills into main as for the Silo/Cellar/Yard. Shown automatically in the Storage panel via the existing store lines.
 - Kits can be sold back: `kit` added to `MARKET_BUYS`; `baseValue` gives kits half their `buy` price, or half their ingredients' value (`kitWorth`) when they have none. `pickup` no longer requires free storage. New `HW.holdCaps` test hook.

@@ -282,6 +282,9 @@ window.HW_DATA = {
     // Market Day at the Market Square: a list of `goods` different goods, each worth about pts + perFolk × folk points, to fill within `days` game days; a new one every `every` days
     // Farm Stand: goods count only if you grew or collected them yourself in the last `days` game days; they are worth `mult` times as many shelf points
     farmStand: { days: 3, mult: 1.5 },
+    // specialty dishes: when a shelf is at or under `below` full, one Excellent dish for that shelf fills `fill` of its bar and starts a feast
+    // (mood +`mood`, takings ×`takings`) for `days` game days; each shelf needs `cooldown` game days between dishes
+    special: { below: .5, fill: .5, days: 3, mood: 10, takings: 1.5, cooldown: 1 },
     marketDay: { every: 3, days: 1.5, goods: 4, pts: 40, perFolk: 4, pay: 1.5, dp: 1, happy: 10, score: 100 },
     // titles for the most town folk you have ever had (kept once earned); each pays a few Discovery tokens, smallest to largest
     titles: [
@@ -493,6 +496,13 @@ window.HW_DATA = {
     malt:          { name: 'Malt', cat: 'good', value: 30, icon: ['sack', '#d8a85a', '#a8783a'] },
     ale:           { name: 'Ale', cat: 'good', value: 80, icon: ['mug', '#e0a030', '#f6f0e0'] },
     stout:         { name: 'Stout', cat: 'good', value: 118, icon: ['mug', '#3a2418', '#e8dcc0'] },
+    // village specialty dishes (v0.118): never sold at the market, made only at a station, and only an Excellent one counts for the village shelf named in `spec`
+    farmhouse_feast: { name: 'Farmhouse Feast Platter', cat: 'good', value: 270, spec: 'pantry', icon: ['plate', '#e8c070', '#b07a2a'] },
+    harvest_banquet: { name: 'Harvest Banquet Roast', cat: 'good', value: 275, spec: 'pantry', icon: ['bowl', '#c8742a', '#7a4b28'] },
+    royal_trifle:    { name: 'Royal Trifle', cat: 'good', value: 285, spec: 'treats', icon: ['cake', '#f6e2c8', '#c83a5a'] },
+    golden_loaf:     { name: 'Golden Harvest Loaf', cat: 'good', value: 250, spec: 'bakery', icon: ['loaf', '#f0c040', '#a8742a'] },
+    brewers_hotpot:  { name: 'Brewer’s Hotpot', cat: 'good', value: 265, spec: 'tavern', icon: ['mug', '#c88a3a', '#6a4a2a'] },
+    meadow_tonic:    { name: 'Meadow Tonic', cat: 'good', value: 240, spec: 'apothecary', icon: ['bottle', '#7ac860', '#e8e0d0'] },
     cherry_ale:    { name: 'Cherry Ale', cat: 'good', value: 158, icon: ['bottle', '#a0182a', '#5a3a2a'] },
     aged_cheddar:  { name: 'Aged Cheddar', cat: 'good', value: 140, icon: ['wedge', '#e8a830', '#b07a1a'] },
     blue_cheese:   { name: 'Blue Cheese', cat: 'good', value: 162, icon: ['wedge', '#eef0e4', '#6a8ac8'] },
@@ -567,7 +577,7 @@ window.HW_DATA = {
     { id: 'animal', name: 'From your animals', items: ['egg', 'milk', 'wool'] },
     { id: 'raw', name: 'Raw materials', cats: ['gathered'] },
     { id: 'ingredients', name: 'Ingredients', items: ['flour', 'mushrooms', 'honey', 'butter', 'cheese', 'malt', 'aged_cheddar', 'blue_cheese', 'smoked_cheese'] },
-    { id: 'dishes', name: 'Dishes & baking', items: ['glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake', 'cherry_pie', 'cornbread', 'onion_soup', 'pizza', 'quiche', 'jam_tart', 'fish_pie', 'harvest_roast'] },
+    { id: 'dishes', name: 'Dishes & baking', items: ['farmhouse_feast', 'harvest_banquet', 'royal_trifle', 'golden_loaf', 'brewers_hotpot', 'meadow_tonic', 'glazed_carrots', 'baked_potato', 'cooked_fish', 'veggie_stew', 'bread', 'pumpkin_soup', 'mushroom_soup', 'berry_pie', 'pumpkin_pie', 'apple_pie', 'honey_cake', 'smoked_fish', 'omelette', 'custard', 'cake', 'cherry_pie', 'cornbread', 'onion_soup', 'pizza', 'quiche', 'jam_tart', 'fish_pie', 'harvest_roast'] },
     { id: 'preserves', name: 'Preserves & drinks', items: ['jam', 'pickled_carrots', 'tomato_sauce', 'cider', 'berry_juice', 'mead', 'berry_wine', 'apple_brandy', 'perry', 'plum_jam', 'pepper_relish', 'sauerkraut', 'salsa', 'ale', 'stout', 'cherry_ale'] },
     { id: 'crafts', name: 'Crafts', items: ['clay_pot', 'basket', 'dyed_cloth', 'iron_tools', 'blanket', 'glass_jar', 'stained_glass', 'cut_gem', 'gem_ring', 'gem_necklace'] },
     { id: 'decor', name: 'Home decor', cats: ['decor'] },
@@ -809,6 +819,13 @@ window.HW_DATA = {
     malt:           { station: 'brewhouse', in: { wheat: 4 }, out: { malt: 1 }, time: 16 },
     ale:            { station: 'brewhouse', in: { malt: 1, hops: 3 }, out: { ale: 1 }, time: 30 },
     stout:          { station: 'brewhouse', in: { malt: 2, hops: 2, charcoal: 1 }, out: { stout: 1 }, time: 40, requires: ['brewery', 'kiln'] },
+    // village specialties: several steps and a few kinds of goods, quality matters (see D.village.special)
+    farmhouse_feast:{ station: 'stove', in: { bread: 1, cheese: 1, smoked_fish: 1, pickled_carrots: 1 }, out: { farmhouse_feast: 1 }, time: 30, requires: 'village' },
+    harvest_banquet:{ station: 'oven', in: { harvest_roast: 1, butter: 1, sauerkraut: 1 }, out: { harvest_banquet: 1 }, time: 34, requires: 'village' },
+    royal_trifle:   { station: 'oven', in: { cake: 1, jam: 1, custard: 1 }, out: { royal_trifle: 1 }, time: 34, requires: 'village' },
+    golden_loaf:    { station: 'oven', in: { bread: 2, butter: 1, honey: 1 }, out: { golden_loaf: 1 }, time: 28, requires: 'village' },
+    brewers_hotpot: { station: 'stove', in: { ale: 1, cheese: 1, onion_soup: 1 }, out: { brewers_hotpot: 1 }, time: 30, requires: 'village' },
+    meadow_tonic:   { station: 'preserver', in: { berry_juice: 2, honey: 1, flowers: 2, glass_jar: 1 }, out: { meadow_tonic: 1 }, time: 30, requires: 'village' },
     cherry_ale:     { station: 'brewhouse', in: { ale: 1, cherries: 4 }, out: { cherry_ale: 1 }, time: 36, requires: ['brewery', 'orchard'] },
     aged_cheddar:   { station: 'creamery', in: { cheese: 2 }, out: { aged_cheddar: 1 }, time: 60, requires: 'cheesecave' },
     blue_cheese:    { station: 'creamery', in: { cheese: 2, mushrooms: 2 }, out: { blue_cheese: 1 }, time: 60, requires: ['cheesecave', 'mushrooms'] },
@@ -1097,6 +1114,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.118', at: '2026-11-04 15:00', notes: ['Village specialty dishes. Six new dishes can only be made, never bought: Farmhouse Feast Platter and Harvest Banquet Roast (Pantry), Royal Trifle (Treats), Golden Harvest Loaf (Bakery), Brewer’s Hotpot (Tavern) and Meadow Tonic (Apothecary shelf). They are cooked from dishes and goods you already know, at the Stove, Oven or Preserver once the village is open.','When a village shelf drops to half or lower and you own an Excellent specialty dish for it, you can serve it: the shelf is half refilled and the village feasts for 3 days (folk 10% happier, shops take 50% more). Serve it from the Folk panel, the shelf in the village or the Village wants card. A shelf can take one about once a day. They still sell for good gold if you would rather cash one in.'] },
   { v: '0.117', at: '2026-11-03 13:30', notes: ['More room for overnight production. Seeds, saplings and fertilizer now keep in their own free pocket (15% of your main storage, at least 40), and decor keeps in your house once you have one (10 pieces, +10 for each house upgrade). Only what doesn’t fit takes main storage. The Storage panel shows both.','You can finally get rid of spare kits: the Open Market’s Sell tab now buys Station kits back for half their price (crafted kits for half the value of what went into them). Picking up a placed sprinkler also works when storage is full, since kits never take storage room.'] },
   { v: '0.116', at: '2026-11-03 12:00', notes: ['The village is easier to keep fed. Big villages share and waste less: the first 30 town folk eat as before, then each extra family eats less, so a village of 150 now needs about a third less than before. Shelves hold less to match.','New Rations setting in the Folk panel and the General Store: Lean (folk eat 40% less, mood tops out at Content), Normal, or Generous (they eat 30% more, are a bit happier and families move in faster).','Store Deliveries no longer take goods that an open order or Grand order still needs, and use the goods you have the most spare of first.'] },
   { v: '0.115', at: '2026-11-02 23:59', notes: ['Bigger stations now take 2 tiles: the station plus a working yard beside it. That covers the Oven, Cider Press, Loom, Smokehouse, the animal buildings, Creamery, Smelter, Dye Vat, Potter’s Wheel, Forge, Glass Furnace, Carpenter’s Bench and Brewhouse. Each has its own yard look: firewood, crates, bales, a fenced pen, milk cans, an ore heap, sand, clay, barrels, an anvil or stacked lumber. When you place one, the yard tile is highlighted, and “Turn the yard” picks another side. Tapping the yard selects the station, and moving or taking it down takes the yard along.','Stations you placed before this update keep their single tile for good, even when you move them. Races and weekly challenges keep single-tile stations.'] },
