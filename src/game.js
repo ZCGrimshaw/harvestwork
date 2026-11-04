@@ -3600,7 +3600,10 @@
   function lockedPanel(i, T) {
     const Tr = D.terrain[T.t], adj = nbrs(i).some(n => S.tiles[n].o);
     let h = head(Tr.name, `${esc(Tr.desc)}`);
-    if (adj) { const c = expCost(i); h += `<p class="state">Unclaimed land at your border.</p><span class="eyebrow">What it takes</span>${costList(c)}` + btn({ a: 'expand', i }, `Buy this tile`, { cls: 'pri', sub: costTxt(c) });
+    const GW = D.gather[T.t], warn = !!(GW && GW.needs && !unlocked(GW.needs) && !(S.xok || {})[T.t]);   // first time buying a tile you cannot work yet: explain and ask
+    if (adj && warn) { const c = expCost(i), dn = (D.discoveries.find(d => d.id === GW.needs) || { name: GW.needs }).name;
+      h += `<p class="state">Unclaimed land at your border.</p><span class="eyebrow">What it takes</span>${costList(c)}<div class="cinfo"><b>You can’t use this tile yet</b><small>${esc(Tr.name)} tiles need <b>${esc(dn)}</b> in Discovery before you can gather from them. You can still buy the land now, but it will sit idle until you unlock it.</small></div>` + btn({ a: 'expand', i }, `Buy it anyway`, { cls: 'pri', sub: costTxt(c), err: checkTask({ a: 'expand', i }) }).replace('data-task', `data-xok="${T.t}" data-task`); }
+    else if (adj) { const c = expCost(i); h += `<p class="state">Unclaimed land at your border.</p><span class="eyebrow">What it takes</span>${costList(c)}` + btn({ a: 'expand', i }, `Buy this tile`, { cls: 'pri', sub: costTxt(c) });
       if (S.exp < C.expandStoneAt) h += `<p class="hint">From your ${C.expandStoneAt + 1}th tile, land also costs stone; from the ${C.expandFenceAt + 1}th, a Land Kit (made at the Workbench). Boulder Fields only ever cost gold.</p>`; }
     else h += `<p class="hint">Too far away. Buy the land between here and your homestead first.</p>`;
     const G = D.gather[T.t]; if (G && !unlocked(G.needs)) h += `<p class="hint">Working it needs <b>${esc(D.discoveries.find(d => d.id === G.needs).name)}</b>.</p>`;
@@ -4111,6 +4114,7 @@
   document.addEventListener('click', e => {
     const el = e.target.closest('button'); if (!el) return;
     const ds = el.dataset;
+    if ('xok' in ds) { (S.xok = S.xok || {})[ds.xok] = 1; }   // confirmed once: this kind of tile never warns again
     if ('task' in ds) { const t = { a: ds.a, i: +ds.i }; if (ds.p !== undefined) t.p = isNaN(+ds.p) || ds.p === '' ? ds.p : (ds.a === 'deliver' ? +ds.p : ds.p);
       if (ds.n !== undefined) t.n = +ds.n; if (ds.q !== undefined) t.q = +ds.q; if (ds.f !== undefined) t.f = +ds.f; if (ds.y !== undefined) t.y = +ds.y; if (ds.nm) t.nm = ds.nm;
       if (t.a === 'move' || t.a === 'housemove' || t.a === 'survey') t.p = +ds.p; queueTask(t); if (t.a === 'move' || t.a === 'housemove') UI.moving = null; }

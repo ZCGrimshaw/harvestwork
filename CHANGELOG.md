@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.119 — 2026-11-04
+- Land warning: `lockedPanel` shows a "You can't use this tile yet" note and a "Buy it anyway" button (`data-xok=<terrain>`) the first time a terrain whose `D.gather[t].needs` discovery is missing is bought; confirming sets `S.xok[terrain]` (lazy, no migration) and queues the normal expand task.
+
 ## v0.118 — 2026-11-04
 - Specialty dishes. Six `spec` items in `D.items` (`farmhouse_feast`, `harvest_banquet` pantry; `royal_trifle` treats; `golden_loaf` bakery; `brewers_hotpot` tavern; `meadow_tonic` apothecary), no `buy`, recipes `requires: 'village'`, in the 'dishes' item group; excluded from `genOrder`/`genGrand`. Config `D.village.special` {below .5, fill .5, days 3, mood 10, takings 1.5, cooldown 1 game day}. `vSpec`/`vSpecialGive`/`vSpecNotice`/`vSpecHTML`: needs ≥1 Excellent dish, shelf ≤ 50% of `vCap`, per-shelf cooldown `V.sp[gid]`; fills `fill` × cap and sets `V.feast` (days, counted down in `vilTick`), which adds `mood` in `vMood` and multiplies `V.till` takings. UI in `vGiveHTML`, the Folk drawer and Village wants (`data-vspec="gid:id"`, global click handler); one toast per shelf drop (`V.spw`). `infoHTML` line. Saves need no migration (`V.feast`, `V.sp`, `V.spw` are lazy).
 
