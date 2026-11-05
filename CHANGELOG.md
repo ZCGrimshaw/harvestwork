@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.121 — 2026-11-04
+- Removed the floating `.fbbtn` feedback button (top bar / phone overlay) and its CSS; feedback stays at Menu → Game → Send feedback (`data-drawer="feedback"`).
+
 ## v0.120 — 2026-11-04
 - `setHTML('#panel')` scrolls the panel (and its `.dbox` boxes) to the top when a `data-a="collect"` button appears that the previous render did not have, so a station menu left scrolled down shows the Collect action when a batch finishes. Scroll position is still kept for every other re-render.
 
