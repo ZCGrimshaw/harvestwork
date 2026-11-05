@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.120 — 2026-11-04
+- `setHTML('#panel')` scrolls the panel (and its `.dbox` boxes) to the top when a `data-a="collect"` button appears that the previous render did not have, so a station menu left scrolled down shows the Collect action when a batch finishes. Scroll position is still kept for every other re-render.
+
 ## v0.119 — 2026-11-04
 - Land warning: `lockedPanel` shows a "You can't use this tile yet" note and a "Buy it anyway" button (`data-xok=<terrain>`) the first time a terrain whose `D.gather[t].needs` discovery is missing is bought; confirming sets `S.xok[terrain]` (lazy, no migration) and queues the normal expand task.
 

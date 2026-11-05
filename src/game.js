@@ -2351,9 +2351,11 @@
     if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.tagName === 'INPUT' && (a.type === 'text' || a.type === 'search' || a.type === 'number' || a.type === 'range')) && el.contains(a)) return; // don't yank a field mid-typing
     // keep the reader's place: replacing the markup would otherwise snap a scrolled menu back to the top whenever a number changes
     const key = sel === '#drawer' ? 'd:' + UI.drawer : sel === '#panel' ? 'p:' + UI.sel : sel === '#vtray' && UI.vil ? 'v:' + (UI.vil.sel || '') : '', scr = [el, ...(key ? el.querySelectorAll('.dbox') : [])].map(e => e.scrollTop);
-    UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
+    const had = sel === '#panel' && /data-a="collect"/.test(UI.html[sel] || ''); UI.html[sel] = html; el.innerHTML = isTouch() ? html.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap') : html;
     UI.scrollKey = UI.scrollKey || {};
     if (key && UI.scrollKey[sel] === key) [el, ...el.querySelectorAll('.dbox')].forEach((e, k) => { if (scr[k]) e.scrollTop = scr[k]; });
+    // a batch just finished at the station being shown: scroll back up so the Collect button is in view, not left below a scrolled-down recipe list
+    if (sel === '#panel' && !had && /data-a="collect"/.test(html)) [el, ...el.querySelectorAll('.dbox')].forEach(e => { e.scrollTop = 0; });
     UI.scrollKey[sel] = key;
   }
   function btn(t, label, opts = {}) {
