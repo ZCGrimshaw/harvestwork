@@ -1091,7 +1091,7 @@
   function renderVisitors() { const el = $('#visitors'); if (!el) return; el.hidden = !NET.visitors; if (!NET.visitors) return;
     el.innerHTML = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="5" r="2.6" fill="currentColor"/><path d="M2 14c0-3 2.3-5 5-5s5 2 5 5z" fill="currentColor"/><circle cx="13" cy="3.2" r="2.6" class="gd"/></svg><b>${NET.visitors.toLocaleString()}</b>`;
     el.title = `${NET.visitors.toLocaleString()} unique visitors to Harvest Valley so far`; el.setAttribute('aria-label', el.title); }
-  /* Feedback: players send ideas and bug reports from Menu → Send feedback (or the speech-bubble button in the top bar).
+  /* Feedback: players send ideas and bug reports from Menu → Send feedback.
      send_feedback saves it (rate-limited per device); the feedback-mail edge function then emails every unsent note to the
      developer. With no connection the note waits in this browser and goes out at the next successful sync. */
   const FB_KINDS = { idea: ['Idea', 'What would make the game more fun?'], bug: ['Bug', 'What went wrong, and what were you doing?'], other: ['Other', 'Anything you’d like to say.'] };
@@ -4396,7 +4396,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261105-061852';
+  const BUILD = '20261105-062242';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
