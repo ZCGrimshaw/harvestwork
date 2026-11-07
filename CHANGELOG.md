@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.122 — 2026-11-07
+- Leaderboard star: new `player_names.star` column (default false; set for Joel's player), `get_leaderboard` returns `star` on the top/pace/village rows (only when the name is shown), the table renders a `.lbstar` ★ before the name. Migration `leaderboard_star` applied before this push; older builds ignore the extra field. To star someone else: `update player_names set star = true where name = '…'`.
+
 ## v0.121 — 2026-11-04
 - Removed the floating `.fbbtn` feedback button (top bar / phone overlay) and its CSS; feedback stays at Menu → Game → Send feedback (`data-drawer="feedback"`).
 

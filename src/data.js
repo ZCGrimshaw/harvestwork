@@ -1114,6 +1114,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.122', at: '2026-11-07 10:30', notes: ['A gold star ★ now sits next to Joel’s name on the leaderboard, on the Top score, Best pace and Village boards.'] },
   { v: '0.121', at: '2026-11-04 23:45', notes: ['The speech-bubble feedback button is gone from the farm screen, so it no longer floats over menus and buttons on a phone. You can still send feedback any time from Menu → Game → Send feedback.'] },
   { v: '0.120', at: '2026-11-04 23:30', notes: ['Easier to find the Collect button on a phone. If a station’s menu was left scrolled down and a batch finishes while you are looking at it, the menu now scrolls back up so “Collect finished goods” is right there.'] },
   { v: '0.119', at: '2026-11-04 17:00', notes: ['A heads-up before you buy land you can’t use yet. The first time you buy a kind of tile that needs a discovery you don’t have (a Boulder Field before Stonecutting, a pond before Fishing, a forest before Woodcutting and so on), the tile’s menu explains what you will need to unlock and asks you to confirm with “Buy it anyway”. After you have confirmed once for that kind of tile, it won’t ask again.'] },
