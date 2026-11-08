@@ -240,6 +240,13 @@ window.HW_DATA = {
      (better quality counts a little more) and the store's three shelves are used up a little every game day by each town
      folk. Stocked shelves keep folk happy; happy folk bring more folk while there is room in the cottages. A short
      shortage only slows growth; folk leave only after a long one, and buildings are never lost. */
+  // the Quale: a little black square that wanders onto an empty tile now and then. One can be found per real day, and the longer the game
+  // stays open that day the likelier it shows (chance per second = base + grow × seconds open). It hops every `move` seconds and leaves after `ttl`.
+  // The trophy appears at the first tier and upgrades at each later one; the statue (a room decoration) is given at `statue` finds.
+  quale: { base: .00002, grow: 2.6e-6, ttl: 25, move: 1.1, statue: 10,
+    tiers: [ { n: 5, name: 'Bronze Quale Trophy', c1: '#b07a42', c2: '#2a2a2a' }, { n: 10, name: 'Silver Quale Trophy', c1: '#c8ccd4', c2: '#2a2a2a' },
+      { n: 25, name: 'Gold Quale Trophy', c1: '#f0c040', c2: '#2a2a2a' }, { n: 50, name: 'Ruby Quale Trophy', c1: '#d84a5a', c2: '#f0c040' },
+      { n: 100, name: 'Legendary Quale Trophy', c1: '#f0c040', c2: '#1c1c1c' } ] },
   village: {
     n0: 8, entrance: [0, 3],                  // lots across at the start; the road in from the farm starts at the entrance lot on the x = 0 side
     bufferDays: 5, minShelf: 240,             // each shelf holds this many days of what the town uses (never less than minShelf points)
@@ -514,6 +521,9 @@ window.HW_DATA = {
     // home decor (Discovery 'homemaking'): shown inside your house; the market buys them too, but orders never ask for them
     chair:         { name: 'Wooden Chair', cat: 'decor', value: 38, icon: ['chair', '#c98a4a', '#8a5a2e'] },
     table:         { name: 'Farmhouse Table', cat: 'decor', value: 70, icon: ['table', '#b07a42', '#7a4b28'] },
+    // the Quale (v0.118+): the trophy changes look and name as the finds add up (see D.quale and quSync); the statue is given at 10 for the room
+    quale_trophy:  { name: 'Quale Trophy', cat: 'decor', trophy: true, keep: true, value: 0, icon: ['trophy', '#b07a42', '#2a2a2a'] },
+    quale_statue:  { name: 'Quale Statue', cat: 'decor', keep: true, value: 0, icon: ['block', '#1c1c1c', '#f0c040'] },
     fish_trophy:   { name: 'Fish Trophy', cat: 'decor', trophy: true, value: 75, icon: ['trophy', '#6fb3d9', '#8a5a2e'] },
     vase:          { name: 'Flower Vase', cat: 'decor', value: 72, icon: ['vase', '#c8703a', '#e86aa8'] },
     bookshelf:     { name: 'Bookshelf', cat: 'decor', value: 135, icon: ['shelf', '#9a6a3c', '#c22a44'] },
@@ -1114,6 +1124,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.123', at: '2026-11-08 12:00', notes: ['The Quale hunt. Keep an eye on your farm: now and then a little black square wanders onto an empty patch of grass, hops about for a few seconds and then slips away. Tap it to find it! Only one can be found per day, and the longer you keep the game open, the likelier it is to show up.','Find 5 for a Quale Trophy for your Trophy Case. The trophy upgrades at 10, 25, 50 and 100 finds, and at 10 you also get a Quale Statue to put in your house. The count keeps climbing after that. Not in races or the Weekly Challenge.'] },
   { v: '0.122', at: '2026-11-07 10:30', notes: ['A gold star ★ now sits next to Joel’s name on the leaderboard, on the Top score, Best pace and Village boards.'] },
   { v: '0.121', at: '2026-11-04 23:45', notes: ['The speech-bubble feedback button is gone from the farm screen, so it no longer floats over menus and buttons on a phone. You can still send feedback any time from Menu → Game → Send feedback.'] },
   { v: '0.120', at: '2026-11-04 23:30', notes: ['Easier to find the Collect button on a phone. If a station’s menu was left scrolled down and a batch finishes while you are looking at it, the menu now scrolls back up so “Collect finished goods” is right there.'] },
