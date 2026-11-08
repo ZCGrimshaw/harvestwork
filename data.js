@@ -1124,6 +1124,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.124', at: '2026-11-08 13:00', notes: ['Stock the village from the Town folk panel. Next to each shelf (Pantry, Household goods, and your shops) there is now a Stock button. It opens that shelf’s list right there, so you can give goods, switch Auto on and see what is missing without going into the village.'] },
   { v: '0.123', at: '2026-11-08 12:00', notes: ['The Quale hunt. Keep an eye on your farm: now and then a little black square wanders onto an empty patch of grass, hops about for a few seconds and then slips away. Tap it to find it! Only one can be found per day, and the longer you keep the game open, the likelier it is to show up.','Find 5 for a Quale Trophy for your Trophy Case. The trophy upgrades at 10, 25, 50 and 100 finds, and at 10 you also get a Quale Statue to put in your house. The count keeps climbing after that. Not in races or the Weekly Challenge.'] },
   { v: '0.122', at: '2026-11-07 10:30', notes: ['A gold star ★ now sits next to Joel’s name on the leaderboard, on the Top score, Best pace and Village boards.'] },
   { v: '0.121', at: '2026-11-04 23:45', notes: ['The speech-bubble feedback button is gone from the farm screen, so it no longer floats over menus and buttons on a phone. You can still send feedback any time from Menu → Game → Send feedback.'] },
