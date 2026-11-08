@@ -135,7 +135,7 @@
       if (D.milestones[k] && old('need')) S.msKeep = { k, need: old('need'), gold: old('gold') || D.milestones[k].gold }; }
     if (S.harvN == null && !S.race) { S.harvN = Object.values(D.crops).reduce((t, c) => t + ((S.mast || {})[c.item] || 0), 0); S.alm = 0;
       const got = almanac(true); if (got) setTimeout(() => toast(`<b>Farm almanac · +${got} discovery tokens</b> for the ${S.harvN} crops you have already harvested. From now on discovery tokens come mostly from farming.`, 'disc'), 2500); }
-    { const o = houseIdx(); if (o >= 0) { roomFix(S.tiles[o].b); caseFix(S.tiles[o].b); } }   // the room inside the house (and decor from the old display spots)
+    quSync(); { const o = houseIdx(); if (o >= 0) { roomFix(S.tiles[o].b); caseFix(S.tiles[o].b); } }   // the room inside the house (and decor from the old display spots)
     S.tiles.forEach(T => { if (!T.r && D.gather[T.t]) T.r = initRes(T.t); });   // a gathering tile must always carry its resource
     S.tiles.forEach(T => { const G = D.gather[T.t]; if (G && G.deposit && T.r && T.r.stock != null && T.r.dep == null) T.r.dep = Math.max(G.deposit, T.r.stock); });
   }
@@ -1282,7 +1282,7 @@
   function cheapestStart() { let m = Infinity; Object.keys(D.items).forEach(id => { const it = D.items[id]; if (it.cat === 'seed' && it.buy && unlocked(it.requires)) m = Math.min(m, buyPrice(id)); }); return m; }
   function stuck() {
     if (S.gold >= cheapestStart()) return false;
-    if (Object.keys(S.inv).some(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0)) return false;
+    if (Object.keys(S.inv).some(id => MARKET_BUYS.includes(D.items[id].cat) && !D.items[id].keep && count(id) > 0)) return false;
     if (S.cur || S.queue.length) return false;
     for (const T of S.tiles) {
       if (T.b && T.b.type === 'farm' && (T.b.st === 'growing' || T.b.st === 'ready')) return false;
@@ -1312,6 +1312,30 @@
   function weekReport() { const w = wk(), tiles = S.tiles.filter(t => t.o).length, made = Object.entries(w.made).sort((a, b) => b[1] - a[1]);
     return { n: Math.ceil((S.day - 1) / 7), from: w.from, to: S.day - 1, gold: S.gold - w.gold, score: S.score - w.score, dp: S.dp - w.dp, tiles: tiles - w.tiles, ms: (S.ms || 0) - w.ms,
       built: (S.built || 0) - w.built, made, harvest: w.harvest, sold: w.sold, spent: w.spent, orders: w.orders }; }
+  /* ---------- the Quale (v0.123) ----------
+     Now and then a little black square wanders onto an empty tile of your farm. Tap it to find it. One find per real day, and the longer the game
+     stays open that day the likelier it shows (D.quale). S.qn counts finds, S.qd is the date of the last one. The Quale Trophy appears at the
+     first tier and upgrades at each later one (quSync changes its name and picture); the Quale Statue (a room decoration) is given at D.quale.statue. */
+  let QL = null, QOPEN = 0;   // the quale on the map right now ({ i, ttl, mv }) and seconds the game has been open since the last find
+  const quDay = () => new Date().toLocaleDateString('en-CA');
+  const quTier = n => { let t = -1; D.quale.tiers.forEach((x, k) => { if (n >= x.n) t = k; }); return t; };
+  function quSync() { const t = quTier(S.qn | 0), it = D.items.quale_trophy; if (t < 0) { it.name = 'Quale Trophy'; it.icon = ['trophy', '#b07a42', '#2a2a2a']; return; } const T = D.quale.tiers[t]; it.name = T.name; it.icon = ['trophy', T.c1, T.c2]; UI.html = {}; }
+  function quTick(dt) { if (S.race || UI.catchup || UI.title || dt > 5 || UI.room || UI.vil) return; const Q = D.quale;
+    if (QL) { QL.ttl -= dt; QL.mv -= dt;
+      if (QL.ttl <= 0) { QL = null; QOPEN *= .5; return; }
+      if (QL.mv <= 0) { QL.mv = Q.move * (.7 + Math.random() * .6); const n = nbrs(QL.i).filter(isEmptyGrass); if (n.length) QL.i = n[Math.floor(Math.random() * n.length)]; }
+      return; }
+    if (S.qd === quDay()) return; QOPEN += dt;
+    if (Math.random() < (Q.base + Q.grow * QOPEN) * dt) { const c = []; S.tiles.forEach((T, i) => { if (isEmptyGrass(i)) c.push(i); }); if (c.length) QL = { i: c[Math.floor(Math.random() * c.length)], ttl: Q.ttl, mv: Q.move }; } }
+  function quCatch() { if (!QL) return; QL = null; QOPEN = 0; S.qd = quDay(); const before = quTier(S.qn | 0); S.qn = (S.qn | 0) + 1; const n = S.qn, t = quTier(n), Q = D.quale;
+    quSync(); SND.play('discover');
+    if (n === Q.tiers[0].n) { addItem('quale_trophy', 1, 0, true); caseAward();
+      toast(`<b>Quale found! That’s ${n}.</b> You found the Quale: a trophy is waiting for your Trophy Case (select your house → Go inside).`, 'goal'); }
+    else if (t > before && t === Q.tiers.length - 1) { SND.play('goal'); toast(`<b>${n} quales found!</b> The hunt is over: you are the Master of the Quale. Your trophy is now the <b>${esc(Q.tiers[t].name)}</b>, the final one. The quale will keep turning up, and the count keeps climbing.`, 'goal'); }
+    else if (t > before) toast(`<b>Quale found! That’s ${n}.</b> Your trophy upgraded to the <b>${esc(Q.tiers[t].name)}</b>.`, 'goal');
+    else toast(`<b>Quale found!</b> ${n} found${t < Q.tiers.length - 1 ? ` · next trophy upgrade at ${Q.tiers[t + 1 < Q.tiers.length && t >= 0 ? t + 1 : 0].n}` : ''}.`, 'goal');
+    if (n >= Q.statue && !S.qs) { S.qs = 1; addItem('quale_statue', 1, 0, true); setTimeout(() => toast('<b>A Quale Statue for your room.</b> It’s in your decor storage: go inside your house to place it.', 'goal'), 600); }
+    save(); dirty(); }
   function newDay() {
     sendScore(); autoBackup();
     if (S.day > 1 && (S.day - 1) % 7 === 0) { if (S.weekly !== false && !S.race) UI.pendingWeek = weekReport(); weekStart(); }
@@ -1548,7 +1572,7 @@
     storeup: { label: t => `Expand the ${D.buildings[T_(t.i).b.type].name}`,
       check: t => { const b = T_(t.i).b, B = b && D.buildings[b.type]; if (!B || !B.hold) return 'Not a store'; if ((b.lvl || 0) >= B.hold.max) return 'Fully expanded'; return canPay(storeCost(b.lvl || 0)); },
       run: t => { const b = T_(t.i).b; pay(storeCost(b.lvl || 0)); b.lvl = (b.lvl || 0) + 1; HC.at = -1; float(t.i, `Holds ${holdOf(b)}`, '#f6e27a'); gainScore(C.score.build, t.i); emit('build', { st: b.type }); } },
-    sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
+    sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => D.items[t.p].keep ? 'A keepsake: it can’t be sold.' : (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
       run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i, 'sell'); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
     deliver: { label: t => t.p === 'ms' ? `Deliver: ${curMs() ? curMs().name : 'contract'}` : 'Deliver order',
@@ -1815,7 +1839,7 @@
   function update(dt) {
     S.time += dt;
     const day = Math.floor(S.time / C.dayLength) + 1; if (day !== S.day) { S.day = day; newDay(); }
-    vilTick(dt);
+    vilTick(dt); quTick(dt);
     const rain = raining(), heat = wxNow() === 'heat';
     const bd = builderDay();
     S.tiles.forEach((T, i) => {
@@ -2016,6 +2040,7 @@
   }
   function clickTile(i) {
     if (i < 0) { UI.sel = -1; dirty(); return; }
+    if (QL && QL.i === i) { quCatch(); return; }
     { const b = S.tiles[i] && S.tiles[i].b; if (b && b.type === 'annex' && UI.moving == null) i = b.pt; } // a station's yard selects the station
     if (i !== UI.sel) frameTile(i);
     if (i === UI.sel) { const pa = primaryAction(i); if (pa && !(pa.a === 'harvest' && (S.cur && S.cur.a === 'harvest' && S.cur.i === i || S.queue.some(x => x.a === 'harvest' && x.i === i)))) { const t = Object.assign({ i }, pa); const e = checkTask(t); if (e && !['load'].includes(t.a)) toast(esc(e), 'warn'); else queueTask(t); } }
@@ -2157,6 +2182,8 @@
       cx.setLineDash([5 * p, 4 * p]); cx.strokeStyle = `rgba(246,226,122,${on ? .9 : .3 + .25 * pulse})`; cx.lineWidth = p * (on ? 1.1 : .7); cx.stroke(); cx.setLineDash([]);
       const [lx, ly] = toScreen(rx + RS() / 2 - .5, ry + RS() / 2 - .5); survLabels.push({ sx: lx, sy: ly, name: `Survey: ${D.regionThemes[R.theme].name}` }); });
     if (survLabels.length) drawLabels(p, survLabels);
+    if (QL) { const [qx, qy] = toScreen(tx(QL.i), ty(QL.i)), z = 2.2 * p, bob = Math.sin(now * 9) * .4 * p;   // the quale: a small black square with a faint glint so it can be spotted
+      cx.fillStyle = 'rgba(255,255,255,.35)'; cx.fillRect(qx - z - p * .6, qy - z - p * .6 + bob, 2 * z + 1.2 * p, 2 * z + 1.2 * p); cx.fillStyle = '#0b0b0b'; cx.fillRect(qx - z, qy - z + bob, 2 * z, 2 * z); }
     // hover & selection
     if (UI.hover >= 0 && UI.hover !== UI.sel && !isVoid(UI.hover)) { tilePoly(UI.hover); cx.strokeStyle = 'rgba(255,255,255,.45)'; cx.lineWidth = p * .8; cx.stroke(); }
     if (UI.sel >= 0 && S.tiles[UI.sel].b && D.buildings[S.tiles[UI.sel].b.type].kind === 'sprinkler') around(UI.sel, D.buildings[S.tiles[UI.sel].b.type].radius).forEach(j => { if (j === UI.sel) return; tilePoly(j, 1); cx.fillStyle = 'rgba(143,211,239,.18)'; cx.fill(); });
@@ -2316,7 +2343,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
-    if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: place it in the room inside your house (select the house → Go inside). Orders never ask for decor, but the market buys it.');
+    if (it.keep) P.push(`A keepsake from the Quale hunt (${S.qn | 0} found so far). It can’t be sold. ${it.trophy ? 'It upgrades at 10, 25, 50 and 100 finds. Show it in your house’s trophy case.' : 'Place it in the room inside your house (select the house → Go inside).'}`); else if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: place it in the room inside your house (select the house → Go inside). Orders never ask for decor, but the market buys it.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
@@ -2677,7 +2704,7 @@
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
     } else if (UI.mtab === 'sell') {
-      const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && count(id) > 0).filter(mHit);
+      const ids = Object.keys(S.inv).filter(id => MARKET_BUYS.includes(D.items[id].cat) && !D.items[id].keep && count(id) > 0).filter(mHit);
       if (ids.length) h += chips('sell', groupCounts(ids));
       const sellRow = id => [0, 1, 2].filter(q => S.inv[id][q] > 0).map(q => { const n = S.inv[id][q], key = `${id}:${q}`, pr = sellPrice(id, q), v = Math.max(1, Math.min(n, UI.sq[key] || 1));
         return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b> ${qtag(q)}<small>${pr}g each ${moveTag(id)}${seasonTag(id)} · have ${n}</small></div>
@@ -4789,7 +4816,8 @@
   // Browsers only allow sound after the player interacts, so the audio starts on the first tap or key.
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => SND.unlock(), { capture: true }));
   document.addEventListener('click', e => { if (e.target.closest('button, a.btn')) SND.play('tap'); }, true);
-  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), fresh: { run: (a, i) => TASKS[a].run({ a, i, p: undefined, n: 1, q: 0 }), add: (id, n) => freshAdd(id, n), count: id => freshCount(id), raw: () => S.fresh }, monDraw: (p, s) => vMonDraw(p, s), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, holdCaps: () => holdCaps(), select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState() };
+  window.HW = { say: (h, k) => toast(h, k), vil: { go: () => vilGo(), close: () => vilClose(), get state() { return S.village; }, get ui() { return UI.vil; }, sel(x, y) { if (UI.vil) { UI.vil.sel = [x, y]; UI.html['#vtray'] = null; dirty(); } }, btn: ds => vilButton(ds), tick: dt => vilTick(dt), score: () => vScore(), give: (id, n) => vGive(id, n), mood: () => vMood(vil()), fresh: { run: (a, i) => TASKS[a].run({ a, i, p: undefined, n: 1, q: 0 }), add: (id, n) => freshAdd(id, n), count: id => freshCount(id), raw: () => S.fresh }, monDraw: (p, s) => vMonDraw(p, s), reach: () => [...vReach(vil())], geom: () => vGeom(vil()), pick: (x, y) => vPick(x, y) }, house: { at: i => houseAt(i), idx: () => houseIdx(), opts: o => growOpts(o), tiles: o => houseTiles(o) }, salvageRefund: b => salvageRefund(b), genGrand: () => genGrand(), orderSlots: () => orderSlots(), wkNote: (b, s) => noteWeekly(b, s), wkPoll: () => checkWeeklyPass(), autoSell: () => autoSellTick(), holdCaps: () => holdCaps(), room: () => room(), resolve: st => resolveStep(st), daily: { make: d => dqMake(d), today: () => dqToday(), give: id => dqGive(id), hint: () => dqHint(), graph: () => dqGraph(), streak: () => dqStreak() }, cap: () => cap(), mast: { tier: id => mastTier(id), need: (id, t) => mastNeed(id, t), perk: (id, k) => mastPerk(id, k), add: (id, n) => mastAdd(id, n), get n() { return S.mast || {}; } }, info: id => infoHTML(id), genOrder: () => genOrder(), canGood: id => canGood(id), weekTest(w) { newState(); migrate(); S.race = { weekly: true, week: w, code: 'W' + w, target: 0, start: 0, end: 0, seen: {} }; weeklyPreset(w); return S; }, weekTheme: w => weekTheme(w).id, weekLabel: w => weekLabel(w), raceTest(code) { newState(); migrate(); S.race = { code, target: 500, start: 0, seen: {} }; racePreset(code); return S; }, get state() { return S; }, holdCaps: () => holdCaps(), select(i) { UI.sel = i; dirty(); }, click(i) { clickTile(i); }, focus(i) { centerOn(i); clampCam(); }, screenOf(i) { const [x, y] = toScreen(tx(i), ty(i)); return [x / DPR, y / DPR]; }, get sel() { return UI.sel; }, season: () => ({ id: season().id, day: seasonDay(), year: yearOf(), wx: wxNow(), rain: raining(), scene: sceneKey(), grow: c => seasonGrow(c) }), weatherOn: d => weatherOn(d), sellPrice: (id, q) => sellPrice(id, q || 0), rollMarket: () => rollMarket(), drawer(d) { UI.drawer = d; dirty(); }, mon: { age: () => { NET.monAt = 0; }, flush: () => flushTrades(), auto: () => autoMonGive(), builder: () => builderDay(), set: r => setMon(r), get: () => NET.mon, totals: m => monTotals(m || MONK()), give: (id, n) => monGive(id, n), notices: () => notices(), show: () => showGreen(), get green() { return S.green; } }, interior: { open: () => openRoom(), close: () => closeRoom(), get state() { return roomOf(); }, fix: b => roomFix(b), tap: (x, y) => roomTap(x, y), btn: ds => roomButton(ds), fits: (p, skip) => roomFits(roomOf(), p, roomOf().p, skip), get ui() { return UI.rm; }, caseBtn: ds => caseButton(ds), award: () => caseAward(), caseFix: b => caseFix(b) }, TASKS, checkTask, queueTask, update, newState: () => newState(),
+    quale: { get now() { return QL; }, spawn: i => { QL = { i: i != null ? i : S.tiles.findIndex((T, j) => isEmptyGrass(j)), ttl: D.quale.ttl, mv: D.quale.move }; return QL.i; }, catch: () => quCatch(), open: () => QOPEN, setOpen: v => { QOPEN = v; }, sync: () => quSync(), tier: n => quTier(n) } };
   const h = window.claude && window.claude.hot;
   if (h && h.ready) h.ready(d => boot(d)); else boot(h && h.data);
 })();

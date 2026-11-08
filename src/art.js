@@ -1250,15 +1250,16 @@ window.HW_ART = (function () {
     setScene(s) { if (s !== scene && (s === 'spring' || SCENES[s])) scene = s; },
     get scene() { return scene; },
     icon(id, items) {
-      if (urls[id]) return urls[id];
-      const it = items[id]; const c = icon(...it.icon);
-      return (urls[id] = c.toDataURL());
+      const it = items[id], uk = id + '|' + it.icon.join(',');   // keyed by the picture too, so an item whose look changes (the Quale Trophy) redraws
+      if (urls[uk]) return urls[uk];
+      const c = icon(...it.icon);
+      return (urls[uk] = c.toDataURL());
     },
     discPic(pic, items) { return discPic(pic, items, base); }, // discovery cards keep the spring look
     monPic(kind, stage) { const k = 'monpic:' + kind + stage; return urls[k] || (urls[k] = base(`mon:${kind}.${stage}.big`).toDataURL()); },
     portraitWoman(seed) { return pTraits(seed).woman; },
     portrait(seed) { const k = 'portrait:' + seed; return urls[k] || (urls[k] = portrait(seed).toDataURL()); },
     roomGeom, drawRoom,
-    iconCanvas(id, items) { const k = 'icon:' + id; if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
+    iconCanvas(id, items) { const k = 'icon:' + id + '|' + items[id].icon.join(','); if (!cache[k]) cache[k] = icon(...items[id].icon); return cache[k]; }
   };
 })();
