@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.124 — 2026-11-08
+- Town folk drawer (`folkDrawer`): each shelf row has a Stock button (`data-fk-open`) that expands `vGiveHTML` for that shelf in the drawer; `vGiveHTML` falls back to `UI.fk` when the village view is not open, and a capture handler on `#drawer` handles `data-vgive` / `data-vall` / `data-vauto` outside the village (the village keeps `vilButton`).
+
 ## v0.123 — 2026-11-08
 - The Quale hunt. `D.quale` config (`base`, `grow`, `ttl`, `move`, `statue`, five `tiers`); `quTick` (called from `update`, not in races/rooms/village view) spawns a black square on a random `isEmptyGrass` tile with chance per second `base + grow × QOPEN` (seconds the game has been open since the last find or day), once per real day (`S.qd`, `quDay()`), it hops to an empty neighbour every ~`move` s and leaves after `ttl` s. `clickTile` on its tile calls `quCatch` (count in `S.qn`). Items `quale_trophy` (`trophy: true`, so the trophy case takes it) and `quale_statue` (room decor), both `keep: true` (cannot be sold, hidden from the market list, `sell` check blocks). Trophy given at tier 1 (5 finds) and upgraded in place at 10/25/50/100 by `quSync` (name and icon change); statue given at 10 (`S.qs`). Toasts per tier, a bigger one at 100. `ART.icon` cache is now keyed by the picture as well as the id. No migration (`S.qn`, `S.qd`, `S.qs` are lazy). Test hooks: `HW.quale`.
 

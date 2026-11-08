@@ -420,7 +420,7 @@
     if (V.feast > 0) h += `<p class="hint small"><b>Village feast</b>: ${Math.max(1, Math.ceil(V.feast))} day${Math.ceil(V.feast) > 1 ? 's' : ''} left. Folk are happier and shops take more.</p>`;
     if (nx) h += `<p class="hint small">Next title: <b>${esc(nx.name)}</b> at ${nx.folk} town folk (${Math.max(0, nx.folk - (V.peak || 0))} to go) · +${nx.dp} Discovery.</p>`;
     if (V.folk && st) h += `<span class="eyebrow">Shelves</span><div class="fshelves">${vShelves(V).filter(g => vNeeded(V, g)).map(g => { const d = vDaysLeft(V, g); const days = d === Infinity ? '' : d < .1 ? 'empty' : d < 1 ? 'under a day' : Math.floor(d) + ' day' + (Math.floor(d) === 1 ? '' : 's');
-      return `<div class="fshelf"><b>${esc(g.name)}</b><span class="${d < VD().lowDays ? 'warnt' : ''}">${days} left</span></div>`; }).join('')}</div>`;
+      return `<div class="fshelf"><b>${esc(g.name)}</b><span class="${d < VD().lowDays ? 'warnt' : ''}">${days === 'empty' ? 'empty' : days + ' left'}</span><button class="btn sm ${(UI.fk || {}).open === g.id ? '' : 'pri'}" data-fk-open="${g.id}" aria-expanded="${(UI.fk || {}).open === g.id}">${(UI.fk || {}).open === g.id ? 'Done' : 'Stock'}</button></div>`; }).join('')}</div>${(UI.fk || {}).open && vShelf(UI.fk.open) ? vGiveHTML(V, vShelf(UI.fk.open)) : ''}`;
     else if (V.folk) h += `<p class="hint warnt">No General Store on a road, so nobody can shop.</p>`;
     if (V.folk && st) vShelves(V).forEach(g => { if (vSpec(V, g).ready) h += `<div class="vgrp"><span class="eyebrow">${esc(g.name)}: specialty dish</span>${vSpecHTML(V, g, false)}</div>`; });
     if (V.folk) h += vRationHTML(V);
@@ -3418,7 +3418,7 @@
     Object.entries(VD().buildings).forEach(([k, B]) => { if (B.folk && k !== 'well' && (V.peak || 0) >= B.folk && !vCount(V, k)) tips.push(`<b>New: the ${esc(B.name)}.</b> You have enough folk to build it. ${esc(B.desc)}`); });
     vShops().forEach(s => { if (vShopOn(V, s) && !(V.sh[s.id] > 0)) tips.push(`<b>The ${esc(s.name)} is empty.</b> Folk are a little less happy while it stands empty (−${s.sad}%). It takes ${esc(s.what)}${s.farm ? ' (grown or collected by you, not bought)' : ''}.`); });
     return tips.length ? `<span class="eyebrow">To keep folk happy</span><ul class="vtips">${tips.map(t => `<li>${t}</li>`).join('')}</ul>` : `<p class="hint small">Everyone is well supplied. Keep the shelves topped up.</p>`; }
-  function vGiveHTML(V, g) { const ui = UI.vil, all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
+  function vGiveHTML(V, g) { const ui = UI.vil || (UI.fk = UI.fk || { all: {} }), all = ui.all[g.id], list = vSuggest(g, all), more = vSuggest(g, true).length - list.length, auto = unlocked('villageauto');
     let h = `<div class="vgrp"><span class="eyebrow">${esc(g.name)} shelf</span>${vShelfHTML(V, g)}${vSpecHTML(V, g, false)}`;
     if (g.farm) { const fr = g.goods.filter(id => D.items[id] && freshCount(id) > 0).sort((a, b) => freshCount(b) - freshCount(a));
       h += `<div class="cinfo ${fr.length ? '' : 'full'}"><b>Only farm-fresh goods go here</b><small>Goods you <b>grew or collected yourself</b> in the last ${FRESH().days} days count, and they are worth ${FRESH().mult}× on this shelf. Goods you <b>bought</b> from the market, or that are older, can’t be given here.</small><small>${fr.length ? `Farm-fresh in your storage now: ${fr.slice(0, 8).map(id => `${esc(D.items[id].name)} ${freshCount(id)}`).join(', ')}.` : 'You have nothing farm-fresh right now. Harvest crops or collect eggs, milk or honey, then come back.'}</small></div>`; }
@@ -3498,6 +3498,14 @@
     else if (ds.vlvl) { const [g, p] = ds.vlvl.split(':'); V.lvl[g] = +p; save(); }
     else return false;
     UI.html['#vtray'] = null; dirty(); return true; }
+  // stocking the shelves from the Town folk panel on the farm (the village view has its own buttons)
+  document.addEventListener('click', e => { const el = e.target.closest('#drawer [data-fk-open], #drawer [data-vgive], #drawer [data-vall], #drawer [data-vauto]'); if (!el || UI.vil || !S.village) return;
+    const d = el.dataset, fk = UI.fk = UI.fk || { all: {} }; fk.all = fk.all || {};
+    if (d.fkOpen) fk.open = fk.open === d.fkOpen ? null : d.fkOpen;
+    else if (d.vgive) { const inp = document.querySelector(`[data-vq="${d.vgive}"]`), n = Math.max(1, parseInt(inp && inp.value, 10) || 1); vGive(d.vgive, n, false, d.vgrp); save(); }
+    else if (d.vall) fk.all[d.vall] = !fk.all[d.vall];
+    else if (d.vauto) { const a = S.village.auto[d.vauto] || (S.village.auto[d.vauto] = { on: false, keep: 0 }); a.on = !a.on; save(); }
+    UI.html['#drawer'] = null; dirty(); e.stopPropagation(); }, true);
   $('#village').addEventListener('click', e => { const el = e.target.closest('button'); if (!el) return; if (vilButton(el.dataset)) e.stopPropagation(); });
   // village camera: the same controls as the farm: drag to pan, wheel or pinch to zoom, + / − buttons, Q and E (or the turn buttons) to rotate, ⌂ to centre
   const vCam = () => UI.vil && UI.vil.cam;
