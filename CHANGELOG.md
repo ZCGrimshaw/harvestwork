@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.126 — 2026-11-10 · backend (hidden from the in-game updates log)
+- Added the shared Zero Crunch anonymous usage counter (inline script at the end of `src/index.html`, app `harvest-valley`): a random id kept in localStorage plus active seconds per session, sent to the `zc_ping` RPC (table `zc_usage`, view `zc_usage_summary`). Respects Do Not Track.
+
 ## v0.125 — 2026-11-10
 - New tool `D.tools.seeder` (act `plant`, area [0,1,2], same costs as the can). The `plant` task now sows via `sowSpots(i, crop)`: the picked plot first, then tilled plots in the tool's square, never more than the seeds held; fertilizer goes on as many as the fertilizer lasts. Plant buttons show `sows N plots`; Basic keeps the old single-plot behaviour, so existing farms and farmhand loops are unchanged until upgraded. Races and the Weekly Challenge get it like the other tools (generic `D.tools`, `S.tools` defaults to 0 for old saves).
 
