@@ -861,7 +861,7 @@ window.HW_DATA = {
     { id: 'preserver', pic: ['grass:0', 'preserver', 'jam'], name: 'Preserver', cost: 4, req: ['sawmill'], text: 'Turn berries and carrots into jam and pickles.', where: 'Open Market → Stations.' },
     { id: 'workbench', pic: ['grass:1', 'workbench', 'fence_kit'], name: 'Workbench', cost: 4, req: ['sawmill', 'stonecutting'], text: 'Build Land Kits for expanding and surveying land and for pastures, plus crates for storage.', where: 'Open Market → Stations.' },
     { id: 'tuning', pic: ['grass:0', 'stove', 'gear'], name: 'Station Tuning', cost: 4, req: ['sawmill'], text: 'Upgrade any station’s speed, capacity and output quality.', where: 'Select a station → Upgrades.' },
-    { id: 'tools', pic: ['farm_raw', null, ['tool', '#9aa0aa', '#c8ccd4']], name: 'Toolsmithing', cost: 3, req: ['sawmill'], text: 'Upgrade your watering can, hoe, axe, pickaxe and fishing rod.', where: 'Select the Homestead → Tools.' },
+    { id: 'tools', pic: ['farm_raw', null, ['tool', '#9aa0aa', '#c8ccd4']], name: 'Toolsmithing', cost: 3, req: ['sawmill'], text: 'Upgrade your watering can, hoe, seeder, axe, pickaxe and fishing rod.', where: 'Select the Homestead → Tools.' },
     { id: 'repeat', pic: ['grass:0', 'sawmill:1', ['loop', '#5aa83f', '#2e6a1a']], name: 'Repeat Recipes', cost: 4, req: ['tuning'], text: 'A station reloads a chosen recipe by itself whenever a slot frees and the ingredients are in storage.', where: 'Select a station → Repeat on a recipe.' },
     { id: 'autocollect', pic: ['grass:0', 'preserver', 'crate'], name: 'Auto-Collect', cost: 5, req: ['repeat'], text: 'Stations send finished goods straight to storage.', where: 'Select a station → Auto-collect.' },
     { id: 'irrigation', pic: ['farm_wet', 'sprinkler:1', null], name: 'Irrigation', cost: 2, req: [], text: 'Build sprinklers that water the 8 tiles around them.', where: 'Open Market → Buy a Sprinkler kit (or make one at the Workbench), then place it in the middle of your plots.' },
@@ -941,6 +941,9 @@ window.HW_DATA = {
     hoe:  { name: 'Hoe', act: 'till', tiers: ['Basic', 'Copper', 'Gold'], area: [0, 1, 2],
             desc: ['Tills one plot.', 'Tills every untilled plot in a 3×3 square.', 'Tills every untilled plot in a 5×5 square.'],
             cost: [{ gold: 50, stone: 3 }, { gold: 160, plank: 4, stone: 6 }] },
+    seeder: { name: 'Seeder', act: 'plant', tiers: ['Basic', 'Copper', 'Gold'], area: [0, 1, 2],
+            desc: ['Sows one plot.', 'Sows every tilled plot in a 3×3 square with the seed you chose, as far as your seeds go.', 'Sows every tilled plot in a 5×5 square with the seed you chose, as far as your seeds go.'],
+            cost: [{ gold: 60, stone: 3 }, { gold: 180, plank: 4, stone: 6 }] },
     axe:  { name: 'Axe', act: 'chop', needs: 'woodcutting', tiers: ['Basic', 'Copper', 'Steel'], speed: [1, .65, .4], bonus: [0, 1, 2],
             desc: ['2 logs per tree.', 'Faster; 3 logs per tree.', 'Much faster; 4 logs per tree.'],
             cost: [{ gold: 60, stone: 4 }, { gold: 170, plank: 4, stone: 8 }] },
@@ -1124,6 +1127,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.125', at: '2026-11-10 11:00', notes: ['A new tool: the Seeder. It works like your Watering Can and Hoe. Basic still sows one plot, but upgrade it at the Homestead (Toolsmithing) and one tap sows every tilled plot in a 3×3 square (Copper) or a 5×5 square (Gold) with the seed you picked, as far as your seeds go. The plant button shows how many plots it will sow. It works the same in races and the Weekly Challenge.'] },
   { v: '0.124', at: '2026-11-08 13:00', notes: ['Stock the village from the Town folk panel. Next to each shelf (Pantry, Household goods, and your shops) there is now a Stock button. It opens that shelf’s list right there, so you can give goods, switch Auto on and see what is missing without going into the village.'] },
   { v: '0.123', at: '2026-11-08 12:00', notes: ['The Quale hunt. Keep an eye on your farm: now and then a little black square wanders onto an empty patch of grass, hops about for a few seconds and then slips away. Tap it to find it! Only one can be found per day, and the longer you keep the game open, the likelier it is to show up.','Find 5 for a Quale Trophy for your Trophy Case. The trophy upgrades at 10, 25, 50 and 100 finds, and at 10 you also get a Quale Statue to put in your house. The count keeps climbing after that. Not in races or the Weekly Challenge.'] },
   { v: '0.122', at: '2026-11-07 10:30', notes: ['A gold star ★ now sits next to Joel’s name on the leaderboard, on the Top score, Best pace and Village boards.'] },
