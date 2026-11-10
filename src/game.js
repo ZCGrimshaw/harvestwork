@@ -1391,6 +1391,11 @@
   const toolStat = (a, stat, dflt) => { const k = toolFor(a), T = k && D.tools[k]; return T && T[stat] ? T[stat][toolLv(k)] : dflt; };
   const workDur = t => (C.workTime[t.a] || (t.a === 'clearplot' ? 1.2 : 1)) * toolStat(t.a, 'speed', 1);
   function around(i, r) { const x = tx(i), y = ty(i), o = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (inB(x + dx, y + dy)) o.push(idx(x + dx, y + dy)); return o; }
+  // the plots the Seeder would sow from i: i itself first, then tilled plots in its square, never more than the seeds you hold
+  const sowSpots = (i, crop) => { const r = toolStat('plant', 'area', 0), b = T_(i).b, o = [];
+    if (b && b.type === 'farm' && b.st === 'tilled') o.push(i);
+    if (r) around(i, r).forEach(j => { if (j !== i) { const f = farmAt(j); if (f && f.st === 'tilled') o.push(j); } });
+    return o.slice(0, Math.max(1, count(D.crops[crop].seed))); };
   const farmAt = j => { const T = T_(j); return T.o && T.b && T.b.type === 'farm' ? T.b : null; };
   function gatherOut(terrain, act) { const o = Object.assign({}, D.gather[terrain].out), main = Object.keys(o)[0]; o[main] += toolStat(act, 'bonus', 0);
     if (terrain === 'boulder' && unlocked('prospecting')) o.copper_ore = 1;
@@ -1503,9 +1508,11 @@
         if (count(cr.seed) < 1) return `No ${D.items[cr.seed].name}`;
         if (snowBlocks(t.p)) return 'Too snowy today: only hardy crops can be planted';
         if (t.f && count('fertilizer') < 1) return 'No fertilizer'; return null; },
-      run: t => { const cr = D.crops[t.p]; take(cr.seed, 1); if (t.f) take('fertilizer', 1);
-        T_(t.i).b = { type: 'farm', st: 'growing', crop: t.p, last: t.p, g: 0, wet: false, w: [0, 0], half: false, fert: !!t.f };
-        gainScore(C.score.plant, t.i); emit('plant'); fieldCheck(); } },
+      // the Seeder tool (D.tools.seeder) sows every tilled plot around the one you pick with the same seed, as far as your seeds (and fertilizer) go
+      run: t => { const cr = D.crops[t.p], spots = sowSpots(t.i, t.p); let n = 0;
+        spots.forEach(j => { if (count(cr.seed) < 1) return; take(cr.seed, 1); const fz = !!t.f && count('fertilizer') > 0; if (fz) take('fertilizer', 1);
+          T_(j).b = { type: 'farm', st: 'growing', crop: t.p, last: t.p, g: 0, wet: false, w: [0, 0], half: false, fert: fz }; gainScore(C.score.plant, j); n++; });
+        if (n > 1) float(t.i, `Sowed ${n} plots`, '#b8f08a'); emit('plant'); fieldCheck(); } },
     fertilize: { label: () => 'Fertilize crop',
       check: t => { const b = T_(t.i).b; if (!b || b.type !== 'farm' || b.st !== 'growing') return 'Only growing crops can be fertilized';
         if (b.fert) return 'Already fertilized'; return count('fertilizer') < 1 ? 'No fertilizer in storage' : null; },
@@ -2592,7 +2599,7 @@
       h += `<p class="state">Tilled and ready for seeds.</p><p class="hint small">For ${QN[1]} crops, water at both growth stages. Add fertilizer too for ${QN[2]}. <button class="linkish small" data-qhelp-panel>${UI.qhelpP ? 'Less' : 'More about quality'}</button></p>${UI.qhelpP ? QUALITY_HELP : ''}`;
       if (unlocked('compost')) h += `<label class="check"><input type="checkbox" id="fert" ${UI.fert ? 'checked' : ''}> Use fertilizer (${count('fertilizer')} in storage) · grows faster, +1 quality</label>`;
       const seeds = Object.keys(D.crops).filter(k => count(D.crops[k].seed) > 0);
-      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s${cropInSeason(k) ? ' · in season' : ''}` })).join('')}</div>${wxNow() === 'snow' && seeds.some(snowBlocks) ? `<p class="hint small">Snow day: only hardy crops (${esc(cropList(Object.keys(D.crops).filter(k => D.crops[k].hardy)).toLowerCase())}) can be planted today.</p>` : ''}`
+      h += seeds.length ? `<div class="grid2">${seeds.map(k => btn({ a: 'plant', i, p: k, f: UI.fert ? 1 : 0 }, `${ico(D.crops[k].seed)} Plant ${D.crops[k].name}`, { sub: `${count(D.crops[k].seed)} seeds · ${D.crops[k].grow}s${cropInSeason(k) ? ' · in season' : ''}${sowSpots(i, k).length > 1 ? ` · sows ${sowSpots(i, k).length} plots` : ''}` })).join('')}</div>${wxNow() === 'snow' && seeds.some(snowBlocks) ? `<p class="hint small">Snow day: only hardy crops (${esc(cropList(Object.keys(D.crops).filter(k => D.crops[k].hardy)).toLowerCase())}) can be planted today.</p>` : ''}`
         : `<p class="hint"><b>No seeds.</b> Buy some at the Open Market.${marketIdx() >= 0 ? ` <button class="linkish small" data-goto="${marketIdx()}">Show me the market</button>` : ''}</p>`;
     } else {
       const cr = D.crops[b.crop];

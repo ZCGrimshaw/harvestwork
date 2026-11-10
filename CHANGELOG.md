@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.125 — 2026-11-10
+- New tool `D.tools.seeder` (act `plant`, area [0,1,2], same costs as the can). The `plant` task now sows via `sowSpots(i, crop)`: the picked plot first, then tilled plots in the tool's square, never more than the seeds held; fertilizer goes on as many as the fertilizer lasts. Plant buttons show `sows N plots`; Basic keeps the old single-plot behaviour, so existing farms and farmhand loops are unchanged until upgraded. Races and the Weekly Challenge get it like the other tools (generic `D.tools`, `S.tools` defaults to 0 for old saves).
+
 ## v0.124 — 2026-11-08
 - Town folk drawer (`folkDrawer`): each shelf row has a Stock button (`data-fk-open`) that expands `vGiveHTML` for that shelf in the drawer; `vGiveHTML` falls back to `UI.fk` when the village view is not open, and a capture handler on `#drawer` handles `data-vgive` / `data-vall` / `data-vauto` outside the village (the village keeps `vilButton`).
 
