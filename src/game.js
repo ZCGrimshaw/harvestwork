@@ -1499,6 +1499,16 @@
     Object.keys(S.inv).filter(id => D.items[id] && D.items[id].trophy && count(id) > 0).forEach(id => out.push({ t: 'item', k: id, name: D.items[id].name, sub: `×${count(id)}`, img: ico(id) }));
     return out; }
 
+  // harvests the ripe plot at i (used by the Harvest task, which the Scythe tool repeats over its square)
+  function harvestOne(i) { const b = T_(i).b, cr = D.crops[b.crop];
+    const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
+    const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
+    addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; if (!S.race) { S.harvN = (S.harvN || 0) + yl; almanac(); } float(i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, i);
+    if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
+    T_(i).b = { type: 'farm', st: 'raw', last: b.crop };
+    gainScore(C.score.harvest * (1 + q * .5), i, 'harvest', cr.item);
+    if (!q && !S.qTip) { S.qTip = 1; setTimeout(() => toast(`<b>Tip:</b> that harvest was ${QN[0]}. Water a crop at both growth stages for ${QN[1]}, and add fertilizer too for ${QN[2]}. They sell for more. Storage → “How do I make ${QN[1]} and ${QN[2]} goods?” explains it all.`, 'goal'), 1200); } first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
+    emit('harvest', { item: cr.item }); }
   const TASKS = {
     till: { label: () => 'Till soil', check: t => { const b = T_(t.i).b; return b && b.type === 'farm' && b.st === 'raw' ? null : 'Soil is already prepared'; },
       run: t => { const hit = around(t.i, toolStat('till', 'area', 0)).filter(j => { const b = farmAt(j); return b && b.st === 'raw'; });
@@ -1521,15 +1531,10 @@
       run: t => { const hit = around(t.i, toolStat('water', 'area', 0)).filter(j => { const b = farmAt(j); return b && b.st === 'growing' && !b.wet; });
         hit.forEach(j => { waterPlot(T_(j).b); gainScore(C.score.water, j); }); emit('water'); } },
     harvest: { label: () => 'Harvest', check: t => { const b = T_(t.i).b; if (!b || b.st !== 'ready') return 'Not ready yet'; return room() >= D.crops[b.crop].yield ? null : FULL; },
-      run: t => { const b = T_(t.i).b, cr = D.crops[b.crop];
-        const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
-        const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
-        addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; if (!S.race) { S.harvN = (S.harvN || 0) + yl; almanac(); } float(t.i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, t.i);
-        if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(t.i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
-        T_(t.i).b = { type: 'farm', st: 'raw', last: b.crop };
-        gainScore(C.score.harvest * (1 + q * .5), t.i, 'harvest', cr.item);
-        if (!q && !S.qTip) { S.qTip = 1; setTimeout(() => toast(`<b>Tip:</b> that harvest was ${QN[0]}. Water a crop at both growth stages for ${QN[1]}, and add fertilizer too for ${QN[2]}. They sell for more. Storage → “How do I make ${QN[1]} and ${QN[2]} goods?” explains it all.`, 'goal'), 1200); } first('harvest:' + b.crop, C.firsts.harvest, `First ${cr.name.toLowerCase()} harvested`);
-        emit('harvest', { item: cr.item }); } },
+      // the Scythe tool (D.tools.scythe) also harvests every ripe plot in its square, as far as storage has room
+      run: t => { const r = toolStat('harvest', 'area', 0), spots = [t.i];
+        if (r) around(t.i, r).forEach(j => { if (j !== t.i) { const f = farmAt(j); if (f && f.st === 'ready') spots.push(j); } });
+        spots.forEach((j, k) => { if (k && room() < D.crops[T_(j).b.crop].yield) return; harvestOne(j); }); } },
     chop: { label: () => 'Chop tree', check: t => { const T = T_(t.i); if (!unlocked('woodcutting')) return 'Unlock Woodcutting first'; if (T.r.st !== 'tree') return 'No grown tree'; return outRoom(gatherOut('forest', 'chop')) ? null : FULL; },
       run: t => { const o = gatherOut('forest', 'chop'); for (const k in o) addItem(k, o[k]); T_(t.i).r.st = 'stump';
         float(t.i, `+${o.log} Logs`, '#fff'); gainScore(C.score.chop, t.i, 'chop', 'log'); first('gather:log', C.firsts.gather, 'First logs chopped'); emit('chop'); } },

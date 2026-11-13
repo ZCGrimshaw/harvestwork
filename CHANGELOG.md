@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.127 — 2026-11-13
+- New tool `D.tools.scythe` (act `harvest`, area [0,1,2]). The single-plot harvest body is now `harvestOne(i)`; the `harvest` task harvests the picked plot, then every ripe plot in the tool's square while `room()` fits that crop's yield. Basic is unchanged. Races and the Weekly Challenge get it through the generic `D.tools` (old saves default to level 0).
+
 ## v0.126 — 2026-11-10 · backend (hidden from the in-game updates log)
 - Added the shared Zero Crunch anonymous usage counter (inline script at the end of `src/index.html`, app `harvest-valley`): a random id kept in localStorage plus active seconds per session, sent to the `zc_ping` RPC (table `zc_usage`, view `zc_usage_summary`). Respects Do Not Track.
 
