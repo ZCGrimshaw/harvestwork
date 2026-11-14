@@ -416,6 +416,7 @@
     const m = vMood(V), room = vHouses(V), t = vTitleFor(V.peak || 0), nx = vNextTitle(V), mood = Math.round(V.h), st = vStore(V);
     let h = `<div class="phead"><div><h2>Town folk</h2><p class="sub">${t ? `Your village is a <b>${esc(t.name)}</b>.` : 'Your village is just starting out.'}</p></div>${close}</div>`;
     h += `<div class="wgrid folkgrid">${[[V.folk, 'Town folk now'], [V.peak || 0, 'Most ever'], [room, 'Homes'], [vScore(V).toLocaleString(), 'Village score']].map(([a, b]) => `<div class="wstat"><b>${a}</b><span>${b}</span></div>`).join('')}</div>`;
+    h += vPauseHTML(V);
     h += `<p class="hint"><b>${vMoodName(V.h)}, ${mood}%</b> · ${esc(m.why)}${V.folk ? '' : ''}</p><div class="vbar"><i style="width:${mood}%"></i></div>`;
     if (V.feast > 0) h += `<p class="hint small"><b>Village feast</b>: ${Math.max(1, Math.ceil(V.feast))} day${Math.ceil(V.feast) > 1 ? 's' : ''} left. Folk are happier and shops take more.</p>`;
     if (nx) h += `<p class="hint small">Next title: <b>${esc(nx.name)}</b> at ${nx.folk} town folk (${Math.max(0, nx.folk - (V.peak || 0))} to go) · +${nx.dp} Discovery.</p>`;
@@ -2435,7 +2436,7 @@
       return `<div class="vordhead"><b>${esc(B.name)}</b>${ready ? '<span class="vready">Ready to build</span>' : ''}<button class="gbtn" data-vord-x="${k}" aria-label="Remove ${esc(B.name)} from my orders" title="Remove">×</button></div><div class="gneeds">${ents.map(([id, n]) => { const have = id === 'gold' ? S.gold : count(id), ok = have >= n;
         return `<div class="gneed ${ok ? 'ok' : ''}">${id === 'gold' ? '<span class="coin"></span>' : ico(id)}<span>${id === 'gold' ? 'Gold' : esc(D.items[id].name)}</span><b>${Math.min(have, n)}/${n}</b></div>`; }).join('')}</div>`; }).join('')}`; }
   // the store's shopping list on the farm: each shelf's state and, for shelves running low, goods you have none of in storage yet
-  const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && V.b.some(b => b.k === 'store')); };
+  const vWantsAvail = () => { const V = S.village; return !!(!S.race && unlocked('village') && V && !V.paused && V.b.some(b => b.k === 'store')); };
   const vWantsOn = () => S.vwants !== false && vWantsAvail();
   function vWantsHTML() { if (S.vwantMin && vWantsOn()) return ''; if (!vWantsOn()) return vWantsAvail() ? `<button class="gbtn vwshow" data-vwants-show title="Show what the General Store is short of">Village wants ▸</button>` : ''; const V = S.village;
     let h = `<div class="goalhead"><span class="eyebrow">Village wants</span><span class="gctl"><button class="gbtn" data-vmin="vwantMin" title="Minimize to the top bar" aria-label="Minimize village wants">–</button><button class="gbtn" data-vil-go title="Go to the village" aria-label="Go to the village">⌂</button><button class="gbtn" data-vwants-x title="Hide this list (turn it back on in Settings)" aria-label="Hide the village wants list">×</button></span></div>`;
@@ -3173,7 +3174,7 @@
       toast(`<b>Your village is now a ${esc(t.name)}</b> · ${V.peak} town folk · +${t.dp} Discovery<br>${esc(t.blurb)}`, 'disc'); logAct(`Village title earned: ${t.name} (${t.dp} Discovery).`, 'auto'); }
     return got; }
   const vFolkChip = () => { const V = S.village; return !!(V && V.b.length && !S.race && unlocked('village')); };
-  const folkBtn = () => { const V = S.village, t = vTitleFor(V.peak || 0), bad = V.folk > 0 && vStore(V) && (V.h < 60 || vLow(V).length), mn = vMoodName(V.h);
+  const folkBtn = () => { const V = S.village, t = vTitleFor(V.peak || 0), bad = V.folk > 0 && !V.paused && vStore(V) && (V.h < 60 || vLow(V).length), mn = vMoodName(V.h);
     return `<button class="stat folk${bad ? ' warn' : ''}" data-drawer="folk" title="${bad ? `Town folk are ${mn.toLowerCase()}${vLow(V).length ? ' and a shelf is running low' : ''}. ` : ''}Tap for their mood, shelves and titles"><span class="lbl"><span class="lg">${t ? esc(t.name) : 'Town folk'}</span><span class="sm">Folk</span></span><b>${V.folk}${bad ? ' ⚠' : ''}</b></button>`; };
   const vMoodName = h => h >= 80 ? 'Cheerful' : h >= 60 ? 'Content' : h >= 35 ? 'Grumbling' : h >= 20 ? 'Unhappy' : 'Miserable';
   // the village score: goods sold (a point per 10), buildings and roads, and how many folk live here, weighted by how happy they are
@@ -3262,7 +3263,7 @@
     return `<div class="vwrow"><span><b>Market Day</b></span><span class="${m.left < .5 ? 'low' : ''}">${esc(vMkLeft(m.left))}</span></div>` + m.want.map(w => { const done = w.got >= w.n, have = count(w.id);
       return `<div class="vwgood vmk">${ico(w.id)}<span>${esc(D.items[w.id].name)} <small>${done ? 'done ✓' : `${w.got}/${w.n}${have ? ` · have ${have}` : ` · ${esc(vSource(w.id))}`}`}</small></span>${!done && have ? `<button class="vmkg" data-vmkgive="${w.id}">Give</button>` : ''}</div>`; }).join('') + (farm ? '' : `<p class="hint small">Fill the whole list for ${Math.round(M.pay * 100)}% of the goods’ value, +${M.dp} Discovery and happier folk. If time runs out you are still paid for what you brought.</p>`); }
   // one step of village life, in game seconds
-  function vilTick(dt) { if (!vilOn() || !S.village) return; const V = S.village, dd = dt / C.dayLength, st = vStore(V);
+  function vilTick(dt) { if (!vilOn() || !S.village || S.village.paused) return; const V = S.village, dd = dt / C.dayLength, st = vStore(V);
     if (V.folk > 0) vShelves(V).forEach(g => { if (!g.b && !st) return; const have = V.sh[g.id] || 0; if (have <= 0) return; const use = Math.min(have, vUseDay(V, g) * dd);
       V.sh[g.id] = have - use; V.used = (V.used || 0) + use; V.till = (V.till || 0) + use * (g.takings != null ? g.takings : VD().takings) * (V.feast > 0 ? VD().special.takings : 1); });
     if (V.feast > 0) { V.feast = Math.max(0, V.feast - dd); if (!V.feast) { logAct('The village feast is over.', 'auto'); UI.vDirty = true; } }
@@ -3284,7 +3285,10 @@
         toast(`<b>Village: ${esc(nm)} is running low</b> (${d <= 0 ? 'empty' : 'under a day left'}). ${sug.length ? `Bring ${esc(sug.join(', '))}.` : `It takes ${esc(g.what)}.`}`, 'warn'); }
       else if (d > VD().lowDays * 2) V.warn[g.id] = false; });
     if (unlocked('villageauto')) { V.autoT = (V.autoT || 0) + dt; if (V.autoT >= VD().autoEvery) { V.autoT = 0; vAuto(V); } } }
-  const vLow = V => V && V.folk > 0 ? vShelves(V).filter(g => (g.b || vStore(V)) && vNeeded(V, g) && vDaysLeft(V, g) < VD().lowDays) : [];
+  const vPauseHTML = V => V.paused ? `<p class="hint"><b>Village paused.</b> Shelves aren’t emptying, nobody moves in or out and the mood is frozen. Nothing is lost while you’re away.</p><button class="btn pri sm" data-vpause>Resume village</button>` : (V.b.length ? `<button class="btn ghost sm" data-vpause title="Freeze shelves, mood and folk until you resume">Pause village</button>` : '');
+  document.addEventListener('click', e => { const el = e.target.closest('[data-vpause]'); if (!el || !S.village) return; const V = S.village; V.paused = !V.paused;
+    toast(V.paused ? '<b>Village paused.</b> Shelves, mood and folk are frozen until you resume.' : '<b>Village resumed.</b>', 'info'); save(); UI.html['#drawer'] = null; dirty(); e.stopPropagation(); }, true);
+  const vLow = V => V && V.folk > 0 && !V.paused ? vShelves(V).filter(g => (g.b || vStore(V)) && vNeeded(V, g) && vDaysLeft(V, g) < VD().lowDays) : [];
   /* ---------- going there: the pause question, the view and the tray ---------- */
   function vilGo() { if (!vilOn() || gateIdx() < 0) return; vil(); UI.sel = -1; UI.drawer = null; const mode = S.vilPause || 'ask';
     UI.vil = { sel: null, msg: '', ask: mode === 'ask', pause: mode !== 'never', all: {}, cam: { z: 1, px: 0, py: 0, rot: 0 } };
@@ -3559,7 +3563,8 @@
   function gatePanel(i) { const V = S.village, low = vLow(V);
     let h = head('Village Gate', 'The road from your farm to your village.');
     if (S.race) return h + `<p class="hint">The village is closed during races and weekly challenges.</p>`;
-    h += V && V.b.length ? `<p class="state">${V.folk} town folk · ${vMoodName(V.h)} · village score ${vScore(V).toLocaleString()}</p>${low.length ? `<p class="hint warnt">⚠ The ${low.map(g => esc(g.name)).join(' and ')} shelf${low.length > 1 ? 'ves are' : ' is'} running low.</p>` : ''}${V.till >= 1 ? `<p class="hint small">${Math.floor(V.till).toLocaleString()}g waiting in the store’s till.</p>` : ''}` : `<p class="hint">Your village is an empty patch of land down the road, waiting for its first cottage.</p>`;
+    h += V && V.b.length ? `<p class="state">${V.folk} town folk · ${vMoodName(V.h)} · village score ${vScore(V).toLocaleString()}</p>${low.length ? `<p class="hint warnt">⚠ The ${low.map(g => esc(g.name)).join(' and ')} shelf${low.length > 1 ? 'ves are' : ' is'} running low.</p>` : ''}${V.paused ? '<p class="hint"><b>Village paused.</b> Nothing changes there until you resume.</p>' : ''}${V.till >= 1 ? `<p class="hint small">${Math.floor(V.till).toLocaleString()}g waiting in the store’s till.</p>` : ''}` : `<p class="hint">Your village is an empty patch of land down the road, waiting for its first cottage.</p>`;
+    if (V && V.b.length) h += V.paused ? `<button class="btn sm" data-vpause>Resume village</button>` : `<button class="btn ghost sm" data-vpause>Pause village</button>`;
     return h + `<button class="btn pri" data-vil-go>Go to the village<small>${S.vilPause === 'always' ? 'Your farm pauses while you’re there' : S.vilPause === 'never' ? 'Your farm keeps running while you’re there' : 'You choose whether your farm pauses'}</small></button>` + moveSection(i) + salvageSection(i); }
   /* ---------- your house panel: decor on display, and growing it ---------- */
   function decoWhere() { const o = [`chairs, tables${unlocked('loom') ? ', bookshelves' : ''}${unlocked('dyeing') ? ', paintings' : ''} and fish trophies at a Carpenter’s Bench (Open Market → Stations)`];

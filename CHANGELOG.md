@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.128 — 2026-11-14
+- Village pause: `S.village.paused` makes `vilTick` return early (no shelf use, mood, arrivals, leaving, feast, market or auto-stock), hides `vLow` warnings and the Village wants panel. Toggle via `data-vpause` in the Town folk drawer and the gate panel. Saved with the village; old saves default to running.
+
 ## v0.127 — 2026-11-13
 - New tool `D.tools.scythe` (act `harvest`, area [0,1,2]). The single-plot harvest body is now `harvestOne(i)`; the `harvest` task harvests the picked plot, then every ripe plot in the tool's square while `room()` fits that crop's yield. Basic is unchanged. Races and the Weekly Challenge get it through the generic `D.tools` (old saves default to level 0).
 
