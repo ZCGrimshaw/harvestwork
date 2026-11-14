@@ -1130,6 +1130,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.128', at: '2026-11-14 16:00', notes: ['You can now pause your village. Open Folk (or the Village Gate) and tap Pause village: shelves stop emptying, the mood is frozen, nobody moves in or leaves, and the low-shelf warnings stay quiet. Tap Resume village when you are ready for it to carry on.'] },
   { v: '0.127', at: '2026-11-13 10:30', notes: ['A new tool: the Scythe, for harvesting. Basic still harvests one plot, but upgrade it at the Homestead (Toolsmithing) and one tap harvests every ripe plot in a 3×3 square (Copper) or a 5×5 square (Gold), as far as your storage has room. Like the Seeder, it works the same in races and the Weekly Challenge.'] },
   { v: '0.126', at: '2026-11-10 16:00', backend: true, notes: ['Anonymous usage counter: a random id and active play time per session, so we can see visits and how long the game is played.'] },
   { v: '0.125', at: '2026-11-10 11:00', notes: ['A new tool: the Seeder. It works like your Watering Can and Hoe. Basic still sows one plot, but upgrade it at the Homestead (Toolsmithing) and one tap sows every tilled plot in a 3×3 square (Copper) or a 5×5 square (Gold) with the seed you picked, as far as your seeds go. The plant button shows how many plots it will sow. It works the same in races and the Weekly Challenge.'] },
