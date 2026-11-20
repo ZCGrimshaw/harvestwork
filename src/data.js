@@ -323,7 +323,12 @@ window.HW_DATA = {
       stages: ['Surveyed plot', 'Foundation', 'Rising galleries', 'Colonnades', 'Complete'],
       stageText: ['Stakes and string mark out a ring on the lawn.', 'The ground storey is up, and it has already started to tilt.',
         'Three galleries high, with the crane lifting marble.', 'All six galleries of arches are done, and the lean is unmistakable.',
-        'The belfry and its bells are on. The Leaning Tower stands finished, still leaning.'] }
+        'The belfry and its bells are on. The Leaning Tower stands finished, still leaning.'] },
+    colosseum: { name: 'The Colosseum',
+      stages: ['Surveyed plot', 'Foundation', 'Arcades', 'Upper tiers', 'Complete'],
+      stageText: ['Stakes and string mark out an oval on the plain.', 'The ground arcade is rising around the arena floor, and the first seats are in.',
+        'Two storeys of arches are up, with the crane lifting travertine and the seating climbing.', 'Three storeys of arches stand and the seats are nearly all in.',
+        'The top storey and the awning masts are done. The Colosseum stands finished and the crowd is in.'] }
   },
 
   // New areas beyond the starting land. Each theme mixes terrain (weights) and brings one new resource.
@@ -1130,6 +1135,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.130', at: '2026-11-20 12:40', notes: ['The next Valley Monument is the Colosseum, and it opens on Sunday, November 22. Four phases of goods for the whole valley to give, and everyone who gives enough earns a model of it for their farm. The Leaning Tower of Pisa stays on the Valley Green until then.'] },
   { v: '0.129', at: '2026-11-20 10:00', notes: ['The trophy case holds more: 9 spots in a starter Cottage (it was 3), 10 in a House, 12 in a Farmhouse and 15 in a Manor. Anything already on your shelves stays where it is.'] },
   { v: '0.128', at: '2026-11-14 16:00', notes: ['You can now pause your village. Open Folk (or the Village Gate) and tap Pause village: shelves stop emptying, the mood is frozen, nobody moves in or leaves, and the low-shelf warnings stay quiet. Tap Resume village when you are ready for it to carry on.'] },
   { v: '0.127', at: '2026-11-13 10:30', notes: ['A new tool: the Scythe, for harvesting. Basic still harvests one plot, but upgrade it at the Homestead (Toolsmithing) and one tap harvests every ripe plot in a 3×3 square (Copper) or a 5×5 square (Gold), as far as your storage has room. Like the Seeder, it works the same in races and the Weekly Challenge.'] },
