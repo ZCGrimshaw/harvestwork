@@ -848,7 +848,83 @@ window.HW_ART = (function () {
     });
     c.ax = cx; c.ay = by; return c;
   }
-  const MONUMENTS = { pyramid, pisa };
+  /* the Colosseum: the third Valley Monument (v0.130) */
+  function colosseum(stage, mode) {
+    const S = mode === 'deco' ? 1 : 3, T = Math.max(1, Math.round(S * .7));
+    const H = 17 * S, rx = 13.2 * S, ry = rx * .4, W = (mode === 'deco' ? 13 : 14) * S, M = 12 * S;
+    const hb = [0, .26, .58, .82, 1][stage] * H, zF = .5 * H;
+    const cx = Math.max(W + 3 * S, mode === 'deco' ? 0 : 16 * S + 1), by = M + H, yRim = by - hb;
+    const w = cx * 2, h = by + W / 2 + (mode === 'big' ? 12 * S : mode === 'site' ? 5 * S : 4);
+    const c = mk(w, h, (g, r0) => {
+      const R = rng(17 + stage), r = (col, x, y, ww = 1, hh = 1) => r0(col, Math.round(x), Math.round(y), Math.max(1, Math.round(ww)), Math.max(1, Math.round(hh)));
+      const ln = (col, x0, y0, x1, y1, t = 1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) r(col, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, t, t); };
+      const each = fn => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) fn(x, y, x + .5, y + .5); };
+      const dia = (x, y, hw, yc) => Math.abs(x - cx) / hw + Math.abs(y - yc) / (hw / 2);
+      if (mode === 'big') {
+        each((x, y, px, py) => { const dx = (px - cx) / (13 * S), dy = (py - (h - 3 * S)) / (2.5 * S); if (dx * dx + dy * dy <= 1) r('rgba(0,0,0,.3)', x, y); });
+        each((x, y, px, py) => { const hw = 16 * S;
+          if (dia(px, py, hw, by) <= 1) r((x * 7 + y * 13) % 13 === 0 ? '#efe6cc' : '#e3d9ba', x, y);
+          else if (py > by && dia(px, py - 3 * S, hw, by) <= 1) r(px < cx ? '#b9ad88' : '#958a6a', x, y);
+          else if (py > by && dia(px, py - 4 * S, hw, by) <= 1 && Math.abs(px - cx) < 14 * S && (x >> 1) % 3) r('#f6d24a', x, y); });
+      } else if (mode === 'site') {
+        each((x, y, px, py) => { const hw = 16 * S - 2, d = dia(px, py, hw, by);
+          if (d <= 1) r(d > .9 ? '#efe7d0' : (x * 5 + y * 11) % 17 === 0 ? '#d3c9a6' : '#e0d6b8', x, y);
+          else if (py > by && dia(px, py - 3, hw, by) <= 1) r(px < cx ? '#b2a784' : '#8f8567', x, y); });
+      } else each((x, y, px, py) => { const dx = (px - cx - 2) / (12 * S), dy = (py - by - S) / (4 * S); if (dx * dx + dy * dy <= 1) r('rgba(30,20,10,.25)', x, y); });
+      const blocks = (sx, sy) => [[0, 0], [3, 0], [1.5, -2], [6, 1]].forEach(([a, b]) => { r('#ece0bc', sx + a * S, sy + b * S, 3 * S, 2 * S); r('#bfa77a', sx + a * S, sy + (b + 1.5) * S, 3 * S, T); });
+      if (stage === 0) {
+        const n = 12, pts = []; for (let k = 0; k < n; k++) { const a = k / n * 6.283; pts.push([cx + Math.cos(a) * rx * 1.1, by + Math.sin(a) * ry * 1.1]); }
+        for (let k = 0; k < n; k++) { const a = pts[k], b = pts[(k + 1) % n]; ln('#f2ece0', a[0], a[1] - 3 * S, b[0], b[1] - 3 * S); }
+        pts.forEach(p => { r('#7a4b28', p[0], p[1] - 5 * S, T, 6 * S); r('#c23a3a', p[0] - 1, p[1] - 5 * S, 3 * T, 2 * T); });
+        r('#7a4b28', cx - S, by + S, T, 5 * S); r('#e8dcb8', cx - 5 * S, by - 4 * S, 10 * S, 6 * S); r('#7a4b28', cx - 5 * S, by - 4 * S, 10 * S, Math.max(1, S * .6));
+        ln('#7a4b28', cx - 3 * S, by - 2 * S, cx + 3 * S, by - 2 * S); ln('#7a4b28', cx - 3 * S, by, cx + S, by);
+        blocks(cx - 9 * S, by + 4 * S); return; }
+      const cols = S > 1 ? 22 : 14, tiers = [0, .30, .58, .82, 1].map(v => v * H);
+      const facade = (dx, z) => {
+        const t = (dx / rx + 1) / 2, base = mixc('#f2e4bc', '#a8946a', Math.pow(t, 1.25));
+        let k = 0; while (k < 3 && z >= tiers[k + 1]) k++;
+        const tb = tiers[k], th = tiers[k + 1] - tb, v = (z - tb) / th;
+        const a = Math.asin(Math.max(-1, Math.min(1, dx / rx))), fr = ((a / (Math.PI * 2 / cols)) % 1 + 1) % 1;
+        if (z < 1) return shade(base, .78);
+        if (v < .09 && k > 0) return v < .04 ? shade(base, .8) : shade(base, 1.06);
+        if (k === 3) { if (fr > .36 && fr < .64 && v > .3 && v < .72) return mixc('#5a4a38', '#3a2e22', t); return R() < .06 ? shade(base, .94) : base; }
+        if (fr > .16 && fr < .84) { const qq = (fr - .16) / .68, arch = (k === 0 ? .66 : k === 1 ? .62 : .56) + .2 * Math.sqrt(Math.max(0, 1 - (2 * qq - 1) ** 2));
+          if ((k === 0 || v > .1) && v < arch) return mixc('#6a5842', '#3d3024', t); }
+        if (fr < .16) return shade(base, 1.05);
+        return R() < .06 ? shade(base, .94) : base; };
+      const slice = z => { const yc = by - z; for (let dx = -rx; dx <= rx; dx++) { const hy = ry * Math.sqrt(Math.max(0, 1 - (dx / rx) ** 2)), cl = facade(dx, z);
+        for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) r(cl, cx + dx, yc + yy); } };
+      for (let z = 0; z <= Math.floor(hb); z++) slice(z);
+      for (let dx = -rx; dx <= rx; dx++) { const hy = ry * Math.sqrt(Math.max(0, 1 - (dx / rx) ** 2)); // top of the wall
+        for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) r(hy - Math.abs(yy) < 1 ? '#cdbd96' : stage === 4 ? ((dx + yy) & 7 ? '#ebdfbd' : '#d9c9a0') : ((dx + yy) & 3 ? '#d6c8a2' : '#bfb08a'), cx + dx, yRim + yy); }
+      const fillE = (fr, shift, colFn) => { const yc = yRim + shift;
+        for (let dx = -Math.floor(rx * fr); dx <= rx * fr; dx++) { const hy = ry * fr * Math.sqrt(Math.max(0, 1 - (dx / (rx * fr)) ** 2));
+          for (let yy = -Math.floor(hy); yy <= Math.floor(hy); yy++) { const py = yc + yy; if ((dx / (.86 * rx)) ** 2 + ((py - yRim) / (.86 * ry)) ** 2 > 1) continue; r(colFn(dx, yy, py), cx + dx, py); } } };
+      fillE(.86, 0, (dx, yy, py) => { const cl = mixc('#cdb98c', '#8f7c58', (dx / rx + 1) / 2 * .8); return Math.round(py) % 3 === 0 ? shade(cl, .93) : cl; });
+      const K = 6, zTop = H - 1.5 * S, crowd = ['#c23a3a', '#3d6fb8', '#f0d35a', '#f2ece0'];
+      for (let k = 0; k < K; k++) { const fr = .84 - k * .07, zk = zTop - k * (zTop - zF) / K; if (zk > hb - 1) continue;
+        fillE(fr, hb - zk, (dx, yy) => { const ang = Math.atan2(yy / (ry * fr), dx / (rx * fr)), aisle = Math.abs((((ang / (Math.PI / 14)) % 1) + 1) % 1 - .5) > .46;
+          if (stage === 4 && R() < .08 && !aisle) return crowd[Math.floor(R() * 4)];
+          const cl = k % 2 ? '#dccb9e' : '#c9b688'; return aisle ? shade(cl, .82) : shade(cl, dx < 0 ? 1.04 : .96); }); }
+      fillE(.44, hb - zF, (dx, yy) => { const e = (dx / (.44 * rx)) ** 2 + (yy / (.44 * ry)) ** 2; return e > .78 ? '#c9a96a' : R() < .05 ? '#d9bb7c' : '#e9cf92'; });
+      if (stage === 4) { [[-3, 1], [2, -1]].forEach(([a, b]) => { r('#c23a3a', cx + a * S, yRim + (hb - zF) + b * S - S, T, 2 * T); r('#3d6fb8', cx + a * S + 2 * S, yRim + (hb - zF) + b * S, T, 2 * T); }); }
+      if (stage >= 1 && stage <= 3) {
+        const hh = (stage === 3 ? .5 : 1) * (hb + 5 * S), poles = [[cx - rx - 2 * S, by + .5 * S], [cx + S, by + ry + 2 * S], [cx + rx + 2 * S, by + .5 * S]];
+        poles.forEach(p => r('#7a4b28', p[0], p[1] - hh, T, hh));
+        for (let z = 3 * S; z < hh; z += 6 * S) { ln('#c99b5a', poles[0][0], poles[0][1] - z, poles[1][0], poles[1][1] - z, T); ln('#a8743e', poles[1][0], poles[1][1] - z, poles[2][0], poles[2][1] - z, T); }
+        if (stage < 3) { const ax = cx - rx * .55, ay = yRim - S;
+          r('#7a4b28', ax, ay - 9 * S, T + (S > 1 ? 1 : 0), 9 * S); ln('#9a6a3c', ax, ay - 9 * S, ax + 9 * S, ay - 6 * S, T); ln('#f2ece0', ax + 8 * S, ay - 6 * S, ax + 8 * S, ay - S, 1);
+          r('#ece0bc', ax + 6.5 * S, ay - S, 3 * S, 2 * S); r('#bfa77a', ax + 6.5 * S, ay + .5 * S, 3 * S, T); }
+        blocks(cx + W - 5 * S, by + W / 2 - 4 * S); }
+      if (stage === 4) {
+        for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, x = cx + Math.cos(a) * rx * .93, y = yRim + Math.sin(a) * ry * .93;
+          r('#7a4b28', x, y - 5 * S, T, 5 * S); r(k % 2 ? '#f2ece0' : '#c23a3a', x + T, y - 5 * S, 3 * S * .8, 2 * S * .7); }
+        [[cx - W + 2 * S, by + .6 * S, '#c23a3a'], [cx + W - 2 * S, by + .6 * S, '#f2ece0']].forEach(([x, y, col]) => { r('#7a4b28', x, y - 10 * S, T, 10 * S); for (let i = 0; i < 4 * S; i++) r(col, x + T, y - 10 * S + i, Math.max(1, (4 * S - i) * 1.1), 1); });
+        for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28, rr = (5 + R() * 4) * S; r(k % 3 ? '#fff3b0' : '#f6d24a', cx + Math.cos(a) * rr * 1.5, by - H * .8 + Math.sin(a) * rr * .8, T, T); } }
+    });
+    c.ax = cx; c.ay = by; return c;
+  }
+  const MONUMENTS = { pyramid, pisa, colosseum };
   function monument(kind, stage, mode) { return (MONUMENTS[kind] || pyramid)(Math.max(0, Math.min(4, stage | 0)), mode); }
   // the Monument Depot: an open wooden shed with an awning; crates pile up in front as you give
   /* ---------- the village (v0.106) ---------- */
