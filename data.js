@@ -663,10 +663,10 @@ window.HW_DATA = {
     build: { gold: 400, plank: 20, brick: 10 },
     move: { gold: 120, plank: 4 }, // moving it (Rollers & Skids) costs this for every size it has reached, plus the usual surcharge after recent moves
     levels: [
-      { name: 'Cottage', w: 1, h: 1, slots: 3, trophy: 3 },
-      { name: 'House', w: 1, h: 2, slots: 6, trophy: 5, cost: { gold: 1500, plank: 30, brick: 24 } },
-      { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 8, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
-      { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 12, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
+      { name: 'Cottage', w: 1, h: 1, slots: 3, trophy: 9 },
+      { name: 'House', w: 1, h: 2, slots: 6, trophy: 10, cost: { gold: 1500, plank: 30, brick: 24 } },
+      { name: 'Farmhouse', w: 2, h: 2, slots: 10, trophy: 12, cost: { gold: 4000, plank: 40, brick: 40, roof_tile: 20 } },
+      { name: 'Manor', w: 2, h: 3, slots: 15, trophy: 15, cost: { gold: 10000, brick: 80, roof_tile: 40, glass: 24 } }
     ],
     /* Inside the house ("Go inside"): a room you decorate, separate from the size of the house outside. The floor is n×n cells with
        two back walls of n spots each. Every house starts at the first size; the rest are paid upgrades that get steep on purpose,
@@ -1130,6 +1130,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.129', at: '2026-11-20 10:00', notes: ['The trophy case holds more: 9 spots in a starter Cottage (it was 3), 10 in a House, 12 in a Farmhouse and 15 in a Manor. Anything already on your shelves stays where it is.'] },
   { v: '0.128', at: '2026-11-14 16:00', notes: ['You can now pause your village. Open Folk (or the Village Gate) and tap Pause village: shelves stop emptying, the mood is frozen, nobody moves in or leaves, and the low-shelf warnings stay quiet. Tap Resume village when you are ready for it to carry on.'] },
   { v: '0.127', at: '2026-11-13 10:30', notes: ['A new tool: the Scythe, for harvesting. Basic still harvests one plot, but upgrade it at the Homestead (Toolsmithing) and one tap harvests every ripe plot in a 3×3 square (Copper) or a 5×5 square (Gold), as far as your storage has room. Like the Seeder, it works the same in races and the Weekly Challenge.'] },
   { v: '0.126', at: '2026-11-10 16:00', backend: true, notes: ['Anonymous usage counter: a random id and active play time per session, so we can see visits and how long the game is played.'] },
