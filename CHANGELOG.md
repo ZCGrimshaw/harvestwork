@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.129 — 2026-11-20
+- Trophy case slots per house size (`D.house.levels[].trophy`): Cottage 9, House 10, Farmhouse 12, Manor 15 (were 3, 5, 8, 12). Nothing shrinks; saved shelves are untouched.
+
 ## v0.128 — 2026-11-14
 - Village pause: `S.village.paused` makes `vilTick` return early (no shelf use, mood, arrivals, leaving, feast, market or auto-stock), hides `vLow` warnings and the Village wants panel. Toggle via `data-vpause` in the Town folk drawer and the gate panel. Saved with the village; old saves default to running.
 
