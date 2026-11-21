@@ -12,7 +12,7 @@
 
   let S = null;                                   // the whole saveable game state
   const UI = { cat: Object.assign({ buy: 'all', sell: 'all', inv: 'all', disc: 'all' }, (() => { try { return JSON.parse(localStorage.getItem('harvestworks.tabs')) || {}; } catch (e) { return {}; } })()), catShow: {}, yaw: 0, yawTo: null, tilt: 1, stick: null, sel: -1, hover: -1, drawer: null, mtab: 'buy', fert: false, confirmReset: false,
-               floats: [], parts: [], labels: false, sq: {}, mq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
+               floats: [], parts: [], labels: false, sq: {}, bq: {}, mq: {}, hcrop: null, hrec: null, dirty: true, saveIn: 8, savedAt: 0, html: {}, goalsOpen: true, smokeT: 0 };
   const cam = { u: 0, v: 80, z: 1.6 };
   // Phones: a narrow screen (portrait) or a short one (landscape), driven by touch.
   const mq = q => window.matchMedia && window.matchMedia(q).matches;
@@ -2712,7 +2712,10 @@
       const list = Object.keys(D.items).filter(canBuyItem).filter(mHit);
       if (!list.length && mQ()) h += `<p class="nomatch">Nothing to buy matches “${esc(UI.msearch.trim())}”.</p>`;
       h += chips('buy', groupCounts(list));
-      h += grouped(list, 'buy', id => `<div class="trade">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${buyPrice(id)}g each ${moveTag(id)}${seasonTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}</div>`);
+      h += grouped(list, 'buy', id => { const pr = buyPrice(id), v = Math.max(1, UI.bq[id] || 10);
+        return `<div class="trade sell">${ico(id)}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>${pr}g each ${moveTag(id)}${seasonTag(id)} · have ${count(id)}</small>${useHint(id) ? `<small class="use">${esc(useHint(id))}</small>` : ''}</div>
+          <div class="sellctl">${btn({ a: 'buy', i, p: id, n: 1 }, '×1', { cls: 'sm' })}${btn({ a: 'buy', i, p: id, n: 5 }, '×5', { cls: 'sm' })}
+          <span class="qtybox"><input type="number" class="qty" id="bq-${id}" data-bq="${id}" data-price="${pr}" min="1" step="1" value="${v}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to buy"><button class="btn sm pri" data-buyqty="${id}" data-i="${i}">Buy · <span data-bqtotal="${id}">${pr * v}</span>g</button></span></div></div>`; });
       h += `<p class="hint">Any good you've made at least once is sold here too, at about ${RESALE}× its normal value, always Normal quality. Every purchase nudges the price up for everyone; every sale nudges it down.</p>`;
       const locked = Object.keys(D.items).filter(id => D.items[id].buy && D.items[id].cat !== 'kit' && !unlocked(D.items[id].requires));
       if (locked.length) h += `<p class="hint">More through Discovery: ${locked.map(id => esc(D.items[id].name)).join(', ')}.</p>`;
@@ -4209,6 +4212,8 @@
         if (kit && !S.market.offers.includes(kit)) { S.market.offers.unshift(kit); S.market.offers = S.market.offers.slice(0, C.marketOffers); }
         UI.bounds = null; SND.play('discover');
         toast(`<b>Unlocked ${esc(d.name)}.</b> ${esc(d.text)} <span class="where">${esc(d.where)}</span>`, 'disc'); emit('unlock'); save(); } }
+    else if (ds.buyqty) { const inp = document.querySelector(`[data-bq="${ds.buyqty}"]`), n = Math.max(1, Math.min(9999, parseInt(inp && inp.value, 10) || 1)); UI.bq[ds.buyqty] = n; if (inp) inp.blur();
+      queueTask({ a: 'buy', i: +ds.i, p: ds.buyqty, n }); }
     else if (ds.sellqty) { const [id, q] = ds.sellqty.split(':'), inp = document.querySelector(`[data-sq="${ds.sellqty}"]`);
       const max = +inp.dataset.max, n = Math.max(1, Math.min(max, parseInt(inp.value, 10) || 1)); UI.sq[ds.sellqty] = n; inp.blur();
       queueTask({ a: 'sell', i: +ds.i, p: id, q: +q, n }); }
@@ -4370,7 +4375,7 @@
     if (e.target.dataset && e.target.dataset.repn) { const b = S.tiles[+e.target.dataset.repn].b; if (b) { const n = +e.target.value; b.repN = n > 0 ? n : null;
       if (b.repN && (b.repDone || 0) >= b.repN) { b.rep = null; b.repN = null; b.repDone = 0; toast('Already repeated that many times, so Repeat is off.', 'info'); } save(); dirty(); } return; }
     if (id === 'fert') { UI.fert = e.target.checked; dirty(); } else if (id === 'hcrop') UI.hcrop = e.target.value; else if (id === 'hrec') UI.hrec = e.target.value; });
-  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lbname') { claimName(e.target.value.trim()); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.mq) { const b = document.querySelector(`[data-mon-give="${e.target.dataset.mq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sq) { const b = document.querySelector(`[data-sellqty="${e.target.dataset.sq}"]`); if (b) b.click(); return; } if (e.key === 'Enter' && e.target.dataset && e.target.dataset.bq) { const b = document.querySelector(`[data-buyqty="${e.target.dataset.bq}"]`); if (b) b.click(); } });
   document.addEventListener('input', e => {
     if (e.target.id === 'msearch') { UI.msearch = e.target.value; const l = $('#mlist'); if (l) { l.innerHTML = marketBody(+e.target.dataset.i); if (isTouch()) l.innerHTML = l.innerHTML.replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap'); UI.html['#panel'] = null; } return; }
     if (e.target.id === 'manq') { UI.manQ = e.target.value; UI.manOpen = null; const r = $('#manres'); if (r) r.innerHTML = manualList(); return; }
@@ -4388,7 +4393,8 @@
       return; } if (e.target.id === 'pname') { S.name = e.target.value.trim() || 'Farmer'; renderTop(); }
     if (e.target.dataset && e.target.dataset.mq) { UI.mq[e.target.dataset.mq] = Math.max(1, parseInt(e.target.value, 10) || 1); return; }
     const sq = e.target.dataset && e.target.dataset.sq; if (sq) { const max = +e.target.dataset.max, n = Math.max(1, Math.min(max, parseInt(e.target.value, 10) || 1));
-      UI.sq[sq] = n; const out = document.querySelector(`[data-sqtotal="${sq}"]`); if (out) out.textContent = n * +e.target.dataset.price; } });
+      UI.sq[sq] = n; const out = document.querySelector(`[data-sqtotal="${sq}"]`); if (out) out.textContent = n * +e.target.dataset.price; }
+    const bq = e.target.dataset && e.target.dataset.bq; if (bq) { const n = Math.max(1, Math.min(9999, parseInt(e.target.value, 10) || 1)); UI.bq[bq] = n; const out = document.querySelector(`[data-bqtotal="${bq}"]`); if (out) out.textContent = n * +e.target.dataset.price; } });
   function centerOn(i) { const [vx, vy] = view(tx(i), ty(i)); cam.u = isoU(vx, vy); cam.v = isoV(vx, vy); }
 
   /* ================= loop ================= */
@@ -4448,7 +4454,7 @@
      When hosted as static files, a newer build may go live while someone is playing. Every few minutes
      the game reads version.json next to it; if the build differs, a banner offers a reload. It never
      reloads on its own, and saving first means nothing is lost. Missing file or offline = silently skip. */
-  const BUILD = '20261120-201611';
+  const BUILD = '20261121-181831';
   async function checkForUpdate() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

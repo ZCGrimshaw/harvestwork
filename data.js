@@ -1135,6 +1135,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.131', at: '2026-11-21 11:40', notes: ['Buy any amount at the market: every item on the Buy tab now has a number box next to ×1 and ×5. Type how many you want, see the total price, and tap Buy (Enter works too).'] },
   { v: '0.130', at: '2026-11-20 12:40', notes: ['The next Valley Monument is the Colosseum, and it opens on Sunday, November 22. Four phases of goods for the whole valley to give, and everyone who gives enough earns a model of it for their farm. The Leaning Tower of Pisa stays on the Valley Green until then.'] },
   { v: '0.129', at: '2026-11-20 10:00', notes: ['The trophy case holds more: 9 spots in a starter Cottage (it was 3), 10 in a House, 12 in a Farmhouse and 15 in a Manor. Anything already on your shelves stays where it is.'] },
   { v: '0.128', at: '2026-11-14 16:00', notes: ['You can now pause your village. Open Folk (or the Village Gate) and tap Pause village: shelves stop emptying, the mood is frozen, nobody moves in or leaves, and the low-shelf warnings stay quiet. Tap Resume village when you are ready for it to carry on.'] },
