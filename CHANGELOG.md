@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.131 — 2026-11-21
+- Market Buy tab: each row gets a quantity box (`UI.bq`, `data-bq`) with a live total and a Buy button (`data-buyqty`, Enter key too), alongside ×1 and ×5. It queues the existing `buy` task with `n` (1–9999); the task's own check still reports not enough gold or room. Station kits keep their single price button. Test: t_buyx.py.
+
 ## v0.130 — 2026-11-20
 - Third Valley Monument: The Colosseum (`kind: 'colosseum'`). Art: `colosseum(stage, mode)` in art.js, an oval of three arcade storeys plus an attic painted as stacked elliptical slices, with a bowl cut into the top (inner wall, six rings of seats dropping to a sand arena), scaffolding and crane while it rises, and at Complete a crowd, awning masts with pennants and banners. Same modes and footprint as the other monuments (`big`, `site`, `deco`). data.js `monuments.colosseum`.
 - Server row (inserted after the game update is live; `hw_mon_current` only returns rows whose `starts_at` has passed, so it stays hidden until Sunday): `colosseum-1`, starts Sun 2026-11-22 00:00 Pacific, 21 days, 35,000 points in four phases (Foundation 10,000: stone, brick, sand, clay, charcoal; Arcades 9,000: timber, iron, gears, tiles, baskets; Seating and feasts 8,000: bread, cheese, pizza, ale, pies and cakes; Games and awning 8,000: cloth, rugs, lamps, paintings, fine goods). Points per good equal item value, cap 800 a day, keep_min 150, as for Pisa.
