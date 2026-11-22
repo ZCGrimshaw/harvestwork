@@ -644,12 +644,14 @@ window.HW_DATA = {
     hive:      { name: 'Beehive', kind: 'station', slots: 2, place: { plank: 3 }, desc: 'Bees make honey on their own. Load a batch to collect it.' },
     shed:      { name: 'Mushroom Shed', kind: 'station', slots: 2, place: { log: 4 }, desc: 'Grows mushrooms on old logs in the dark.' },
     smokehouse:{ name: 'Smokehouse', yard: 'yard_wood', kind: 'station', slots: 2, place: { brick: 4, plank: 2 }, desc: 'Smokes fish over charcoal.' },
-    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, perArea: 2, place: { plank: 4 }, desc: 'Adds 40 storage. Two per area you own.' },
-    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage. One per area you own.' },
-    // special stores: hold one kind of goods apart from main storage (hold.cls, see storeKinds); expandable up to hold.max times; expansions past hold.mega add double (mega expansions)
-    silo:       { name: 'Silo', kind: 'storage', hold: { cls: 'silo', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 8, stone: 6 }, desc: 'Holds your crops, flour and malt apart from main storage. One per area you own.' },
-    coldcellar: { name: 'Cold Cellar', kind: 'storage', hold: { cls: 'coldcellar', base: 200, step: 120, max: 8, mega: 4 }, place: { brick: 12, stone: 8 }, desc: 'Keeps eggs, milk and all your food and drink (cooked, baked, preserved or brewed) apart from main storage. One per area you own.' },
-    yard:       { name: 'Material Yard', kind: 'storage', hold: { cls: 'yard', base: 250, step: 150, max: 8, mega: 4 }, place: { plank: 10, fence_kit: 2 }, desc: 'Stacks logs, stone, ore, clay, wool, building parts and finished crafts (cloth, pots, baskets, tools, glass, gems) apart from main storage. One per area you own.' },
+    barn:      { name: 'Storage Barn', kind: 'storage', storage: 40, perArea: 2, place: { plank: 4 }, desc: 'Adds 40 storage, up to 100 when upgraded. Two per area you own.',
+               up: { levels: [40, 70, 100], cost: [{ gold: 400, plank: 12 }, { gold: 1200, plank: 24, crate: 8 }] } },
+    warehouse: { name: 'Warehouse', kind: 'storage', storage: 120, place: { brick: 10, gear: 2 }, desc: 'Adds 120 storage, up to 500 when upgraded. One per area you own.',
+               up: { levels: [120, 200, 320, 500], cost: [{ gold: 1500, brick: 20, gear: 6 }, { gold: 4500, brick: 40, gear: 14 }, { gold: 12000, brick: 70, gear: 28 }] } },
+    // special stores: hold one kind of goods apart from main storage (hold.cls, see storeKinds); expandable up to hold.max times; expansions past hold.mega add double (mega expansions) and past hold.sup add triple (super expansions). Barns and warehouses upgrade through `up` (levels = storage at each level, cost = price of each step)
+    silo:       { name: 'Silo', kind: 'storage', hold: { cls: 'silo', base: 250, step: 150, max: 12, mega: 4, sup: 8 }, place: { plank: 8, stone: 6 }, desc: 'Holds your crops, flour and malt apart from main storage. One per area you own.' },
+    coldcellar: { name: 'Cold Cellar', kind: 'storage', hold: { cls: 'coldcellar', base: 200, step: 120, max: 12, mega: 4, sup: 8 }, place: { brick: 12, stone: 8 }, desc: 'Keeps eggs, milk and all your food and drink (cooked, baked, preserved or brewed) apart from main storage. One per area you own.' },
+    yard:       { name: 'Material Yard', kind: 'storage', hold: { cls: 'yard', base: 250, step: 150, max: 12, mega: 4, sup: 8 }, place: { plank: 10, fence_kit: 2 }, desc: 'Stacks logs, stone, ore, clay, wool, building parts and finished crafts (cloth, pots, baskets, tools, glass, gems) apart from main storage. One per area you own.' },
     smelter:   { name: 'Smelter', yard: 'yard_heap:0', kind: 'station', slots: 2, place: { brick: 6, stone: 4 }, desc: 'Melts copper ore into ingots.' },
     dyevat:    { name: 'Dye Vat', yard: 'yard_barrels', kind: 'station', slots: 2, place: { plank: 4, stone: 2 }, desc: 'Boils wildflowers into dye, and dyes linen into fine cloth.' },
     potter:    { name: 'Potter’s Wheel', yard: 'yard_heap:2', kind: 'station', slots: 2, place: { plank: 3, stone: 3 }, desc: 'Throws clay into pots.' },
@@ -1135,6 +1137,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.132', at: '2026-11-21 18:20', notes: ['More room, from a suggestion by Joel. Silos, Cold Cellars and Material Yards that are fully expanded can now be expanded 4 more times with Super expansions, each adding triple the usual step (a Silo goes from 2,050 up to 3,850). Warehouses can now be upgraded 3 times (120 up to 500 each) and Storage Barns twice (40 up to 100 each). Open the building to upgrade it.'] },
   { v: '0.131', at: '2026-11-21 11:40', notes: ['Buy any amount at the market: every item on the Buy tab now has a number box next to ×1 and ×5. Type how many you want, see the total price, and tap Buy (Enter works too).'] },
   { v: '0.130', at: '2026-11-20 12:40', notes: ['The next Valley Monument is the Colosseum, and it opens on Sunday, November 22. Four phases of goods for the whole valley to give, and everyone who gives enough earns a model of it for their farm. The Leaning Tower of Pisa stays on the Valley Green until then.'] },
   { v: '0.129', at: '2026-11-20 10:00', notes: ['The trophy case holds more: 9 spots in a starter Cottage (it was 3), 10 in a House, 12 in a Farmhouse and 15 in a Manor. Anything already on your shelves stays where it is.'] },
