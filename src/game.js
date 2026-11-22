@@ -153,13 +153,15 @@
   function homeCost(l) { if (l < nList()) return D.homeUpgrades[l]; const k = l - nList();
     return { gold: Math.round(G_().gold * Math.pow(G_().goldMult, k + 1) / 10) * 10, brick: G_().brick + G_().brickStep * (k + 1), crate: G_().crate + G_().crateStep * (k + 1) }; }
   const homeGate = l => D.homeGate[Math.min(l, D.homeGate.length - 1)];
-  const extraCap = () => S.tiles.reduce((n, t) => n + (t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage || 0), 0);
+  const storeOf = b => { const B = D.buildings[b.type]; return B.up ? B.up.levels[Math.min(b.lvl || 0, B.up.levels.length - 1)] : (B.storage || 0); };
+  const extraCap = () => S.tiles.reduce((n, t) => n + (t.b && D.buildings[t.b.type] && D.buildings[t.b.type].storage ? storeOf(t.b) : 0), 0);
   /* Special stores (Silo, Cold Cellar, Material Yard) hold one kind of goods each, outside main storage: goods of that
      kind fill their stores first and only the overflow counts against cap(). */
   const SK = D.storeKinds, CROP_IDS = new Set(Object.values(D.crops).map(c => c.item));
   const storeKind = (() => { const m = {}, named = new Set(Object.values(SK).flatMap(K => K.ids || [])); Object.keys(D.items).forEach(id => { const it = D.items[id];
     for (const k in SK) { const K = SK[k]; if ((K.ids || []).includes(id) || (!named.has(id) && ((K.crops && CROP_IDS.has(id)) || (K.cats || []).includes(it.cat)))) { m[id] = k; break; } } }); return id => m[id] || null; })();
-  const holdAt = (H, lv) => H.base + H.step * Math.min(lv, H.mega == null ? lv : H.mega) + (H.mega == null ? 0 : H.step * 2 * Math.max(0, lv - H.mega)); // expansions past H.mega are mega: double the step
+  const holdAt = (H, lv) => { const sup = H.sup == null ? Infinity : H.sup, mg = H.mega == null ? Infinity : H.mega; return H.base + H.step * Math.min(lv, mg) + H.step * 2 * Math.max(0, Math.min(lv, sup) - mg) + H.step * 3 * Math.max(0, lv - sup); }; // expansions past H.mega are mega: double the step
+  const upStep = b => { const B = D.buildings[b.type]; return B.hold ? storeCost(b.lvl || 0) : B.up.cost[b.lvl || 0]; };
   const holdOf = b => { const H = D.buildings[b.type].hold; return H ? holdAt(H, b.lvl || 0) : 0; };
   let HC = { at: -1, S: null, v: null }; // used() runs often; the tile scan is cached for a tenth of a second
   function holdCaps() { const now = performance.now(); if (HC.S === S && now - HC.at < 100) return HC.v;
@@ -185,7 +187,7 @@
     if (Date.now() - (UI.autoToastAt || 0) > 120000) { const L = Object.entries(A.n).sort((a, b) => b[1] - a[1]); UI.autoToastAt = Date.now(); UI.autoAcc = null; // at most one note every two minutes
       toast(`<b>Auto-sold</b> ${esc(nmList(L.slice(0, 3).map(([id, k]) => `${k.toLocaleString()} ${D.items[id].name}`)))}${L.length > 3 ? ` and ${L.length - 3} more` : ''} for <b>${A.gold.toLocaleString()}g</b>.`, 'info'); }
     save(); dirty(); }
-  function storeCost(l) { const U = D.storeUp; return { gold: Math.round(U.gold * Math.pow(U.goldMult, l) / 50) * 50, brick: U.brick + U.brickStep * l, crate: U.crate + U.crateStep * l }; }
+  function storeCost(l) { const U = D.storeUp, g = l <= 8 ? U.gold * Math.pow(U.goldMult, l) : U.gold * Math.pow(U.goldMult, 8) * Math.pow(1.45, l - 8); return { gold: Math.round(g / 50) * 50, brick: U.brick + U.brickStep * l, crate: U.crate + U.crateStep * l }; }
   const cap = () => homeCap(S.home) + extraCap();
 
   /* ================= inventory ================= */
@@ -1583,8 +1585,8 @@
         if (S.gold < c) return `Needs ${c}g (have ${S.gold}g)`; if (storable(t.p) && room() < t.n) return FULL; return null; },
       run: t => { const c = buyPrice(t.p) * t.n; S.gold -= c; wk().spent += c; addItem(t.p, t.n, 0, true); float(t.i, `-${c}g`, '#ffb3a0'); reportTrade(t.p, t.n, 'buy'); emit('buy'); } },
     storeup: { label: t => `Expand the ${D.buildings[T_(t.i).b.type].name}`,
-      check: t => { const b = T_(t.i).b, B = b && D.buildings[b.type]; if (!B || !B.hold) return 'Not a store'; if ((b.lvl || 0) >= B.hold.max) return 'Fully expanded'; return canPay(storeCost(b.lvl || 0)); },
-      run: t => { const b = T_(t.i).b; pay(storeCost(b.lvl || 0)); b.lvl = (b.lvl || 0) + 1; HC.at = -1; float(t.i, `Holds ${holdOf(b)}`, '#f6e27a'); gainScore(C.score.build, t.i); emit('build', { st: b.type }); } },
+      check: t => { const b = T_(t.i).b, B = b && D.buildings[b.type]; if (!B || !(B.hold || B.up)) return 'Not a store'; if ((b.lvl || 0) >= (B.hold ? B.hold.max : B.up.levels.length - 1)) return 'Fully expanded'; return canPay(upStep(b)); },
+      run: t => { const b = T_(t.i).b; pay(upStep(b)); b.lvl = (b.lvl || 0) + 1; HC.at = -1; float(t.i, D.buildings[b.type].hold ? `Holds ${holdOf(b)}` : `Adds ${storeOf(b)}`, '#f6e27a'); gainScore(C.score.build, t.i); emit('build', { st: b.type }); } },
     sell: { label: t => `Sell ${t.n} ${D.items[t.p].name}`, check: t => D.items[t.p].keep ? 'A keepsake: it can’t be sold.' : (S.inv[t.p] || [0, 0, 0])[t.q] >= t.n ? null : 'Not enough in storage',
       run: t => { const g = sellPrice(t.p, t.q) * t.n; S.inv[t.p][t.q] -= t.n; S.gold += g; wk().sold += g; float(t.i, `+${g}g`, '#f6e27a'); reportTrade(t.p, t.n, 'sell');
         gainScore(g / C.score.sellPer, t.i, 'sell'); first('sell', C.firsts.sell, 'First sale at the market'); emit('sell'); } },
@@ -2797,9 +2799,12 @@
       h += `<div class="row"><div class="grow1">All your ${esc(K.name)}: <b>${Math.min(inIt, tot)}</b> of ${tot} in ${B.name}${tot > holdOf(b) ? 's' : ''}${inIt > tot ? ` · ${inIt - tot} more in main storage` : ''}<div class="pb"><i style="width:${tot ? Math.min(100, Math.round(inIt / tot * 100)) : 0}%"></i></div></div></div>`;
       const goods = Object.keys(S.inv).filter(id => storeKind(id) === H.cls && count(id) > 0).sort((x, y) => count(y) - count(x));
       h += goods.length ? `<div class="storelist"><p class="state"><b>What’s here</b> (${goods.length} kind${goods.length === 1 ? '' : 's'})</p><div class="invgrid">${goods.map(id => `<div class="slot" title="${esc(D.items[id].name)}">${ico(id, 'big')}<div><b>${esc(D.items[id].name)}</b><small>${[0, 1, 2].filter(q => S.inv[id][q]).map(q => `${S.inv[id][q]} ${QN[q]}`).join(' · ')}</small></div></div>`).join('')}</div></div>` : `<p class="hint">Nothing stored yet.</p>`;
-      h += lv < H.max ? btn({ a: 'storeup', i }, `${lv >= (H.mega == null ? H.max : H.mega) ? 'Mega expand' : 'Expand'}: ${holdOf(b)} → ${holdAt(H, lv + 1)}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
+      h += lv < H.max ? btn({ a: 'storeup', i }, `${lv >= (H.sup == null ? H.max : H.sup) ? 'Super expand' : lv >= (H.mega == null ? H.max : H.mega) ? 'Mega expand' : 'Expand'}: ${holdOf(b)} → ${holdAt(H, lv + 1)}`, { cls: 'pri', sub: costTxt(storeCost(lv)) }) : `<p class="hint">Fully expanded.</p>`;
       return h + `<p class="hint small">${esc(K.name.charAt(0).toUpperCase() + K.name.slice(1))} go here first; only what doesn’t fit takes space in main storage. Everything is still shared, so stations and orders use it as usual.</p>` + moveSection(i) + salvageSection(i); }
-    return head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${B.storage}</b> to your storage. Total now: ${used()} of ${cap()} used.</p><p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i) + salvageSection(i);
+    const ul = b.lvl || 0, top = B.up ? B.up.levels.length - 1 : 0;
+    let sh = head(B.name, esc(B.desc)) + `<p class="state">Adds <b>${storeOf(b)}</b> to your storage${B.up && ul ? ` (upgraded ${ul} of ${top} times)` : ''}. Total now: ${used()} of ${cap()} used.</p>`;
+    if (B.up) sh += ul < top ? btn({ a: 'storeup', i }, `Upgrade: ${storeOf(b)} → ${B.up.levels[ul + 1]}`, { cls: 'pri', sub: costTxt(B.up.cost[ul]) }) : `<p class="hint">Fully upgraded.</p>`;
+    return sh + `<p class="hint">Everything lives in shared storage, so it doesn’t matter where on your land you build these.</p>` + moveSection(i) + salvageSection(i);
   }
   function medalPanel(i) { const m = T_(i).b.m;
     return head(`${MEDAL[m.place][0]} medal`, `${MEDAL[m.place][1]} · ${weekLabel(m.week)}`) + `<div class="medalbig"><img src="${medalImg(m.place)}" alt=""><p class="state">${esc(NET.myName || S.name)} won ${m.place === 1 ? 'the Weekly Challenge' : `${m.place === 2 ? 'second' : 'third'} place in the Weekly Challenge`} in ${weekLabel(m.week)} (${esc(medalTheme(m).name)}) with <b>${m.score.toLocaleString()}</b> points.</p><p class="hint small mtheme"><b>${esc(medalTheme(m).name)}:</b> ${esc(medalTheme(m).blurb)}</p></div>
@@ -3645,6 +3650,7 @@
     if (kit) { const K = D.items[kit]; if (K.buy) add({ gold: K.buy }); else { const R = Object.values(D.recipes).find(r => r.out[kit]); if (R) add(R.in); } }
     if (b.lv) for (const ax in D.upgrades) for (let l = 0; l < (b.lv[ax] || 0); l++) add(D.upgrades[ax].cost[l] || {});
     if (B.hold) for (let l = 0; l < (b.lvl || 0); l++) add(storeCost(l));
+    if (B.up) for (let l = 0; l < (b.lvl || 0); l++) add(B.up.cost[l] || {});
     const half = {}; for (const k in cost) { const n = Math.floor(cost[k] / 2); if (n > 0) half[k] = n; } return half; }
   function salvageSection(i) { const b = T_(i).b; if (!unlocked('salvage') || !b || !MOVABLE.includes(D.buildings[b.type].kind)) return '';
     return `<div class="more"><span class="eyebrow">Take it down</span><p class="hint">${builtCount(b.type) >= 2 ? 'You have another of these, so you can take this one down. Half of what it cost comes back.' : 'You only have one of these. Salvage works once you have a duplicate.'}</p>`
@@ -4007,8 +4013,8 @@
         let h = `<p>${esc(B.desc)}</p>`;
         if (B.place && Object.keys(B.place).length) h += `<p><b>To place:</b> its kit plus ${esc(costTxt(B.place))}.</p>`; else if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>To place:</b> its kit (nothing else).</p>`;
         if (B.kind === 'station' || B.kind === 'storage') h += `<p><b>Limit:</b> ${B.perArea || 1} per area you own${B.perArea > 1 ? '' : ''}. Survey new land (Discovery → Land Surveying) to build more.</p>`;
-        if (B.storage) h += `<p><b>Storage:</b> adds ${B.storage} to shared storage.</p>`;
-        if (B.hold) h += `<p><b>Holds:</b> ${B.hold.base} ${esc(SK[B.hold.cls].name)} apart from main storage, +${B.hold.step} each expansion, and +${B.hold.step * 2} for each of the last ${B.hold.max - (B.hold.mega == null ? B.hold.max : B.hold.mega)} (mega) expansions (up to ${B.hold.max} times).</p>`;
+        if (B.storage) h += `<p><b>Storage:</b> adds ${B.storage} to shared storage${B.up ? `, up to ${B.up.levels[B.up.levels.length - 1]} when upgraded` : ''}.</p>`;
+        if (B.hold) h += `<p><b>Holds:</b> ${B.hold.base} ${esc(SK[B.hold.cls].name)} apart from main storage, +${B.hold.step} each expansion, +${B.hold.step * 2} for each mega expansion (5th to ${B.hold.sup == null ? B.hold.max : B.hold.sup}th)${B.hold.sup != null ? ` and +${B.hold.step * 3} for each super expansion (${B.hold.sup + 1}th to ${B.hold.max}th)` : ''}, up to ${B.hold.max} times.</p>`;
         if (B.slots) h += `<p><b>Batches at once:</b> ${B.slots}, more with Capacity upgrades.</p>`;
         if (rs.length) h += `<p><b>Makes:</b></p><ul class="manlist">${rs.map(([, R]) => `<li>${Object.keys(R.out).map(k => ico(k)).join('')} ${esc(outName(R).join(' + '))} <small class="muted">from ${esc(inTxtPlain(R.in))}${R.requires ? ` · needs ${esc(nmList([].concat(R.requires).map(k => (D.discoveries.find(d => d.id === k) || { name: k }).name)))}` : ''}</small></li>`).join('')}</ul>`;
         if (id === 'house') h += `<p><b>Sizes:</b> ${HZ().levels.map(L => `${L.name} ${L.w}×${L.h} (${L.slots} spots)`).join(', ')}.</p>`;
