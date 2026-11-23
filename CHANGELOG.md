@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.133 — 2026-11-23
+- Quale Statue gets `shelf: true`: eligible for the trophy case (lists, offer, add paths) while still placeable in the room. It stays non-`trophy`, so `pieceDef`/`roomDecorOwned` and statues already placed in rooms are untouched. Wording updated in the earn toast, item tip and info text.
+
 ## v0.132 — 2026-11-21
 - Super expansions: Silo, Cold Cellar and Material Yard `hold.max` 8 → 12 with `hold.sup: 8`; expansions past `sup` add triple the step (`holdAt`). Top capacities: Silo and Yard 2,050 → 3,850, Cold Cellar 1,640 → 3,080. `storeCost` for levels 9+ grows 1.45× per level from the level 8 price (not 1.7×): 34,900g, ~50,600g, ~73,400g, ~106,500g plus bricks and crates as before.
 - Warehouse and Storage Barn upgrades: `up: { levels, cost }` in `D.buildings` (warehouse 120/200/320/500, barn 40/70/100). Level lives in `b.lvl`; `storeOf(b)` replaces the flat `storage` in `extraCap`; the `storeup` task covers both (`upStep`). Salvage refunds include upgrade costs. Old saves have no `lvl` and read as level 0, so nothing changes until a player upgrades. Test: t_sup2.py.

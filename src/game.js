@@ -1221,7 +1221,7 @@
     if (id === 'sapling') return 'Plant on a tree stump in a Forest, or use Change this land → Plant a woodland on grass.';
     if (id === 'fertilizer') return 'Crops grow 40% faster and gain +1 quality. Tick “Use fertilizer” when planting, or choose Add fertilizer on a growing crop.';
     if (it.cat === 'kit') return 'Select empty grass you own → Place.';
-    if (it.cat === 'decor') return it.trophy ? 'Put it in your house’s trophy case: select your house → Trophy case.' : 'Place it in your room: select your house → Go inside.';
+    if (it.cat === 'decor') return it.trophy ? 'Put it in your house’s trophy case: select your house → Trophy case.' : it.shelf ? 'Show it in your house’s trophy case (select your house → Trophy case) or place it in your room (Go inside).' : 'Place it in your room: select your house → Go inside.';
     return ''; }
   function rollMarket() {
     const kits = Object.keys(D.items).filter(id => D.items[id].cat === 'kit' && D.items[id].buy && unlocked(D.items[id].requires));
@@ -1337,7 +1337,7 @@
     else if (t > before && t === Q.tiers.length - 1) { SND.play('goal'); toast(`<b>${n} quales found!</b> The hunt is over: you are the Master of the Quale. Your trophy is now the <b>${esc(Q.tiers[t].name)}</b>, the final one. The quale will keep turning up, and the count keeps climbing.`, 'goal'); }
     else if (t > before) toast(`<b>Quale found! That’s ${n}.</b> Your trophy upgraded to the <b>${esc(Q.tiers[t].name)}</b>.`, 'goal');
     else toast(`<b>Quale found!</b> ${n} found${t < Q.tiers.length - 1 ? ` · next trophy upgrade at ${Q.tiers[t + 1 < Q.tiers.length && t >= 0 ? t + 1 : 0].n}` : ''}.`, 'goal');
-    if (n >= Q.statue && !S.qs) { S.qs = 1; addItem('quale_statue', 1, 0, true); setTimeout(() => toast('<b>A Quale Statue for your room.</b> It’s in your decor storage: go inside your house to place it.', 'goal'), 600); }
+    if (n >= Q.statue && !S.qs) { S.qs = 1; addItem('quale_statue', 1, 0, true); setTimeout(() => toast('<b>A Quale Statue for your room.</b> Show it in your house’s trophy case, or go inside your house to place it in the room.', 'goal'), 600); }
     save(); dirty(); }
   function newDay() {
     sendScore(); autoBackup();
@@ -1499,7 +1499,7 @@
     if (!S.race) {
       NET.medals.filter(m => medalAt(m) === undefined && !caseHas('medal', medalKey(m))).forEach(m => out.push({ t: 'medal', k: medalKey(m), name: `${MEDAL[m.place][0]} medal`, sub: `${weekLabel(m.week)} · ${medalTheme(m).name}`, img: `<img class="cimg" src="${medalImg(m.place)}" alt="">` }));
       earnedModels().filter(p => modelAt(p.id) === undefined && !caseHas('model', p.id)).forEach(p => out.push({ t: 'model', k: p.id, name: `${monShort(p.name)} model`, sub: 'Valley Monument', img: `<img class="cimg" src="${ART.get(`mon:${p.kind || 'pyramid'}.${monStageOf(p.id)}.deco`).toDataURL()}" alt="">` })); }
-    Object.keys(S.inv).filter(id => D.items[id] && D.items[id].trophy && count(id) > 0).forEach(id => out.push({ t: 'item', k: id, name: D.items[id].name, sub: `×${count(id)}`, img: ico(id) }));
+    Object.keys(S.inv).filter(id => D.items[id] && (D.items[id].trophy || D.items[id].shelf) && count(id) > 0).forEach(id => out.push({ t: 'item', k: id, name: D.items[id].name, sub: `×${count(id)}`, img: ico(id) }));
     return out; }
 
   // harvests the ripe plot at i (used by the Harvest task, which the Scythe tool repeats over its square)
@@ -2358,7 +2358,7 @@
     Object.values(D.recipes).filter(r => r.out[id]).forEach(r => P.push(`Made at the ${esc(D.buildings[r.station].name)} from ${inTxt(r.in) || 'nothing at all'} (${r.time}s${r.out[id] > 1 ? `, makes ${r.out[id]}` : ''}).`));
     const uses = Object.values(D.recipes).filter(r => r.in[id]).map(r => D.items[Object.keys(r.out)[0]].name); if (uses.length) P.push(`Used to make ${esc(nmList([...new Set(uses)]))}.`);
     if (id === 'fertilizer') P.push('Fertilize a growing crop for +1 quality and faster growth.');
-    if (it.keep) P.push(`A keepsake from the Quale hunt (${S.qn | 0} found so far). It can’t be sold. ${it.trophy ? 'It upgrades at 10, 25, 50 and 100 finds. Show it in your house’s trophy case.' : 'Place it in the room inside your house (select the house → Go inside).'}`); else if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: place it in the room inside your house (select the house → Go inside). Orders never ask for decor, but the market buys it.');
+    if (it.keep) P.push(`A keepsake from the Quale hunt (${S.qn | 0} found so far). It can’t be sold. ${it.trophy ? 'It upgrades at 10, 25, 50 and 100 finds. Show it in your house’s trophy case.' : (it.shelf ? 'Show it in your house’s trophy case (select the house → Trophy case) or place it in the room inside (Go inside).' : 'Place it in the room inside your house (select the house → Go inside).')}`); else if (it.cat === 'decor') P.push(it.trophy ? 'A trophy: show it in your house’s trophy case (select the house → Trophy case). Orders never ask for decor, but the market buys it.' : 'Home decor: place it in the room inside your house (select the house → Go inside). Orders never ask for decor, but the market buys it.');
     const ru = repeatUsers(id); if (ru.length) P.push(`<b>Used automatically</b> by ${esc(ru.join(', '))} (Repeat is on), so it may not stay in storage.`);
     { const ck = Object.keys(D.crops).find(k => D.crops[k] === (crop || seedOf)), g = Math.round((SR.grow - 1) * 100), sp = Math.round((SR.sell - 1) * 100);
       const ss = D.seasons.filter(z => (ck && z.crops.includes(ck)) || z.goods.includes(id)).map(z => z.name);
@@ -3028,7 +3028,7 @@
   function caseInfo(b, full) { const tc = caseFix(b), cap = caseSlots(b), on = tc.filter(e => e.s != null).length, lv = b.lv || 0, L = HZ().levels, nx = L[lv + 1], isFull = on >= cap;
     const sizes = L.map((x, k) => `<span class="${k === lv ? 'cur' : ''}">${esc(x.name)} ${x.trophy}</span>`).join(' · ');
     return `<div class="cinfo ${isFull ? 'full' : ''}"><b>${on} of ${cap} spots used${isFull ? ' · the case is full' : ''}</b><small>Your ${esc(houseName(b))} has room for ${cap}. The case grows with the house: ${sizes}.</small>${full ? (nx ? `<small>${unlocked('additions') ? `Select your house on the farm → Grow the house to make it a ${esc(nx.name)} (${nx.trophy} spots).` : `Unlock “House Additions” in Discovery, then grow your house to a ${esc(nx.name)} (${nx.trophy} spots).`}</small>` : `<small>Your house is the biggest size, so this is the most spots there are.</small>`) : ''}</div>`; }
-  const caseEarned = b => caseOf(b).length > 0 || NET.medals.length > 0 || earnedModels().length > 0 || Object.keys(S.inv).some(id => D.items[id] && D.items[id].trophy && count(id) > 0);
+  const caseEarned = b => caseOf(b).length > 0 || NET.medals.length > 0 || earnedModels().length > 0 || Object.keys(S.inv).some(id => D.items[id] && (D.items[id].trophy || D.items[id].shelf) && count(id) > 0);
   function caseAward() { const o = houseIdx(); if (o < 0 || S.race) return; const b = T_(o).b, R = roomOf(); if (!R) return;
     if (R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case') || !caseEarned(b)) return;
     R.w.push(['trophy_case', 0]); save(); dirty();
@@ -3038,7 +3038,7 @@
       const { t, k } = h; if (tc.some(e => e.t === t && e.k === k && t !== 'item')) { rm.chand = null; return; }
       if (t === 'medal') { const m = NET.medals.find(x => medalKey(x) === k); if (!m || medalAt(m) !== undefined) { rm.chand = null; return; } tc.push({ t, k, s }); }
       else if (t === 'model') { const p = earnedModels().find(x => x.id === k); if (!p || modelAt(p.id) !== undefined) { rm.chand = null; return; } tc.push({ t, k, s }); }
-      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !D.items[k].trophy || !a || count(k) < 1) { rm.chand = null; return; } const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q, s }); }
+      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !(D.items[k].trophy || D.items[k].shelf) || !a || count(k) < 1) { rm.chand = null; return; } const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q, s }); }
       else return;
       rm.chand = null; rm.csel = tc.length - 1; rm.msg = ''; SND.play('contract'); save(); dirty(); return; }
     if (h && h.src === 'move') { const e = tc[h.i]; if (!e) { rm.chand = null; return; } if (j >= 0 && j !== h.i) tc[j].s = e.s; e.s = s;
@@ -3600,7 +3600,7 @@
     else h += `<p class="hint small">${esc(decoWhere())}</p>`;
     { const tc = caseFix(b), has = R.p.some(p => p.k === 'trophy_case') || R.w.some(x => x[0] === 'trophy_case');
       h += `<span class="eyebrow">Trophy case · ${tc.filter(e => e.s != null).length} of ${caseSlots(b)} spots</span>` + caseInfo(b, false) + (has ? `<p class="hint small">${R.p.some(p => p.k === 'trophy_case') ? 'It stands in your room.' : 'It’s waiting inside to be placed.'} Medals, monument models and fish trophies go on its shelves.</p><button class="btn" data-room-case>Open the trophy case</button>`
-        : `<p class="hint small">You’ll get a Trophy Case for your room as soon as you have a Weekly Challenge medal, a Valley Monument model or a fish trophy.</p>`); }
+        : `<p class="hint small">You’ll get a Trophy Case for your room as soon as you have a Weekly Challenge medal, a Valley Monument model, a fish trophy or a Quale Statue.</p>`); }
     h += `<span class="eyebrow">Grow the house</span>` + growSection(o);
     h += `<p class="hint small">Pieces in your room leave storage, so they don’t take up space. Put one away to keep it in the house, then send it back to storage from the waiting list.</p>`;
     if (UI.moving === o) return head(`Moving the ${L.name}`, 'Choose where its top corner goes.') + houseMoveHere(i, o);
@@ -4316,7 +4316,7 @@
       const tc = caseOf(b); if (tc.length >= caseSlots(b) || tc.some(e => e.t === t && e.k === k)) return;
       if (t === 'medal') { const m = NET.medals.find(x => medalKey(x) === k); if (!m || medalAt(m) !== undefined) return; tc.push({ t, k }); }
       else if (t === 'model') { const p = earnedModels().find(x => x.id === k); if (!p || modelAt(p.id) !== undefined) return; tc.push({ t, k }); }
-      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !D.items[k].trophy || !a || count(k) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q }); }
+      else if (t === 'item') { const a = S.inv[k]; if (!D.items[k] || !(D.items[k].trophy || D.items[k].shelf) || !a || count(k) < 1) return; const q = a[2] ? 2 : a[1] ? 1 : 0; a[q]--; tc.push({ t, k, q }); }
       else return;
       save(); SND.play('contract'); float(+o, 'In the trophy case', '#f6e27a'); }
     else if (ds.caseTake) { const [o, k] = ds.caseTake.split(':').map(Number), b = T_(o).b, e = b && b.tc && b.tc[k]; if (!e) return;
