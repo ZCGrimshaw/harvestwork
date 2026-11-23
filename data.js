@@ -528,7 +528,7 @@ window.HW_DATA = {
     table:         { name: 'Farmhouse Table', cat: 'decor', value: 70, icon: ['table', '#b07a42', '#7a4b28'] },
     // the Quale (v0.118+): the trophy changes look and name as the finds add up (see D.quale and quSync); the statue is given at 10 for the room
     quale_trophy:  { name: 'Quale Trophy', cat: 'decor', trophy: true, keep: true, value: 0, icon: ['trophy', '#b07a42', '#2a2a2a'] },
-    quale_statue:  { name: 'Quale Statue', cat: 'decor', keep: true, value: 0, icon: ['block', '#1c1c1c', '#f0c040'] },
+    quale_statue:  { name: 'Quale Statue', cat: 'decor', shelf: true, keep: true, value: 0, icon: ['block', '#1c1c1c', '#f0c040'] },
     fish_trophy:   { name: 'Fish Trophy', cat: 'decor', trophy: true, value: 75, icon: ['trophy', '#6fb3d9', '#8a5a2e'] },
     vase:          { name: 'Flower Vase', cat: 'decor', value: 72, icon: ['vase', '#c8703a', '#e86aa8'] },
     bookshelf:     { name: 'Bookshelf', cat: 'decor', value: 135, icon: ['shelf', '#9a6a3c', '#c22a44'] },
@@ -1137,6 +1137,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.133', at: '2026-11-23 11:00', notes: ['The Quale Statue (the reward for 10 Quale finds) can now go in your house’s trophy case as well as in your room. Its description and the message you get when you earn it now say so.'] },
   { v: '0.132', at: '2026-11-21 18:20', notes: ['More room, from a suggestion by Joel. Silos, Cold Cellars and Material Yards that are fully expanded can now be expanded 4 more times with Super expansions, each adding triple the usual step (a Silo goes from 2,050 up to 3,850). Warehouses can now be upgraded 3 times (120 up to 500 each) and Storage Barns twice (40 up to 100 each). Open the building to upgrade it.'] },
   { v: '0.131', at: '2026-11-21 11:40', notes: ['Buy any amount at the market: every item on the Buy tab now has a number box next to ×1 and ×5. Type how many you want, see the total price, and tap Buy (Enter works too).'] },
   { v: '0.130', at: '2026-11-20 12:40', notes: ['The next Valley Monument is the Colosseum, and it opens on Sunday, November 22. Four phases of goods for the whole valley to give, and everyone who gives enough earns a model of it for their farm. The Leaning Tower of Pisa stays on the Valley Green until then.'] },
