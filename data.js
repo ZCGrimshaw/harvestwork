@@ -246,7 +246,7 @@ window.HW_DATA = {
   quale: { base: .00002, grow: 2.6e-6, ttl: 25, move: 1.1, statue: 10,
     tiers: [ { n: 5, name: 'Bronze Quale Trophy', c1: '#b07a42', c2: '#2a2a2a' }, { n: 10, name: 'Silver Quale Trophy', c1: '#c8ccd4', c2: '#2a2a2a' },
       { n: 25, name: 'Gold Quale Trophy', c1: '#f0c040', c2: '#2a2a2a' }, { n: 50, name: 'Ruby Quale Trophy', c1: '#d84a5a', c2: '#f0c040' },
-      { n: 100, name: 'Legendary Quale Trophy', c1: '#f0c040', c2: '#1c1c1c' } ] },
+      { n: 100, name: 'Legendary Quale Trophy', c1: '#8a4fd8', c2: '#f0c040' } ] },
   village: {
     n0: 8, entrance: [0, 3],                  // lots across at the start; the road in from the farm starts at the entrance lot on the x = 0 side
     bufferDays: 5, minShelf: 240,             // each shelf holds this many days of what the town uses (never less than minShelf points)
@@ -1137,6 +1137,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.135', at: '2026-11-26 09:30', notes: ['The Legendary Quale Trophy (100 finds) is now purple with gold trim.'] },
   { v: '0.134', at: '2026-11-26 09:00', notes: ['Auto-give now goes straight from the field: crops you harvest, and goods you gather or collect, that have Auto on for the current monument skip storage and are given to it directly, so a full storage no longer stops you and nothing takes up room on the way. If the monument can’t take them any more (allowance used or phase done), they go back into storage.', 'The Quale Trophy is now a little black quale on a stand, in bronze, silver, gold, ruby and legendary versions.'] },
   { v: '0.133', at: '2026-11-23 11:00', notes: ['The Quale Statue (the reward for 10 Quale finds) can now go in your house’s trophy case as well as in your room. Its description and the message you get when you earn it now say so.'] },
   { v: '0.132', at: '2026-11-21 18:20', notes: ['More room, from a suggestion by Joel. Silos, Cold Cellars and Material Yards that are fully expanded can now be expanded 4 more times with Super expansions, each adding triple the usual step (a Silo goes from 2,050 up to 3,850). Warehouses can now be upgraded 3 times (120 up to 500 each) and Storage Barns twice (40 up to 100 each). Open the building to upgrade it.'] },
