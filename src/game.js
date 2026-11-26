@@ -732,7 +732,7 @@
     if (!site || site.type !== 'mon_site' || site.p === m.id) return;
     const prev = (m.gallery || []).concat(m.mine_all || []).find(p => p.id === site.p), prevName = prev ? prev.name : site.p ? (D.monuments[site.kind] || {}).name : null;
     monTiles().forEach(i => { const b = S.tiles[i].b; b.p = m.id; b.kind = m.kind; });
-    if (S.monAuto && Object.keys(S.monAuto).length) S.monAuto = {};   // auto-give was for the last monument's goods: start fresh
+    if (S.monAuto && Object.keys(S.monAuto).length) S.monAuto = {}; /* leftover monPend goods return to storage in monPendFlush */   // auto-give was for the last monument's goods: start fresh
     UI.live = null; UI.monPrev = prevName || null; save();
     if (!UI.title) openTitle('monwelcome'); else UI.monWelcome = true; }
   // move the Green to another corner: the old area goes back to being unsurveyed land
@@ -753,11 +753,30 @@
   const monTiles = () => S.green ? S.tiles.map((T, i) => T.b && T.b.type === 'mon_site' && T.b.c === S.green.c ? i : -1).filter(i => i >= 0) : [];
   function showGreen() { if (!S.green) return; UI.drawer = null; UI.title && closeTitle(); centerOn(S.green.c); clampCam(); UI.sel = S.green.d; dirty(); }
   // Give goods. Lowest quality goes first, since quality doesn't count here.
+  /* Straight to the monument: a good with Auto-give on is not stored when it is harvested, gathered or collected. It waits in S.monPend
+     (outside storage, so a full storage never blocks it) until the next auto gift. It only waits for as much as the monument can still take
+     today and this phase, and anything it can't take any more goes back into storage (monPendFlush). */
+  const monPend = id => (S.monPend && S.monPend[id]) | 0;
+  function monPendPts(m, items) { let p = 0; for (const k in (S.monPend || {})) p += monPend(k) * (+items[k] || 0); return p; }
+  function monDivN(id, n) {
+    if (!S || S.race || n < 1 || !monAutoOn(id) || !online()) return 0;
+    const m = MONK(); if (!m) return 0; const t = monTotals(m); if (t.finished) return 0;
+    const items = (m.phases[t.phase] || {}).items || {}, v = +items[id] || 0; if (!v) return 0;
+    const pp = monPendPts(m, items), left = monLeftToday(m) - pp, need = t.need - t.done - pp; if (left <= 0 || need <= 0) return 0;
+    return Math.max(0, Math.min(n, Math.ceil(left / v), Math.ceil(need / v))); }
+  function landItem(id, n, q, silent) { const d = monDivN(id, n);
+    if (d) { S.monPend = S.monPend || {}; S.monPend[id] = monPend(id) + d; if (!S.disc.includes(id)) S.disc.push(id); }
+    if (n - d > 0) addItem(id, n - d, q, silent); return d; }
+  function monPendFlush() { if (!S || !S.monPend) return; const m = MONK(), t = m && monTotals(m), items = t && !t.finished ? (m.phases[t.phase] || {}).items || {} : {};
+    const ok = !S.race && online() && m && !t.finished && monLeftToday(m) > 0;
+    for (const id of Object.keys(S.monPend)) { const n = monPend(id); if (n < 1 || !D.items[id]) { delete S.monPend[id]; continue; }
+      if (ok && monAutoOn(id) && items[id]) continue;
+      const k = Math.min(n, Math.max(0, room())); if (k > 0) { addItem(id, k, 0, true); S.monPend[id] = n - k; if (S.monPend[id] < 1) delete S.monPend[id]; } } }
   function monMax(id) { const m = MONK(); if (!m) return 0; const t = monTotals(m), v = +(m.phases[t.phase].items || {})[id] || 0; if (!v) return 0;
-    return Math.max(0, Math.min(count(id), Math.ceil(monLeftToday(m) / v), Math.ceil((t.need - t.done) / v))); }
+    return Math.max(0, Math.min(count(id) + monPend(id), Math.ceil(monLeftToday(m) / v), Math.ceil((t.need - t.done) / v))); }
   async function monGive(id, n, auto) {
     const m = MONK(); if (!m || UI.monBusy) return;
-    n = Math.min(n | 0, count(id)); if (n < 1) { if (!auto) toast(`You have no ${esc(D.items[id].name)} in storage.`, 'warn'); return; }
+    n = Math.min(n | 0, count(id) + monPend(id)); if (n < 1) { if (!auto) toast(`You have no ${esc(D.items[id].name)} in storage.`, 'warn'); return; }
     UI.monBusy = id; UI.monBusyAt = Date.now(); dirty(); const ph = monTotals(m).phase;
     try { const r = await rpc('mon_give', { p_player: PLAYER, p_name: NET.myName || S.name, p_project: m.id, p_item: id, p_qty: n });
       if (!r || r.error) { const e = r && r.error;
@@ -766,7 +785,7 @@
           : e === 'finished' ? `${esc(m.name)} is finished! Nothing more is needed.` : 'The monument couldn’t take that just now. Nothing was taken from storage.', e === 'cap' ? 'info' : 'warn');
         if (e === 'cap' && S.monAuto && Object.keys(S.monAuto).length) { setMon(Object.assign({}, m, { today: r.today || m.cap, cap: r.cap || m.cap })); monAutoCapStop(); }
         fetchMon(); }
-      else { const q = Math.min(r.qty, count(id)); if (q > 0) take(id, q, 0, 'low');
+      else { const q = Math.min(r.qty, count(id) + monPend(id)), fp = Math.min(q, monPend(id)); if (fp > 0) { S.monPend[id] = monPend(id) - fp; if (S.monPend[id] < 1) delete S.monPend[id]; } if (q - fp > 0) take(id, q - fp, 0, 'low');
         S.monPh = S.monPh || {}; const got = S.monPh[m.id] = S.monPh[m.id] || [];
         const st = r.state || m, t = monTotals(st);
         if (auto) toast(`<b>Auto-gave ${r.qty} ${esc(D.items[id].name)}</b> to ${esc(m.name)}: +${r.points.toLocaleString()} points. Your total: ${(st.mine || 0).toLocaleString()}.`, 'info'); else
@@ -785,7 +804,7 @@
     const n = Object.keys(S.monAuto).length; S.monAuto = {}; save(); dirty();
     toast(`<b>Daily limit reached.</b> You’ve given your full ${((m || MONK()).cap || 0).toLocaleString()} points to the monument today, so Auto-give has been switched off${n > 1 ? ' for all goods' : ''}. Your allowance resets at 2 AM Pacific (in ${fmtLeftShort(utcReset())}); turn Auto back on then.`, 'warn'); return true; }
   const monAutoOn = id => !!(S.monAuto && S.monAuto[id]);
-  function autoMonGive() { if (!S || S.race || !online() || !S.monAuto || !Object.keys(S.monAuto).length) return;
+  function autoMonGive() { try { monPendFlush(); } catch (e) { } if (!S || S.race || !online() || !S.monAuto || !Object.keys(S.monAuto).length) return;
     if (UI.monBusy && Date.now() - (UI.monBusyAt || 0) > 30000) UI.monBusy = null; // a gift that never answered must not block the rest
     const m = MONK(); if (!m || UI.monBusy) return;
     // Nothing to give right now (allowance used, goods gone, or the phase may have moved on): look again, at most once a minute,
@@ -793,7 +812,7 @@
     const stale = () => { if (Date.now() - (NET.monAt || 0) > 60000) fetchMon(); };
     const t = monTotals(m); if (t.finished) return; if (!monLeftToday(m)) { if (Date.now() - (NET.monAt || 0) > 60000) fetchMon(); else monAutoCapStop(m); return; } // confirm with the valley before switching off
     const items = (m.phases[t.phase] || {}).items || {};
-    const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => count(b) * items[b] - count(a) * items[a])[0];
+    const id = Object.keys(S.monAuto).filter(k => S.monAuto[k] && items[k] && monMax(k) > 0).sort((a, b) => (count(b) + monPend(b)) * items[b] - (count(a) + monPend(a)) * items[a])[0];
     if (id) monGive(id, monMax(id), true); else stale(); }
   setInterval(() => { try { autoMonGive(); } catch (e) { } }, 20000);
   setInterval(() => { try { autoSellTick(); } catch (e) { } }, 20000); setTimeout(() => { try { dqNotice(); } catch (e) { } }, 6000); setInterval(() => { try { dqNotice(); } catch (e) { } }, 60000);
@@ -1322,7 +1341,7 @@
   let QL = null, QOPEN = 0;   // the quale on the map right now ({ i, ttl, mv }) and seconds the game has been open since the last find
   const quDay = () => new Date().toLocaleDateString('en-CA');
   const quTier = n => { let t = -1; D.quale.tiers.forEach((x, k) => { if (n >= x.n) t = k; }); return t; };
-  function quSync() { const t = quTier(S.qn | 0), it = D.items.quale_trophy; if (t < 0) { it.name = 'Quale Trophy'; it.icon = ['trophy', '#b07a42', '#2a2a2a']; return; } const T = D.quale.tiers[t]; it.name = T.name; it.icon = ['trophy', T.c1, T.c2]; UI.html = {}; }
+  function quSync() { const t = quTier(S.qn | 0), it = D.items.quale_trophy; if (t < 0) { it.name = 'Quale Trophy'; it.icon = ['qtrophy', '#b07a42', '#2a2a2a']; return; } const T = D.quale.tiers[t]; it.name = T.name; it.icon = ['qtrophy', T.c1, T.c2]; UI.html = {}; }
   function quTick(dt) { if (S.race || UI.catchup || UI.title || dt > 5 || UI.room || UI.vil) return; const Q = D.quale;
     if (QL) { QL.ttl -= dt; QL.mv -= dt;
       if (QL.ttl <= 0) { QL = null; QOPEN *= .5; return; }
@@ -1385,7 +1404,7 @@
     const c = { gold: Math.round((C.move.gold + (kit && kit.buy || 60)) * heat / 10) * 10 };
     if (B.place && (B.place.brick || 0) > 0) c.brick = Math.max(2, Math.round(B.place.brick / 2)); else c.plank = Math.max(2, Math.round(((B.place && B.place.plank) || 2) / 2) + 1);
     return c; }
-  function outRoom(out) { let n = 0; for (const k in out) n += out[k]; return room() >= n; }
+  function outRoom(out) { let n = 0; for (const k in out) n += out[k] - monDivN(k, out[k]); return room() >= n; }
   const FULL = 'Storage is full. Sell goods or upgrade the Homestead.';
 
   /* tools: tier effects come from D.tools */
@@ -1434,11 +1453,11 @@
     let rp = false; if (b.rep && !b.rpause) { b.rpause = true; rp = true; }
     float(i, 'Batch cancelled', '#f0c9bf'); toast(`Cancelled a batch of <b>${esc(R.label || D.items[Object.keys(R.out)[0]].name)}</b>. ${Object.keys(R.in).length ? 'Its ingredients are back in storage.' : ''}${rp ? ' Repeat is paused at this station so the slot stays free.' : ''}`, 'info'); save(); dirty(); }
   function collectErr(i) { const b = T_(i).b; const done = b && b.q ? b.q.filter(x => x.done) : [];
-    if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k]; }); return room() >= n ? null : FULL; }
+    if (!done.length) return 'Nothing ready'; let n = 0; done.forEach(x => { for (const k in D.recipes[x.r].out) if (storable(k)) n += D.recipes[x.r].out[k] - monDivN(k, D.recipes[x.r].out[k]); }); return room() >= n ? null : FULL; }
   function doCollect(i) { const b = T_(i).b; const done = b.q.filter(x => x.done); b.q = b.q.filter(x => !x.done);
     done.forEach(x => { const out = Object.assign({}, D.recipes[x.r].out); if (x.bonus) { const k0 = Object.keys(out)[0]; if (D.items[k0].cat !== 'kit') out[k0]++; } for (const k in out) {
       if (isMast(k)) out[k] += mastExtra(k, room() > out[k]);
-      addItem(k, out[k], x.qual); if (!D.recipes[x.r].in || !Object.keys(D.recipes[x.r].in).some(j => D.items[j] && D.items[j].cat === 'good' && !farmGood(j))) freshAdd(k, out[k]); mastAdd(k, out[k], i); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
+      const dv = landItem(k, out[k], x.qual); if (out[k] > dv && (!D.recipes[x.r].in || !Object.keys(D.recipes[x.r].in).some(j => D.items[j] && D.items[j].cat === 'good' && !farmGood(j)))) freshAdd(k, out[k] - dv); mastAdd(k, out[k], i); const d = depth(k); wk().made[k] = (wk().made[k] || 0) + out[k];
       float(i, `+${out[k]} ${D.items[k].name}${x.qual ? ' · ' + QN[x.qual] : ''}`, '#fff');
       gainScore(C.score.craftPerDepth * d * out[k] * (1 + x.qual * .5), i, 'craft', k);
       first('craft:' + k, C.firsts.craft, `First ${D.items[k].name} made`);
@@ -1505,8 +1524,8 @@
   // harvests the ripe plot at i (used by the Harvest task, which the Scythe tool repeats over its square)
   function harvestOne(i) { const b = T_(i).b, cr = D.crops[b.crop];
     const q = Math.min(2, (b.w[0] && b.w[1] ? 1 : 0) + (b.fert ? 1 : 0));
-    const yl = cr.yield + mastExtra(cr.item, room() > cr.yield);
-    addItem(cr.item, yl, q); freshAdd(cr.item, yl); wk().harvest += yl; if (!S.race) { S.harvN = (S.harvN || 0) + yl; almanac(); } float(i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}`, '#fff'); mastAdd(cr.item, yl, i);
+    const yl = cr.yield + mastExtra(cr.item, room() > cr.yield || monDivN(cr.item, cr.yield + 1) > cr.yield);
+    const dv = landItem(cr.item, yl, q); if (yl > dv) freshAdd(cr.item, yl - dv); wk().harvest += yl; if (!S.race) { S.harvN = (S.harvN || 0) + yl; almanac(); } float(i, `+${yl} ${D.items[cr.item].name}${q ? ' · ' + QN[q] : ''}${dv ? ' → monument' : ''}`, '#fff'); mastAdd(cr.item, yl, i);
     if (unlocked('seedsaving') && (S.seedN = (S.seedN || 0) + 1) % 3 === 0 && room() > 0) { addItem(cr.seed, 1, 0, true); setTimeout(() => float(i, `+1 ${D.items[cr.seed].name}`, '#b8f08a'), 400); }
     T_(i).b = { type: 'farm', st: 'raw', last: b.crop };
     gainScore(C.score.harvest * (1 + q * .5), i, 'harvest', cr.item);
@@ -1533,20 +1552,20 @@
     water: { label: () => 'Water crop', check: t => { const b = T_(t.i).b; return b && b.st === 'growing' && !b.wet ? null : 'Soil is already wet'; },
       run: t => { const hit = around(t.i, toolStat('water', 'area', 0)).filter(j => { const b = farmAt(j); return b && b.st === 'growing' && !b.wet; });
         hit.forEach(j => { waterPlot(T_(j).b); gainScore(C.score.water, j); }); emit('water'); } },
-    harvest: { label: () => 'Harvest', check: t => { const b = T_(t.i).b; if (!b || b.st !== 'ready') return 'Not ready yet'; return room() >= D.crops[b.crop].yield ? null : FULL; },
+    harvest: { label: () => 'Harvest', check: t => { const b = T_(t.i).b; if (!b || b.st !== 'ready') return 'Not ready yet'; return room() >= D.crops[b.crop].yield - monDivN(D.crops[b.crop].item, D.crops[b.crop].yield) ? null : FULL; },
       // the Scythe tool (D.tools.scythe) also harvests every ripe plot in its square, as far as storage has room
       run: t => { const r = toolStat('harvest', 'area', 0), spots = [t.i];
         if (r) around(t.i, r).forEach(j => { if (j !== t.i) { const f = farmAt(j); if (f && f.st === 'ready') spots.push(j); } });
-        spots.forEach((j, k) => { if (k && room() < D.crops[T_(j).b.crop].yield) return; harvestOne(j); }); } },
+        spots.forEach((j, k) => { { const c = D.crops[T_(j).b.crop]; if (k && room() < c.yield - monDivN(c.item, c.yield)) return; } harvestOne(j); }); } },
     chop: { label: () => 'Chop tree', check: t => { const T = T_(t.i); if (!unlocked('woodcutting')) return 'Unlock Woodcutting first'; if (T.r.st !== 'tree') return 'No grown tree'; return outRoom(gatherOut('forest', 'chop')) ? null : FULL; },
-      run: t => { const o = gatherOut('forest', 'chop'); for (const k in o) addItem(k, o[k]); T_(t.i).r.st = 'stump';
+      run: t => { const o = gatherOut('forest', 'chop'); for (const k in o) landItem(k, o[k]); T_(t.i).r.st = 'stump';
         float(t.i, `+${o.log} Logs`, '#fff'); gainScore(C.score.chop, t.i, 'chop', 'log'); first('gather:log', C.firsts.gather, 'First logs chopped'); emit('chop'); } },
     replant: { label: () => 'Plant sapling', check: t => T_(t.i).r.st !== 'stump' ? 'Nothing to replant' : count('sapling') < 1 ? 'No sapling' : null,
       run: t => { take('sapling', 1); Object.assign(T_(t.i).r, { st: 'sapling', g: 0 }); gainScore(C.score.replant, t.i); } },
     fish: { label: () => 'Fish', check: t => !unlocked('fishing') ? 'Unlock Fishing first' : T_(t.i).r.stock < 1 ? 'Fish are hiding. Try again soon' : outRoom(gatherOut('water', 'fish')) ? null : FULL,
-      run: t => { const o = gatherOut('water', 'fish'), n = o.fish; T_(t.i).r.stock--; for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Fish${o.sand ? ' + sand' : ''}`, '#fff'); if (o.sand) first('gather:sand', C.firsts.gather, 'First sand from the pond'); gainScore(C.score.fish, t.i, 'fish'); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
+      run: t => { const o = gatherOut('water', 'fish'), n = o.fish; T_(t.i).r.stock--; for (const k in o) landItem(k, o[k]); float(t.i, `+${n} Fish${o.sand ? ' + sand' : ''}`, '#fff'); if (o.sand) first('gather:sand', C.firsts.gather, 'First sand from the pond'); gainScore(C.score.fish, t.i, 'fish'); first('gather:fish', C.firsts.gather, 'First fish caught'); } },
     mine: { label: () => 'Break stone', check: t => !unlocked('stonecutting') ? 'Unlock Stonecutting first' : worked(T_(t.i)) ? 'Quarried out. Reopen it with Deep Quarrying, or change the land' : T_(t.i).r.stock < 1 ? 'No boulders on the surface. More resurface over time' : outRoom(gatherOut('boulder', 'mine')) ? null : FULL,
-      run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; useDep(T_(t.i)); for (const k in o) addItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i, 'mine', 'stone'); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
+      run: t => { const o = gatherOut('boulder', 'mine'), n = o.stone; T_(t.i).r.stock--; useDep(T_(t.i)); for (const k in o) landItem(k, o[k]); float(t.i, `+${n} Stone${o.copper_ore ? ' + ore' : ''}`, '#fff'); if (o.copper_ore) first('gather:ore', C.firsts.gather, 'First copper ore'); gainScore(C.score.mine, t.i, 'mine', 'stone'); first('gather:stone', C.firsts.gather, 'First stone quarried'); } },
     gather: { label: t => (D.gather[T_(t.i).t] || {}).verb || 'Gather',
       check: t => { const T = T_(t.i), G = D.gather[T.t]; if (!G || !T.r) return 'Nothing to gather here';
         if (!unlocked(G.needs)) return `Unlock ${D.discoveries.find(d => d.id === G.needs).name} first`;
@@ -1554,7 +1573,7 @@
         if (T.r.stock < 1) return 'Picked clean. It grows back over time'; return outRoom(gatherGive(T)) ? null : FULL; },
       run: t => { const T = T_(t.i), out = gatherGive(T); T.r.stock--; useDep(T); const got = [];
         if (gemsHere(T)) S.gemN = (S.gemN || 0) + 1;
-        for (const k in out) { addItem(k, out[k]); freshAdd(k, out[k]); got.push(`+${out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
+        for (const k in out) { const dv = landItem(k, out[k]); if (out[k] > dv) freshAdd(k, out[k] - dv); got.push(`+${out[k]} ${D.items[k].name}`); first('gather:' + k, C.firsts.gather, `First ${D.items[k].name.toLowerCase()} gathered`); }
         float(t.i, got.join(' · '), '#fff'); gainScore(C.score.gather, t.i, 'gather', ...Object.keys(D.gather[T.t].out)); emit('gather'); } },
     survey: { label: t => `Survey the ${D.regionThemes[S.regions[t.p].theme].name}`,
       check: t => { if (!unlocked('surveying')) return 'Unlock Land Surveying in Discovery'; if (!surveyable(t.p)) return 'Survey land next to an area you already have'; return canPay(surveyCost()); },
@@ -2848,8 +2867,8 @@
       const items = Object.entries(ph.items || {}).filter(([id]) => D.items[id]).sort((a, b) => a[1] - b[1] || D.items[a[0]].name.localeCompare(D.items[b[0]].name));
       h += `<span class="eyebrow">Give goods</span><div class="givelist">${items.map(([id, v]) => { const have = count(id), mx = monMax(id), busy = UI.monBusy;
         const why = !have ? 'none in storage' : !left ? 'today’s allowance is used up' : left < v ? `worth more than the ${left} left today, but your last gift can go a little over` : '';
-        return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}<button class="autog ${monAutoOn(id) ? 'on' : ''}" data-mon-auto="${id}" aria-pressed="${monAutoOn(id)}" title="Give ${esc(D.items[id].name)} automatically">${monAutoOn(id) ? 'Auto ✓' : 'Auto'}</button></div>`; }).join('')}</div>
-        <p class="hint small"><b>Auto</b> gives that good by itself whenever you have some, a batch every 20 seconds or so, until today’s allowance is used. It gives every one you have, so leave it off for goods you need for building. It works while the game is open, and switches itself off (with a heads-up) when today’s allowance is used up.</p>
+        return `<div class="trade give ${mx ? '' : 'off'}">${ico(id, mx ? '' : 'dim')}<div class="grow1"><b>${esc(D.items[id].name)}</b><small>counts as <b>${v}</b> point${v === 1 ? '' : 's'} each · have ${have}${monPend(id) ? ` (+${monPend(id)} on the way)` : ''}${why ? ` · ${why}` : ''}</small></div>${mx ? `<span class="qtybox"><input type="number" class="qty" id="mg-${id}" data-mq="${id}" min="1" max="${mx}" step="1" value="${Math.max(1, Math.min(mx, UI.mq[id] || mx))}" inputmode="numeric" aria-label="How many ${esc(D.items[id].name)} to give"><button class="btn sm pri" data-mon-give="${id}" ${busy ? 'disabled' : ''}>${busy === id ? 'Giving…' : 'Give'}</button></span>` : ''}<button class="autog ${monAutoOn(id) ? 'on' : ''}" data-mon-auto="${id}" aria-pressed="${monAutoOn(id)}" title="Give ${esc(D.items[id].name)} automatically">${monAutoOn(id) ? 'Auto ✓' : 'Auto'}</button></div>`; }).join('')}</div>
+        <p class="hint small"><b>Auto</b> gives that good by itself, a batch every 20 seconds or so, until today’s allowance is used. Goods you harvest, gather or collect go straight to the monument without using any storage, so a full storage won’t stop you. It gives every one you have, so leave it off for goods you need for building. It works while the game is open, and switches itself off (with a heads-up) when today’s allowance is used up.</p>
         <div class="monyou bday">${builderDay() ? '<b>Builder’s day:</b> because you’ve given today, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down. It lasts until 2 AM Pacific.' : '<b>Builder’s day:</b> give anything today and, until 2 AM Pacific, your quarries, clay banks, iron seams, woods, reeds, flowers and ponds refill twice as fast, and digging doesn’t wear deposits down.'}</div>
         <p class="hint small">Giving takes the goods from your storage and earns no gold. The box starts at the most that counts: what you have, what’s left of today’s allowance (the last item may go a little over), or what’s left of this phase.</p>`;
     } else h += `<p class="state">Finished, with ${m.givers} farm${m.givers === 1 ? '' : 's'} helping. Thank you! It stands on your Valley Green until the next monument starts and takes its place. Any model you earned stays on your farm.</p>`;
@@ -4324,7 +4343,7 @@
       b.tc.splice(k, 1); save(); }
     else if ('medalAway' in ds) { const i = +ds.medalAway; if (T_(i).b && T_(i).b.type === 'medal') { T_(i).b = null; save(); toast('Medal put back in your medals (Menu → Medals).', 'info'); } }
     else if (ds.monAuto) { const id = ds.monAuto; S.monAuto = S.monAuto || {}; S.monAuto[id] = !S.monAuto[id]; if (!S.monAuto[id]) delete S.monAuto[id];
-      toast(S.monAuto[id] ? `<b>Auto-give on</b> for ${esc(D.items[id].name)}. It goes to the monument by itself while there’s allowance left today.` : `Auto-give off for ${esc(D.items[id].name)}.`, 'info'); save(); dirty(); if (S.monAuto[id]) setTimeout(autoMonGive, 600); return; }
+      toast(S.monAuto[id] ? `<b>Auto-give on</b> for ${esc(D.items[id].name)}. It goes to the monument by itself while there’s allowance left today.` : `Auto-give off for ${esc(D.items[id].name)}.`, 'info'); save(); dirty(); if (S.monAuto[id]) setTimeout(autoMonGive, 600); else monPendFlush(); return; }
     else if (ds.monGive) { const inp = $('#mg-' + ds.monGive); monGive(ds.monGive, inp ? Math.max(1, parseInt(inp.value, 10) || 1) : 1); return; }
     else if ('monShow' in ds) { showGreen(); }
     else if (ds.greenMove) { moveGreen(ds.greenMove); }

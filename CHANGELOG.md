@@ -3,6 +3,10 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.134 — 2026-11-26
+- Auto-give straight from harvest: `landItem` replaces `addItem` for crop harvest, chop/fish/mine/gather and station collect. If the good has `S.monAuto` on and the monument can still take it (allowance left, phase need left, counted with what is already waiting), it goes to `S.monPend` instead of storage; `outRoom`, `collectErr` and the harvest check ignore diverted units so a full storage doesn't block. `autoMonGive` gives from pending first (`monGive`/`monMax` count it); `monPendFlush` runs every tick and when Auto is switched off, returning leftovers to storage as room allows. Depot rows show "+N on the way". Test: t_pipe.py (storage full, harvest still works).
+- Quale Trophy icon is `qtrophy` (black square over a tier-coloured stand) instead of the fish plaque.
+
 ## v0.133 — 2026-11-23
 - Quale Statue gets `shelf: true`: eligible for the trophy case (lists, offer, add paths) while still placeable in the room. It stays non-`trophy`, so `pieceDef`/`roomDecorOwned` and statues already placed in rooms are untouched. Wording updated in the earn toast, item tip and info text.
 
