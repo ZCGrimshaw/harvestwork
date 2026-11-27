@@ -4610,6 +4610,7 @@
         ${UI.hadSave ? '<button class="btn ghost big" data-t="slots">All your farms<small>Switch farms or start a new one (3 slots)</small></button>' : ''}
         <button class="btn big" data-t="restore">Restore from a backup code<small>The 12-letter code from Menu → Cloud backup</small></button>
         <button class="btn big" data-t="load">Load a save file<small>A .json file downloaded from the Menu</small></button>
+        <a class="btn big" href="${esc(D.site.home)}" target="_blank" rel="noopener">Zero Crunch website<small>More games and news ↗</small></a>
         <button class="btn ghost big" data-t="support">Show your support</button></div>
         ${f ? `<div class="tfile">${f.busy ? `<p class="hint">Reading ${esc(f.busy)}…</p>` : f.err ? `<p class="hint err">${esc(f.err)}</p>`
           : `<p class="hint"><b>${esc(f.name)}</b>: ${esc(f.o.name || 'Farmer')}’s farm, day ${f.o.day}, ${f.o.gold}g.${UI.hadSave ? ` This replaces ${esc(S.name)}’s farm in this browser.` : ''}</p>

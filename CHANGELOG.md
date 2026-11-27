@@ -3,6 +3,9 @@
 Each release lists the commit that holds it. To see an old version on GitHub, open
 `https://github.com/ZCGrimshaw/harvestwork/tree/<commit>`; to restore one, check out that commit.
 
+## v0.136 — 2026-11-27
+- Title screen main menu: Zero Crunch website link (`D.site.home`, new tab, `rel=noopener`) above Show your support. The in-game Menu → Game already had one.
+
 ## v0.135 — 2026-11-26
 - Legendary Quale Trophy tier colours: c1 purple `#8a4fd8`, c2 gold `#f0c040`.
 
