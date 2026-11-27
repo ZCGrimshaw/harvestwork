@@ -1137,6 +1137,7 @@ window.HW_DATA.supporters = [
 ];
 window.HW_DATA.site = { home: 'https://zerocrunch.ca', share: 'www.zerocrunch.ca/harvest-valley' };
 window.HW_DATA.updates = [
+  { v: '0.136', at: '2026-11-27 12:50', notes: ['The main menu has a new Zero Crunch website button that opens zerocrunch.ca in a new tab.'] },
   { v: '0.135', at: '2026-11-26 09:30', notes: ['The Legendary Quale Trophy (100 finds) is now purple with gold trim.'] },
   { v: '0.134', at: '2026-11-26 09:00', notes: ['Auto-give now goes straight from the field: crops you harvest, and goods you gather or collect, that have Auto on for the current monument skip storage and are given to it directly, so a full storage no longer stops you and nothing takes up room on the way. If the monument can’t take them any more (allowance used or phase done), they go back into storage.', 'The Quale Trophy is now a little black quale on a stand, in bronze, silver, gold, ruby and legendary versions.'] },
   { v: '0.133', at: '2026-11-23 11:00', notes: ['The Quale Statue (the reward for 10 Quale finds) can now go in your house’s trophy case as well as in your room. Its description and the message you get when you earn it now say so.'] },
